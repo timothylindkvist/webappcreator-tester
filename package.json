@@ -1,0 +1,15 @@
+{
+  "name": "realtime-site-gen",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "vercel dev",
+    "start": "vercel dev",
+    "deploy": "vercel deploy --prebuilt",
+    "lint": "echo \"no lint step\""
+  },
+  "dependencies": {
+    "openai": "4.57.0"
+  }
+}

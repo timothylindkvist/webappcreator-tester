@@ -2,9 +2,9 @@
 export const runtime = "nodejs";
 
 import { OpenAI } from "openai";
-import { MASTER_PROMPT, withStyleRef } from "../masterPrompt.js";
+import { buildSystemPrompt } from "../masterPrompt.js";
 
-function setStreamHeaders(res, version = "v6") {
+function setStreamHeaders(res, version = "v7") {
   res.setHeader("Content-Type", "text/plain; charset=utf-8");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("X-Accel-Buffering", "no");
@@ -43,7 +43,7 @@ export default async function handler(req, res) {
   const { brief, styleReference, instruction } = body || {};
   const client = new OpenAI({ apiKey: OPENAI_API_KEY });
 
-  const systemText = withStyleRef(MASTER_PROMPT, styleReference);
+  const systemText = buildSystemPrompt({ styleReference, briefOrBlueprint: brief });
   const userText = `
 Skip Step A (Clarify). Perform Step B only.
 Return ONLY the raw Blueprint JSON.

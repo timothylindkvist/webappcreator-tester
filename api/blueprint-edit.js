@@ -1,11 +1,10 @@
 // api/blueprint-edit.js
-// OPTIONAL: prototype for incremental edits — not wired into the UI by default.
 export const runtime = "nodejs";
 
 import { OpenAI } from "openai";
 import { MASTER_PROMPT } from "../masterPrompt.js";
 
-function setStreamHeaders(res, version = "v6-edit") {
+function setStreamHeaders(res, version = "v7-edit") {
   res.setHeader("Content-Type", "text/plain; charset=utf-8");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("X-Accel-Buffering", "no");

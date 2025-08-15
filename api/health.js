@@ -1,7 +1,7 @@
 // api/health.js
 export const runtime = "nodejs";
 
-function setHeaders(res, version = "v6") {
+function setHeaders(res, version = "v7") {
   res.setHeader("Content-Type", "text/plain; charset=utf-8");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("X-Accel-Buffering", "no");

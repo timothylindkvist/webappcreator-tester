@@ -27,9 +27,9 @@
     label{font-weight:600;margin:6px 0;display:block}
     textarea, input[type="text"]{width:100%;background:#0d1117;color:var(--text);border:1px solid #2a3142;border-radius:12px;padding:12px;font:inherit}
     textarea{min-height:100px}
-    .row{display:flex;gap:12px;flex-wrap:wrap}
+    .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
     button{appearance:none;border:0;border-radius:999px;padding:10px 16px;font-weight:700;color:#0b0d10;background:linear-gradient(135deg,var(--primary),#9ad3ff);box-shadow:0 6px 20px rgba(124,150,255,.35);cursor:pointer}
-    button.secondary{background:#1f2636;color:var(--text);box-shadow:none;border:1px solid #2a3142}
+    button.secondary{background:#1f2636;color:var(--text);box-shadow:none;border:1px solid #2a3142;padding:8px 12px;font-weight:600}
     button.danger{background:linear-gradient(135deg,var(--danger),#ff8aa0)}
     button:disabled{opacity:.6;cursor:not-allowed}
     nav#nav{display:flex;gap:8px;flex-wrap:wrap}
@@ -42,6 +42,16 @@
     .bar{height:100%;width:0;background:linear-gradient(90deg,var(--primary),var(--accent)); transition:width .1s ease}
     .statusLine{color:#aab4bf;font-size:14px;padding:10px 12px;background:#0d1117;border:1px solid #2a3142;border-radius:12px}
     .footer{font-size:12px;color:var(--muted);padding:12px}
+
+    /* EXPANDED LAYOUT */
+    body.expanded .grid{ display:none; }
+    body.expanded .previewWrap{ grid-template-columns:1fr; }
+    body.expanded iframe{ height:calc(100vh - 140px); border-radius:0; }
+
+    /* FULLSCREEN when card goes fullscreen */
+    #previewCard:fullscreen { padding:0; border-radius:0; }
+    #previewCard:fullscreen iframe { height:100vh; width:100vw; border-radius:0; }
+
     @media (max-width: 980px){
       .grid{grid-template-columns:1fr}
       .previewWrap{grid-template-columns:1fr}
@@ -50,9 +60,7 @@
   </style>
 </head>
 <body>
-  <a class="skip" href="#main" style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden">
-    Skip to content
-  </a>
+  <a class="skip" href="#main" style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden">Skip to content</a>
 
   <header>
     <div class="wrap">
@@ -97,15 +105,18 @@
       </div>
     </div>
 
-    <div class="previewWrap" style="margin-top:16px">
-      <div class="card pad">
-        <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:8px">
+    <div id="previewCard" class="previewWrap card pad" style="margin-top:16px">
+      <div>
+        <div class="row" style="justify-content:space-between;margin-bottom:8px">
           <div class="muted">Live Preview</div>
-          <div id="currentPath" class="muted">—</div>
+          <div class="row" style="gap:8px">
+            <button id="expandBtn" class="secondary" title="Expand preview to fill page">Expand</button>
+            <button id="fsBtn" class="secondary" title="Enter fullscreen">Fullscreen</button>
+            <button id="popoutBtn" class="secondary" title="Open current page in a new tab">Pop out</button>
+          </div>
         </div>
-        <iframe id="preview" title="Page preview" sandbox="allow-same-origin allow-scripts allow-forms"></iframe>
+        <iframe id="preview" title="Page preview" sandbox="allow-same-origin allow-scripts allow-forms" allow="fullscreen"></iframe>
       </div>
-
       <div class="card pad">
         <div class="muted">Notes</div>
         <p class="muted" style="margin-top:8px">
@@ -123,7 +134,6 @@
     const progress = $("#progress");
     const preview = $("#preview");
     const nav = $("#nav");
-    const currentPathEl = $("#currentPath");
     const brief = $("#brief");
     const styleRef = $("#styleRef");
     const instruction = $("#instruction");
@@ -131,11 +141,16 @@
     const cancelBtn = $("#cancelBtn");
     const blueprintStatus = $("#blueprintStatus");
     const htmlStatus = $("#htmlStatus");
+    const expandBtn = $("#expandBtn");
+    const fsBtn = $("#fsBtn");
+    const popoutBtn = $("#popoutBtn");
+    const previewCard = document.getElementById("previewCard");
 
     // State
     let controller = null;
     let cache = Object.create(null);
     let currentPath = null;
+    const currentPathEl = { textContent: "" };
 
     // Progress helpers
     function setProgress(p){ progress.style.width = Math.max(0, Math.min(100, p)) + "%"; }
@@ -145,15 +160,21 @@
       setProgress(next);
     }
 
-    // Sanitizers (still used internally, though code is not displayed)
+    // Sanitizers
     function normalizeBlueprintText(t){
-      return t.replace(/```[a-z]*\n?/gi,"").replace(/^\s*FILE:[^\n]*\n/gmi,"");
+      return t.replace(/```[a-z]*
+?/gi,"").replace(/^\s*FILE:[^
+]*
+/gmi,"");
     }
     function normalizeHTML(t){
-      return t.replace(/```[a-z]*\n?/gi,"").replace(/^\s*FILE:[^\n]*\n/gmi,"");
+      return t.replace(/```[a-z]*
+?/gi,"").replace(/^\s*FILE:[^
+]*
+/gmi,"");
     }
 
-    // Preview update with simple throttle (~60fps)
+    // Preview update with throttle (~60fps)
     function setPreview(html){ preview.srcdoc = html; }
     let lastUpdate = 0;
     function updatePreviewThrottled(html){
@@ -222,7 +243,6 @@
 
     async function show(path){
       setActive(path);
-      // Serve from cache if available
       if (cache[path]){ setPreview(cache[path]); htmlStatus.textContent = "Page ready (cached)"; return; }
 
       htmlStatus.textContent = "Website creator is generating code…";
@@ -234,7 +254,7 @@
         (chunk)=>{
           acc += chunk;
           const html = normalizeHTML(acc);
-          updatePreviewThrottled(html); // keep preview live; do not show code
+          updatePreviewThrottled(html);
         }
       );
       const finalHTML = normalizeHTML(acc);
@@ -256,12 +276,9 @@
           styleReference: styleRef.value.trim() || undefined,
           instruction: instruction.value.trim() || undefined
         },
-        (chunk)=>{
-          acc += chunk; // we keep the stream but do not display raw JSON
-        }
+        (chunk)=>{ acc += chunk; }
       );
 
-      // Parse blueprint JSON
       let bp;
       try {
         bp = JSON.parse(normalizeBlueprintText(acc));
@@ -273,9 +290,34 @@
       blueprintStatus.textContent = "Blueprint ready";
       buildNav(bp);
 
-      // Default to "/" if present, else first page
       const first = (bp.site?.pages||[]).find(p=>p.path==="/") || (bp.site?.pages||[])[0];
       if (first) show(first.path);
+    });
+
+    // Expand/Fullscreen/Pop-out controls
+    expandBtn.addEventListener("click", ()=>{
+      const on = document.body.classList.toggle("expanded");
+      expandBtn.textContent = on ? "Collapse" : "Expand";
+    });
+
+    fsBtn.addEventListener("click", async ()=>{
+      try{
+        if (!document.fullscreenElement) {
+          await previewCard.requestFullscreen();
+          fsBtn.textContent = "Exit fullscreen";
+        } else {
+          await document.exitFullscreen();
+          fsBtn.textContent = "Fullscreen";
+        }
+      }catch(e){ console.warn("Fullscreen error:", e); }
+    });
+
+    popoutBtn.addEventListener("click", ()=>{
+      const html = cache[currentPath] || preview.srcdoc || "<!doctype html><html><body>Nothing to show.</body></html>";
+      const blob = new Blob([html], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank", "noopener,noreferrer");
+      setTimeout(()=>URL.revokeObjectURL(url), 15000);
     });
   </script>
 </body>

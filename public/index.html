@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Real‑Time Website Generator</title>
-  <meta name="description" content="Stream a site blueprint from a brief, then stream each page’s HTML into a live preview.">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Real-Time Website Generator</title>
+  <meta name="description" content="Stream a site blueprint from a brief, then stream each page’s HTML into a live preview." />
   <style>
     :root{
       --bg:#0b0d10; --card:#12161b; --muted:#9aa4af; --text:#e8eef5;
@@ -12,7 +12,12 @@
       --radius:16px;
     }
     *{box-sizing:border-box}
-    body{margin:0;background:linear-gradient(180deg,#0b0d10,#0b0d10 60%,#0b0d10);color:var(--text);font:16px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Arial,"Noto Sans","Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol"}
+    body{
+      margin:0;
+      background:linear-gradient(180deg,#0b0d10,#0b0d10 60%,#0b0d10);
+      color:var(--text);
+      font:16px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Arial,"Noto Sans","Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol";
+    }
     header{position:sticky;top:0;background:rgba(11,13,16,.75);backdrop-filter:saturate(1.2) blur(8px);border-bottom:1px solid #1d2230;z-index:10}
     .wrap{max-width:1200px;margin:0 auto;padding:20px}
     h1{font-size:clamp(22px,2.5vw,28px);margin:0 0 8px}
@@ -32,10 +37,10 @@
     nav#nav a[aria-current="page"]{background:linear-gradient(135deg,var(--accent),#8af0e8);color:#002a27;font-weight:800}
     .previewWrap{display:grid;grid-template-columns: 2fr 1fr; gap:16px}
     iframe{width:100%;height:60vh;background:white;border:0;border-radius:12px;box-shadow:inset 0 0 0 1px #e5e7eb}
-    pre{white-space:pre-wrap;word-break:break-word;max-height:60vh;overflow:auto;margin:0;background:#0d1117;border-radius:12px;border:1px solid #2a3142;padding:12px}
     .muted{color:var(--muted)}
     .progress{height:4px;background:#141a28;border-radius:999px;overflow:hidden}
     .bar{height:100%;width:0;background:linear-gradient(90deg,var(--primary),var(--accent)); transition:width .1s ease}
+    .statusLine{color:#aab4bf;font-size:14px;padding:10px 12px;background:#0d1117;border:1px solid #2a3142;border-radius:12px}
     .footer{font-size:12px;color:var(--muted);padding:12px}
     @media (max-width: 980px){
       .grid{grid-template-columns:1fr}
@@ -45,15 +50,19 @@
   </style>
 </head>
 <body>
+  <a class="skip" href="#main" style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden">
+    Skip to content
+  </a>
+
   <header>
     <div class="wrap">
-      <h1>Real‑Time Website Generator</h1>
-      <div class="progress"><div id="progress" class="bar"></div></div>
+      <h1>Real-Time Website Generator</h1>
+      <div class="progress" aria-hidden="true"><div id="progress" class="bar"></div></div>
     </div>
   </header>
 
-  <div class="wrap">
-    <div class="grid">
+  <main id="main" class="wrap">
+    <div class="grid" aria-live="off">
       <div class="card pad">
         <label for="brief">Client Brief</label>
         <textarea id="brief" placeholder="e.g., Simple SaaS. Pages: Home, Features, Pricing, Contact. Tone: friendly. Primary CTA: Start free trial."></textarea>
@@ -65,7 +74,7 @@
           </div>
           <div style="flex:1">
             <label for="instruction">Optional Instruction</label>
-            <textarea id="instruction" placeholder="Extra constraints (e.g., 'tone=playful', 'sitemap include /blog')"></textarea>
+            <textarea id="instruction" placeholder="Extra constraints (e.g., 'tone=playful', 'include /blog')"></textarea>
           </div>
         </div>
 
@@ -74,14 +83,17 @@
           <button id="cancelBtn" class="secondary">Cancel</button>
         </div>
 
-        <h3 class="muted" style="margin:16px 0 6px">Blueprint (streamed raw text)</h3>
-        <pre id="blueprintStream" aria-live="polite"></pre>
+        <h3 class="muted" style="margin:16px 0 6px">Status</h3>
+        <div id="blueprintStatus" class="statusLine" aria-live="polite">Idle</div>
       </div>
 
       <div class="card pad">
         <h3 style="margin:0 0 8px">Pages</h3>
         <nav id="nav" aria-label="Site pages"></nav>
         <div class="footer">Click a page to stream &amp; preview its HTML.</div>
+
+        <h3 class="muted" style="margin:16px 0 6px">Status</h3>
+        <div id="htmlStatus" class="statusLine" aria-live="polite">Idle</div>
       </div>
     </div>
 
@@ -93,18 +105,22 @@
         </div>
         <iframe id="preview" title="Page preview" sandbox="allow-same-origin allow-scripts allow-forms"></iframe>
       </div>
+
       <div class="card pad">
-        <div class="muted" style="margin-bottom:8px">Current HTML (progressive)</div>
-        <pre id="htmlStream"></pre>
+        <div class="muted">Notes</div>
+        <p class="muted" style="margin-top:8px">
+          The generator streams the blueprint and page HTML server-side. We keep the preview live, but hide all code and
+          display a light-grey status only.
+        </p>
       </div>
     </div>
-  </div>
+  </main>
 
   <script>
     const $ = (sel) => document.querySelector(sel);
+
+    // Elements
     const progress = $("#progress");
-    const blueprintStream = $("#blueprintStream");
-    const htmlStream = $("#htmlStream");
     const preview = $("#preview");
     const nav = $("#nav");
     const currentPathEl = $("#currentPath");
@@ -113,35 +129,32 @@
     const instruction = $("#instruction");
     const generateBtn = $("#generateBtn");
     const cancelBtn = $("#cancelBtn");
+    const blueprintStatus = $("#blueprintStatus");
+    const htmlStatus = $("#htmlStatus");
 
+    // State
     let controller = null;
     let cache = Object.create(null);
     let currentPath = null;
 
+    // Progress helpers
     function setProgress(p){ progress.style.width = Math.max(0, Math.min(100, p)) + "%"; }
     function bumpProgress(){
-      // gentle fake-progress when streaming with unknown length
       const cur = parseFloat(progress.style.width || "0");
       const next = cur + Math.max(0.2, (100 - cur) * 0.01);
       setProgress(next);
     }
 
+    // Sanitizers (still used internally, though code is not displayed)
     function normalizeBlueprintText(t){
-      // remove ``` fences and FILE labels if model slips
       return t.replace(/```[a-z]*\n?/gi,"").replace(/^\s*FILE:[^\n]*\n/gmi,"");
     }
     function normalizeHTML(t){
-      const s = t.replace(/```[a-z]*\n?/gi,"").replace(/^\s*FILE:[^\n]*\n/gmi,"");
-      // If it doesn't look like HTML yet, return raw text (will show in <pre> and still stream to iframe)
-      return s;
+      return t.replace(/```[a-z]*\n?/gi,"").replace(/^\s*FILE:[^\n]*\n/gmi,"");
     }
 
-    function setPreview(html){
-      preview.srcdoc = html;
-      htmlStream.textContent = html;
-    }
-
-    // Throttle preview updates to ~60fps for smoothness
+    // Preview update with simple throttle (~60fps)
+    function setPreview(html){ preview.srcdoc = html; }
     let lastUpdate = 0;
     function updatePreviewThrottled(html){
       const now = performance.now();
@@ -151,6 +164,7 @@
       }
     }
 
+    // Streaming POST helper with AbortController
     async function streamPOST(url, body, onChunk){
       controller = new AbortController();
       const signal = controller.signal;
@@ -166,8 +180,9 @@
         });
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
-        let done, value;
-        while(({done, value} = await reader.read()) && !done){
+        while(true){
+          const {done, value} = await reader.read();
+          if (done) break;
           const text = decoder.decode(value, {stream:true});
           onChunk(text);
         }
@@ -179,10 +194,9 @@
       }
     }
 
-    cancelBtn.addEventListener("click", ()=>{
-      if (controller) controller.abort();
-    });
+    cancelBtn.addEventListener("click", ()=>{ if (controller) controller.abort(); });
 
+    // Build nav from blueprint
     function buildNav(blueprint){
       nav.innerHTML = "";
       const pages = (blueprint?.site?.pages)||[];
@@ -191,10 +205,7 @@
         const a = document.createElement("a");
         a.href = "#"+p.path;
         a.textContent = labelsByHref.get(p.path) || (p.path === "/" ? "Home" : p.path.replace(/\//g," ").trim());
-        a.addEventListener("click", (e)=>{
-          e.preventDefault();
-          show(p.path);
-        });
+        a.addEventListener("click", (e)=>{ e.preventDefault(); show(p.path); });
         a.setAttribute("data-path", p.path);
         nav.appendChild(a);
       });
@@ -212,51 +223,57 @@
     async function show(path){
       setActive(path);
       // Serve from cache if available
-      if (cache[path]){
-        setPreview(cache[path]);
-        return;
-      }
-      htmlStream.textContent = "";
+      if (cache[path]){ setPreview(cache[path]); htmlStatus.textContent = "Page ready (cached)"; return; }
+
+      htmlStatus.textContent = "Website creator is generating code…";
       preview.srcdoc = "<!doctype html><html><head><meta charset='utf-8'></head><body><div style='font:14px system-ui;padding:12px;color:#555'>Loading…</div></body></html>";
 
       let acc = "";
-      await streamPOST("/api/page", { blueprint: window.__bp__, pagePath: path, styleReference: styleRef.value.trim() || undefined }, (chunk)=>{
-        acc += chunk;
-        const html = normalizeHTML(acc);
-        updatePreviewThrottled(html);
-      });
+      await streamPOST("/api/page",
+        { blueprint: window.__bp__, pagePath: path, styleReference: styleRef.value.trim() || undefined },
+        (chunk)=>{
+          acc += chunk;
+          const html = normalizeHTML(acc);
+          updatePreviewThrottled(html); // keep preview live; do not show code
+        }
+      );
       const finalHTML = normalizeHTML(acc);
       cache[path] = finalHTML;
       setPreview(finalHTML);
+      htmlStatus.textContent = "Page ready";
     }
 
     generateBtn.addEventListener("click", async ()=>{
       cache = Object.create(null);
-      htmlStream.textContent = "";
       preview.srcdoc = "";
-      blueprintStream.textContent = "";
+      blueprintStatus.textContent = "Website creator is generating code…";
+      htmlStatus.textContent = "Idle";
 
       let acc = "";
-      await streamPOST("/api/blueprint", {
-        brief: brief.value.trim(),
-        styleReference: styleRef.value.trim() || undefined,
-        instruction: instruction.value.trim() || undefined
-      }, (chunk)=>{
-        acc += chunk;
-        blueprintStream.textContent = normalizeBlueprintText(acc);
-      });
+      await streamPOST("/api/blueprint",
+        {
+          brief: brief.value.trim(),
+          styleReference: styleRef.value.trim() || undefined,
+          instruction: instruction.value.trim() || undefined
+        },
+        (chunk)=>{
+          acc += chunk; // we keep the stream but do not display raw JSON
+        }
+      );
 
-      // Try parse JSON
+      // Parse blueprint JSON
       let bp;
       try {
         bp = JSON.parse(normalizeBlueprintText(acc));
       } catch (e) {
-        blueprintStream.textContent += `\n\n[parse error]: ${e.message}`;
+        blueprintStatus.textContent = `Blueprint error: ${e.message}`;
         return;
       }
       window.__bp__ = bp;
+      blueprintStatus.textContent = "Blueprint ready";
       buildNav(bp);
-      // Default to "/" if present, otherwise first page
+
+      // Default to "/" if present, else first page
       const first = (bp.site?.pages||[]).find(p=>p.path==="/") || (bp.site?.pages||[])[0];
       if (first) show(first.path);
     });

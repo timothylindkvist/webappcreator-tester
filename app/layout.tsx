@@ -1,17 +1,23 @@
-import './globals.css';
-import type { Metadata } from 'next';
-import { clsx } from 'clsx';
+import "./../styles/globals.css";
+import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: 'Influencer Site Builder',
-  description: 'Generate stunning influencer websites with AI.',
-  metadataBase: new URL('https://example.com'),
+  title: "Lovable-style Starter",
+  description: "A sleek Next.js starter inspired by lovable.dev with Vercel AI Gateway",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#fcfbf8" },
+    { media: "(prefers-color-scheme: dark)", color: "#1c1c1c" },
+  ]
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={clsx('min-h-dvh bg-background text-foreground')}>{children}</body>
+      <body className="min-h-dvh antialiased">
+        <div className="flex min-h-dvh flex-col">
+          {children}
+        </div>
+      </body>
     </html>
   );
 }

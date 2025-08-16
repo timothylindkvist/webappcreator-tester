@@ -8,7 +8,7 @@ import Services from './sections/Services';
 import Gallery from './sections/Gallery';
 import Testimonials from './sections/Testimonials';
 import CTA from './sections/CTA';
-import { Button, Card, Select, Input } from './ui';
+import { Button, Card } from './ui';
 
 export const Schema = z.object({
   theme: z.object({
@@ -87,7 +87,7 @@ export default function Builder() {
             placeholder="Describe the site…"
             className="mt-2 h-32 w-full rounded-xl border border-input bg-transparent p-3 text-sm outline-none" />
           <div className="mt-3">
-            <div className="text-xs text-muted-foreground mb-2">Style preset</div>
+            <div className="mb-2 text-xs text-muted-foreground">Style preset</div>
             <div className="flex flex-wrap gap-2">
               {(['professional','relaxed','playful','minimal','bold'] as StylePreset[]).map(preset => (
                 <button key={preset}
@@ -113,7 +113,7 @@ export default function Builder() {
             )}
           </div>
           {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
-          <p className="mt-3 text-xs text-muted-foreground">Model: {process.env.NEXT_PUBLIC_AI_MODEL ?? 'openai/gpt-5'}</p>
+          <p className="mt-3 text-xs text-muted-foreground">Model: {process.env.NEXT_PUBLIC_AI_MODEL ?? 'gpt-5'}</p>
         </Card>
 
         <Card className="col-span-2 p-0">

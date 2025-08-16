@@ -34,7 +34,7 @@
   --ring: 280 100% 70%;
 }
 
-html, body, #__next { height: 100%; }
+html, body { height: 100%; }
 body { @apply bg-background text-foreground antialiased; }
 
 .glass { @apply bg-white/10 dark:bg-white/5 backdrop-blur-xl border border-white/20; }

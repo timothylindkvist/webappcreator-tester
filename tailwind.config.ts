@@ -28,10 +28,6 @@ const config: Config = {
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
       },
-      borderRadius: {
-        xl: '1.25rem',
-        '2xl': '1.5rem',
-      },
       keyframes: {
         float: {
           '0%, 100%': { transform: 'translateY(0)' },
@@ -50,6 +46,10 @@ const config: Config = {
         float: 'float 6s ease-in-out infinite',
         'pulse-glow': 'pulse-glow 3s ease-in-out infinite',
         'slide-up': 'slide-up 600ms cubic-bezier(0.16, 1, 0.3, 1)',
+      },
+      borderRadius: {
+        xl: '1.25rem',
+        '2xl': '1.5rem',
       },
     },
   },

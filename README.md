@@ -1,14 +1,15 @@
-# Universal Site Builder (Stable)
+# Universal Site Builder
 
-Generate **beautiful, tailored websites for any idea or business** with AI.
-- Style presets: professional, relaxed, playful, minimal, bold
-- First-time **Generate** only; afterwards default to **Edit** mode
-- Edit panel: adjust copy and theme palette live
-- API uses Vercel **AI Gateway** + `NEXT_PUBLIC_AI_MODEL` (default `openai/gpt-5`)
+Generate beautiful websites for any business or idea with AI.
+- Style presets (professional / relaxed / playful / minimal / bold)
+- First-time **Generate**; afterwards default to **Edit** (Regenerate available)
+- Quick editor to tweak copy & theme colors (CSS variables)
+- Uses `OPENAI_*` envs; compatible with Vercel AI Gateway
 
 ## Env
-- `AI_GATEWAY_API_KEY`
-- `NEXT_PUBLIC_AI_MODEL` (optional; defaults to `openai/gpt-5`)
+- `OPENAI_API_KEY` (required) — use your OpenAI key **or** your Vercel AI Gateway key
+- `OPENAI_MODEL` (recommended) — e.g. `gpt-5`
+- `OPENAI_BASE_URL` (optional) — set to your Vercel AI Gateway **Base URL** to proxy via Gateway
 
 ## Dev
 ```bash
@@ -16,6 +17,7 @@ npm i
 npm run dev
 ```
 
-## Deploy (Vercel)
-- Framework Preset: **Next.js**
+## Deploy on Vercel
+- Framework: **Next.js**
 - Output Directory: *(leave empty)*
+- Add the env vars above in Project Settings

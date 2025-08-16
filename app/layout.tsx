@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Universal Site Builder',
-  description: 'Generate stunning websites for any idea or business with AI.',
+  description: 'Generate stunning websites for any idea or business with AI.'
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -1,6 +1,7 @@
 import { streamChat } from "../utils/openai-client.js";
 import { systemBlueprint } from "../masterPrompt.js";
 
+export const config = { runtime: "nodejs18.x" };
 
 export default async function handler(req, res){
   if (req.method !== "POST") { res.status(405).send("Blueprint error (405): POST only"); return; }
@@ -18,6 +19,7 @@ export default async function handler(req, res){
     ];
     const resp = await streamChat({
       apiKey: process.env.OPENAI_API_KEY,
+      model: process.env.OPENAI_MODEL || "gpt-4o-mini",
       messages,
       response_format: { type: "json_schema", json_schema: { name: "blueprint", schema: { type: "object" }, strict: false } }
     });

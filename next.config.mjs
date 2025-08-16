@@ -1,3 +1,7 @@
 /** @type {import('next').NextConfig} */
-const nextConfig = { experimental: { esmExternals: true } };
-export default nextConfig;
+const nextConfig = {
+  experimental: { appDir: true },
+  reactStrictMode: true,
+}
+
+export default nextConfig

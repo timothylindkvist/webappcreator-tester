@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 48 33% 98%;
+  --foreground: 222 47% 11%;
+  --card: 0 0% 100%;
+  --muted: 220 14% 96%;
+  --accent: 245 100% 90%;
+  --primary: 245 83% 66%;
+  --ring: 245 83% 66%;
+}
+
+.dark {
+  --background: 222 47% 5%;
+  --foreground: 210 40% 98%;
+  --card: 222 47% 7%;
+  --muted: 222 47% 10%;
+  --accent: 260 100% 72%;
+  --primary: 260 83% 66%;
+  --ring: 260 83% 66%;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  @apply bg-[hsl(var(--background))] text-[hsl(var(--foreground))];
+}
+
+.btn {
+  @apply inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm font-medium transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))];
+}
+
+.btn-primary {
+  @apply bg-[hsl(var(--primary))] text-white shadow-soft;
+}
+
+.card {
+  @apply rounded-2xl bg-[hsl(var(--card))] shadow-soft border border-black/5;
+}

@@ -1,25 +1,9 @@
-# Influencer Site Builder
+# Universal Website Generator (Non‑streaming fix)
 
-A Next.js App Router project that uses **Vercel AI SDK v5** with **AI Gateway** to generate influencer websites.
-Styling via Tailwind with fixed keyframes and dark theme variable scopes (resolves common CSS errors).
+This version returns **pure HTML** from `/api/generate` (no SSE framing), so the iframe renders the page instead of showing raw text.
 
-## Environment
-
-Set these in Vercel → Project Settings → Environment Variables:
-
-- `AI_GATEWAY_API_KEY` — your AI Gateway key (Server)
-- `NEXT_PUBLIC_AI_MODEL` — optional; default is `openai/gpt-5`
-
-## Develop
-
-```bash
-pnpm i
-pnpm dev
-```
-
-Open http://localhost:3000
-
-## Deploy to Vercel
-
-- Push to GitHub and import the repo in Vercel
-- Ensure env vars above are set for **Production** and **Preview**
+- Next.js App Router
+- `generateText` with `model: "openai/gpt-5"` (Vercel AI Gateway-ready)
+- Tailwind CDN injected into HTML
+- Preference controls for tone/palette/density/brand/sections
+- Export `.zip` endpoint

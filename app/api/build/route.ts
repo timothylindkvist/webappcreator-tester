@@ -1,8 +1,8 @@
     import { NextRequest } from 'next/server';
     import { z } from 'zod';
     import { generateObject } from 'ai';
+    import { createOpenAI } from '@ai-sdk/openai';
     import { MODEL } from '@/lib/models';
-    import { createGateway } from '@ai-sdk/gateway';
 
     export const maxDuration = 30;
 
@@ -30,7 +30,11 @@
       cta: z.object({ heading: z.string(), subheading: z.string(), primary: z.object({ label: z.string() }) })
     });
 
-    const gateway = createGateway({ apiKey: process.env.AI_GATEWAY_API_KEY });
+    // Configure AI provider to use Vercel AI Gateway (env-provided base URL + key).
+    const openai = createOpenAI({
+      baseURL: process.env.AI_GATEWAY_BASE_URL, // e.g. from your Vercel AI Gateway "Base URL"
+      apiKey: process.env.AI_GATEWAY_API_KEY,
+    });
 
     export async function POST(req: NextRequest) {
       const { brief, preferences } = await req.json();
@@ -48,7 +52,7 @@ Return ONLY a JSON object matching the schema. Adapt copy, structure, and visual
 Preferences: ${JSON.stringify(preferences ?? {}, null, 2)}`;
 
       const { object } = await generateObject({
-        model: gateway(MODEL),
+        model: openai(MODEL),
         system,
         prompt: user,
         schema: OutputSchema,

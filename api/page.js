@@ -1,82 +1,81 @@
 // api/page.js
-import OpenAI from "openai";
-import { buildSystemPrompt, MASTER_PROMPT } from "../masterPrompt.js";
+import { buildSystemPrompt } from "../masterPrompt.js";
+import { sseToTextStream } from "./_sseToText.js";
 
-function setStreamHeaders(res, version = "v1-page") {
-  res.setHeader("Content-Type", "text/html; charset=utf-8");
-  res.setHeader("Cache-Control", "no-cache");
-  res.setHeader("X-Accel-Buffering", "no");
-  res.setHeader("X-Server-Version", version);
-}
+export const config = { runtime: "edge" };
 
-async function readBody(req) {
-  if (req.body && typeof req.body === "object") return req.body;
-  const raw = await new Promise((resolve, reject) => {
-    let data = "";
-    req.on("data", c => (data += c));
-    req.on("end", () => resolve(data));
-    req.on("error", reject);
-  });
-  try { return raw ? JSON.parse(raw) : {}; } catch { return {}; }
-}
-
-export default async function handler(req, res) {
-  try {
-    if (req.method !== "POST") {
-      res.statusCode = 405;
-      return res.end("Method Not Allowed");
-    }
-    if (!process.env.OPENAI_API_KEY) {
-      res.statusCode = 500;
-      return res.end("Missing OPENAI_API_KEY");
-    }
-
-    const { blueprint, pagePath, styleReference } = await readBody(req);
-    if (!blueprint || !pagePath) {
-      res.statusCode = 400;
-      return res.end("Page error (400): 'blueprint' and 'pagePath' are required");
-    }
-
-    const MODEL = (process.env.OPENAI_MODEL || "gpt-4o-mini").trim();
-    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-    const systemText = buildSystemPrompt({ styleReference, briefOrBlueprint: blueprint });
-    const bpText = typeof blueprint === "string" ? blueprint : JSON.stringify(blueprint);
-
-    const userText = `
-You already created the site blueprint. Use it verbatim.
-
-Return ONLY a single, complete HTML document for the page path "${pagePath}".
-Start with <!doctype html> and include minimal, inline CSS.
-No markdown fences, no JSON, no labels like "FILE:".
-
-BLUEPRINT:
-${bpText}
-`.trim();
-
-    setStreamHeaders(res, "v1-page");
-    res.setHeader("X-Model", MODEL);
-    res.flushHeaders?.();
-
-    const stream = await client.chat.completions.create({
-      model: MODEL,
-      stream: true,
-      temperature: 0.3,
-      messages: [
-        { role: "system", content: systemText || MASTER_PROMPT },
-        { role: "user", content: userText }
-      ],
-    });
-
-    for await (const part of stream) {
-      const delta = part?.choices?.[0]?.delta?.content || "";
-      if (delta) res.write(delta);
-    }
-    res.end();
-  } catch (err) {
-    const msg = err?.response?.data?.error?.message || err?.message || String(err);
-    if (!res.headersSent) setStreamHeaders(res, "v1-page");
-    res.statusCode = 500;
-    res.end(`Page error (500): ${msg}`);
+export default async function handler(req) {
+  if (req.method !== "POST") {
+    return new Response("Method Not Allowed", { status: 405 });
   }
+
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    return new Response("Missing OPENAI_API_KEY", { status: 500 });
+  }
+
+  const { blueprint, pagePath, styleReference } = await req.json().catch(() => ({}));
+
+  if (!blueprint || !pagePath) {
+    return new Response("Missing required fields: { blueprint, pagePath }", { status: 400 });
+  }
+
+  const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
+  const systemText = buildSystemPrompt(styleReference);
+
+  const blueprintText = typeof blueprint === "string" ? blueprint : JSON.stringify(blueprint, null, 2);
+
+  const htmlOnlyInstruction = [
+    `Return ONLY the complete HTML document for ${pagePath}.`,
+    "Do NOT include code fences, JSON, prose, or 'FILE:' labels.",
+    "Include: semantic landmarks (<header>, <nav>, <main>, <footer>), a skip link, accessible nav with aria-current, responsive grid, clamp() typography, per-page SEO tags, optional JSON-LD, CSS ≤ ~12KB, system fonts, and respect prefers-reduced-motion.",
+    "Design style: Zillow-inspired — modern, spacious, trust-centric visuals with rounded cards and subtle shadows.",
+    "",
+    "Use this site blueprint strictly as source of truth:",
+    "<BLUEPRINT>",
+    blueprintText,
+    "</BLUEPRINT>"
+  ].join("\n");
+
+  const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "authorization": `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model,
+      stream: true,
+      temperature: 0.2,
+      messages: [
+        { role: "system", content: systemText },
+        { role: "user", content: htmlOnlyInstruction }
+      ]
+    })
+  });
+
+  if (!openaiRes.ok || !openaiRes.body) {
+    const text = await openaiRes.text().catch(() => "");
+    return new Response(`Page error (${openaiRes.status}): ${text || "No body"}`, {
+      status: 500,
+      headers: {
+        "content-type": "text/plain; charset=utf-8",
+        "cache-control": "no-cache",
+        "x-accel-buffering": "no",
+        "x-server-version": "v5"
+      }
+    });
+  }
+
+  const textStream = sseToTextStream(openaiRes.body);
+
+  return new Response(textStream, {
+    status: 200,
+    headers: {
+      "content-type": "text/plain; charset=utf-8",
+      "cache-control": "no-cache",
+      "x-accel-buffering": "no",
+      "x-server-version": "v5"
+    }
+  });
 }

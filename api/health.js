@@ -1,24 +1,21 @@
 // api/health.js
-export const config = { runtime: "nodejs20.x" }
+export const config = { runtime: "edge" };
 
-function setHeaders(res, version = "v8") {
-  res.setHeader("Content-Type", "application/json; charset=utf-8");
-  res.setHeader("Cache-Control", "no-cache");
-  res.setHeader("X-Server-Version", version);
-}
-
-export default async function handler(req, res) {
-  const model = (process.env.OPENAI_MODEL || "gpt-4o-mini").trim();
-
+export default async function handler(req) {
   const body = {
     ok: true,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY ? "present" : "missing",
-    OPENAI_MODEL: model,
-    node: process.versions.node,
-    region: process.env.VERCEL_REGION || "unknown",
-    time: new Date().toISOString()
+    OPENAI_MODEL: process.env.OPENAI_MODEL || "gpt-4o-mini",
+    ts: new Date().toISOString()
   };
 
-  setHeaders(res);
-  res.status(200).end(JSON.stringify(body, null, 2));
+  return new Response(JSON.stringify(body, null, 2), {
+    status: 200,
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "no-cache",
+      "x-accel-buffering": "no",
+      "x-server-version": "v5"
+    }
+  });
 }

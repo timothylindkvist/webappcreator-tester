@@ -1,1 +1,5 @@
-export const MODEL = process.env.NEXT_PUBLIC_AI_MODEL || 'openai/gpt-5';
+// lib/models.ts
+export const MODEL =
+  process.env.OPENAI_MODEL ||
+  process.env.NEXT_PUBLIC_AI_MODEL ||
+  'gpt-5';

@@ -1,33 +1,25 @@
-# Lovable-style Next.js Starter
+# Influencer Site Builder
 
-A sleek, Lovable-inspired UI with streaming AI via **Vercel AI Gateway** (no keys in code).
+A Next.js App Router project that uses **Vercel AI SDK v5** with **AI Gateway** to generate influencer websites.
+Styling via Tailwind with fixed keyframes and dark theme variable scopes (resolves common CSS errors).
 
-## Quickstart
+## Environment
+
+Set these in Vercel → Project Settings → Environment Variables:
+
+- `AI_GATEWAY_API_KEY` — your AI Gateway key (Server)
+- `NEXT_PUBLIC_AI_MODEL` — optional; default is `openai/gpt-5`
+
+## Develop
 
 ```bash
-pnpm i   # or npm i / yarn
-pnpm dev # http://localhost:3000
+pnpm i
+pnpm dev
 ```
 
-## Deploy on Vercel
+Open http://localhost:3000
 
-1. Push this folder to a GitHub repo.
-2. Import into Vercel.
-3. Set env vars (Project Settings → Environment Variables):
-   - `AI_GATEWAY_API_KEY` = your Vercel AI Gateway key
-   - `AI_GATEWAY_BASE_URL` = your AI Gateway base URL
-4. Deploy.
+## Deploy to Vercel
 
-> Uses `@ai-sdk/openai` + `ai` and calls `openai.chat("gpt-5")` — matching the Vercel AI Gateway GPT-5 docs.
-
-## Stack
-
-- Next.js App Router (Edge runtime for API route)
-- TailwindCSS
-- Minimal custom UI components (soft shadows, rounded 2xl, gradient accents)
-- Streaming responses with `ai`
-
-## Notes
-
-- No API keys are committed to code. Configure via environment variables in Vercel.
-- Feel free to add shadcn/ui if you want richer primitives.
+- Push to GitHub and import the repo in Vercel
+- Ensure env vars above are set for **Production** and **Preview**

@@ -1,23 +1,25 @@
-# Universal Site Builder
+# Influencer Site Builder
 
-Generate beautiful websites for any business or idea with AI.
-- Style presets (professional / relaxed / playful / minimal / bold)
-- First-time **Generate**; afterwards default to **Edit** (Regenerate available)
-- Quick editor to tweak copy & theme colors (CSS variables)
-- Uses `OPENAI_*` envs; compatible with Vercel AI Gateway
+A Next.js App Router project that uses **Vercel AI SDK v5** with **AI Gateway** to generate influencer websites.
+Styling via Tailwind with fixed keyframes and dark theme variable scopes (resolves common CSS errors).
 
-## Env
-- `OPENAI_API_KEY` (required) — use your OpenAI key **or** your Vercel AI Gateway key
-- `OPENAI_MODEL` (recommended) — e.g. `gpt-5`
-- `OPENAI_BASE_URL` (optional) — set to your Vercel AI Gateway **Base URL** to proxy via Gateway
+## Environment
 
-## Dev
+Set these in Vercel → Project Settings → Environment Variables:
+
+- `AI_GATEWAY_API_KEY` — your AI Gateway key (Server)
+- `NEXT_PUBLIC_AI_MODEL` — optional; default is `openai/gpt-5`
+
+## Develop
+
 ```bash
-npm i
-npm run dev
+pnpm i
+pnpm dev
 ```
 
-## Deploy on Vercel
-- Framework: **Next.js**
-- Output Directory: *(leave empty)*
-- Add the env vars above in Project Settings
+Open http://localhost:3000
+
+## Deploy to Vercel
+
+- Push to GitHub and import the repo in Vercel
+- Ensure env vars above are set for **Production** and **Preview**

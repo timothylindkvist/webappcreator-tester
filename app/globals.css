@@ -9,9 +9,9 @@
   --card-foreground: 0 0% 7%;
   --muted: 0 0% 96%;
   --muted-foreground: 0 0% 40%;
-  --primary: 274 84% 60%;
+  --primary: 274 84% 60%; /* purple */
   --primary-foreground: 0 0% 100%;
-  --accent: 195 86% 54%;
+  --accent: 195 86% 54%; /* cyan */
   --accent-foreground: 0 0% 10%;
   --border: 0 0% 90%;
   --input: 0 0% 90%;
@@ -34,7 +34,7 @@
   --ring: 280 100% 70%;
 }
 
-html, body { height: 100%; }
+html, body, #__next { height: 100%; }
 body { @apply bg-background text-foreground antialiased; }
 
 .glass { @apply bg-white/10 dark:bg-white/5 backdrop-blur-xl border border-white/20; }

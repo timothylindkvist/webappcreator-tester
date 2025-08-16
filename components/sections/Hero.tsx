@@ -10,7 +10,7 @@ export default function Hero({ title, subtitle, cta }: { title: string; subtitle
       </div>
       <div className="mx-auto max-w-3xl text-center">
         <p className="mb-4 inline-block rounded-full border border-border/60 px-3 py-1 text-xs uppercase tracking-widest text-muted-foreground glass">
-          Generated site
+          Creator portfolio
         </p>
         <h1 className="text-4xl font-extrabold leading-tight sm:text-5xl md:text-6xl gradient-text">
           {title}
@@ -24,9 +24,9 @@ export default function Hero({ title, subtitle, cta }: { title: string; subtitle
         </div>
         <Card className="mx-auto mt-10 max-w-3xl p-3 sm:p-4">
           <div className="grid grid-cols-3 gap-3 text-center text-sm text-muted-foreground">
-            <div><span className="text-2xl font-bold text-foreground">A+</span><div>Quality</div></div>
-            <div><span className="text-2xl font-bold text-foreground">Fast</span><div>Delivery</div></div>
-            <div><span className="text-2xl font-bold text-foreground">Modern</span><div>Design</div></div>
+            <div><span className="text-2xl font-bold text-foreground">1.2M</span><div>Followers</div></div>
+            <div><span className="text-2xl font-bold text-foreground">320</span><div>Campaigns</div></div>
+            <div><span className="text-2xl font-bold text-foreground">98%</span><div>Satisfaction</div></div>
           </div>
         </Card>
       </div>

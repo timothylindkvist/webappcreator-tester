@@ -26,27 +26,3 @@ export function Card({ className, ...props }: ComponentProps<'div'>) {
     />
   );
 }
-
-export function Select({ className, ...props }: ComponentProps<'select'>) {
-  return (
-    <select
-      className={clsx(
-        'rounded-xl border border-input bg-transparent px-3 py-2 text-sm outline-none',
-        className
-      )}
-      {...props}
-    />
-  );
-}
-
-export function Input({ className, ...props }: ComponentProps<'input'>) {
-  return (
-    <input
-      className={clsx(
-        'rounded-xl border border-input bg-transparent px-3 py-2 text-sm outline-none',
-        className
-      )}
-      {...props}
-    />
-  );
-}

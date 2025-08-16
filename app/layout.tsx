@@ -1,17 +1,17 @@
-import './globals.css';
+import '../globals.css';
 import type { Metadata } from 'next';
+import { clsx } from 'clsx';
 
 export const metadata: Metadata = {
-  title: 'Universal Site Builder',
-  description: 'Generate stunning websites for any idea or business with AI.'
+  title: 'Influencer Site Builder',
+  description: 'Generate stunning influencer websites with AI.',
+  metadataBase: new URL('https://example.com'),
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="min-h-dvh bg-background text-foreground">
-        {children}
-      </body>
+      <body className={clsx('min-h-dvh bg-background text-foreground')}>{children}</body>
     </html>
   );
 }

@@ -17,7 +17,7 @@ export const systemPage = `You are GPT-5.
 Return STRICT HTML only (no comments, no code fences), starting with <!doctype html> or <html>.
 Rules:
 - semantic landmarks, skip link, <nav> with aria-current, responsive grid, clamp() typography
-- Inspired: spacious, trust-driven, professional palette
+- Zillow-inspired: spacious, trust-driven, professional palette
 - CSS ≤ ~12KB inline (style tag), system fonts only
 - Respect prefers-reduced-motion
 - Include per-page SEO tags (+ JSON-LD when useful)

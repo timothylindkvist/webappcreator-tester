@@ -16,7 +16,7 @@ export default async function handler(req) {
 
   const { brief, styleReference, instruction } = await req.json().catch(() => ({}));
 
-  const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
+  const model = process.env.OPENAI_MODEL || "openai/gpt-5"; // or gpt-5-mini, gpt-5-nano
   const systemText = buildSystemPrompt(styleReference);
 
   const userText = [

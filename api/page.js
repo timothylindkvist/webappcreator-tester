@@ -20,7 +20,7 @@ export default async function handler(req) {
     return new Response("Missing required fields: { blueprint, pagePath }", { status: 400 });
   }
 
-  const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
+  const model = process.env.OPENAI_MODEL || "openai/gpt-5"; // or gpt-5-mini, gpt-5-nano;
   const systemText = buildSystemPrompt(styleReference);
 
   const blueprintText = typeof blueprint === "string" ? blueprint : JSON.stringify(blueprint, null, 2);

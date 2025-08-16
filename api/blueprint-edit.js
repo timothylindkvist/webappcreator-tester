@@ -1,4 +1,4 @@
-// api/health.js
+// api/blueprint-edit.js
 import OpenAI from "openai";
 import { MASTER_PROMPT } from "../masterPrompt.js";
 export const runtime = "nodejs";
@@ -24,64 +24,45 @@ async function readBody(req) {
 export default async function handler(req, res) {
   try {
     if (req.method !== "POST") {
-      setStreamHeaders(res);
       res.statusCode = 405;
-      res.end("Blueprint Edit error (405): Method Not Allowed");
-      return;
+      return res.end("Method Not Allowed");
     }
 
-    const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-    const MODEL = (process.env.OPENAI_MODEL || "gpt-4o-mini").trim();
-
-    if (!OPENAI_API_KEY) {
-      setStreamHeaders(res);
+    const { blueprint, brief, instructions } = await readBody(req);
+    if (!process.env.OPENAI_API_KEY) {
       res.statusCode = 500;
-      res.end("Blueprint Edit error (500): OPENAI_API_KEY missing");
-      return;
+      return res.end("Missing OPENAI_API_KEY");
     }
-
-    const body = await readBody(req);
-    const { blueprint, instruction } = body || {};
-    if (!blueprint || !instruction) {
-      setStreamHeaders(res);
-      res.statusCode = 400;
-      res.end("Blueprint Edit error (400): 'blueprint' and 'instruction' are required");
-      return;
-    }
-
-    const bpText = typeof blueprint === "string" ? blueprint : JSON.stringify(blueprint);
-
-    const userText = `
-You will minimally edit the existing site blueprint JSON according to the instruction.
-
-Return ONLY the updated Blueprint JSON object.
-Do NOT include markdown fences, diff syntax, comments, or prose.
-Preserve structure and fields that are not directly relevant to the edit.
-
-INSTRUCTION:
-${instruction}
-
-CURRENT BLUEPRINT JSON:
-${bpText}
-`.trim();
 
     setStreamHeaders(res);
-    res.setHeader("X-Model", MODEL);
-    res.flushHeaders?.();
+    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-    const client = new OpenAI({ apiKey: OPENAI_API_KEY });
+    // Minimal “edit” prompt – preserve your contract
+    const messages = [
+      { role: "system", content: MASTER_PROMPT },
+      {
+        role: "user",
+        content:
+          `You are editing an existing website blueprint.\n\n` +
+          `Original blueprint (JSON):\n${JSON.stringify(blueprint || {}, null, 2)}\n\n` +
+          (brief ? `Client brief:\n${brief}\n\n` : "") +
+          (instructions ? `Edit instructions:\n${instructions}\n\n` : "") +
+          `Return ONLY the updated blueprint JSON.`
+      }
+    ];
+
     const stream = await client.chat.completions.create({
-      model: MODEL,
-      stream: true,
+      model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+      messages,
       temperature: 0.2,
-      messages: [
-        { role: "system", content: MASTER_PROMPT },
-        { role: "user", content: userText },
-      ],
+      stream: true
     });
 
-    for await (const part of stream) {
-      const delta = part?.choices?.[0]?.delta?.content || "";
+    for await (const chunk of stream) {
+      const delta =
+        chunk?.choices?.[0]?.delta?.content ||
+        chunk?.choices?.[0]?.delta?.text ||
+        "";
       if (delta) res.write(delta);
     }
     res.end();

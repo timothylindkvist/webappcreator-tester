@@ -1,7 +1,8 @@
+// api/blueprint.js
 import OpenAI from "openai";
-import { MASTER_PROMPT } from "../masterPrompt.js";
+import { MASTER_PROMPT, buildSystemPrompt } from "../masterPrompt.js";
 
-function setStreamHeaders(res, version = "v8") {
+function setStreamHeaders(res, version = "v1") {
   res.setHeader("Content-Type", "text/plain; charset=utf-8");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("X-Accel-Buffering", "no");
@@ -22,50 +23,38 @@ async function readBody(req) {
 export default async function handler(req, res) {
   try {
     if (req.method !== "POST") {
-      setStreamHeaders(res);
       res.statusCode = 405;
-      res.end("Blueprint error (405): Method Not Allowed");
-      return;
+      return res.end("Blueprint error (405): Method Not Allowed");
     }
 
-    const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+    if (!process.env.OPENAI_API_KEY) {
+      res.statusCode = 500;
+      return res.end("Blueprint error (500): OPENAI_API_KEY missing");
+    }
+
+    const { brief, styleReference, instruction } = await readBody(req);
     const MODEL = (process.env.OPENAI_MODEL || "gpt-4o-mini").trim();
 
-    if (!OPENAI_API_KEY) {
-      setStreamHeaders(res);
-      res.statusCode = 500;
-      res.end("Blueprint error (500): OPENAI_API_KEY missing");
-      return;
-    }
-
-    const body = await readBody(req);
-    let { brief, styleReference, instruction } = body || {};
-    if (typeof brief !== "string" || !brief.trim()) {
-      brief = "Simple SaaS. Pages: Home, Features, Pricing, Contact. Tone: friendly. Primary CTA: Start free trial.";
-    }
-
-    const client = new OpenAI({ apiKey: OPENAI_API_KEY });
-
+    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const systemText = buildSystemPrompt({ styleReference, briefOrBlueprint: brief });
     const userText = `
-Skip Step A (Clarify). Perform Step B only.
-Return ONLY the raw Blueprint JSON.
-Do NOT include markdown fences, prose, or any "FILE:" labels.
-${instruction ? `\nADDITIONAL INSTRUCTION:\n${instruction}\n` : ""}
-CLIENT BRIEF:
-${brief}
+Create a website BLUEPRINT as pure JSON only.
+No prose, no code fences. If instructions are present, apply them.
+${instruction ? `\nINSTRUCTIONS:\n${instruction}\n` : ""}
+BRIEF:
+${brief || "Simple SaaS: Home, Features, Pricing, Contact."}
 `.trim();
 
-    setStreamHeaders(res);
+    setStreamHeaders(res, "v1");
     res.setHeader("X-Model", MODEL);
     res.flushHeaders?.();
 
     const stream = await client.chat.completions.create({
       model: MODEL,
       stream: true,
-      temperature: 0.7,
+      temperature: 0.4,
       messages: [
-        { role: "system", content: systemText },
+        { role: "system", content: systemText || MASTER_PROMPT },
         { role: "user", content: userText },
       ],
     });
@@ -76,14 +65,9 @@ ${brief}
     }
     res.end();
   } catch (err) {
-    const msg =
-      err?.response?.data?.error?.message ||
-      err?.error?.message ||
-      err?.message ||
-      String(err);
-    if (!res.headersSent) setStreamHeaders(res);
+    const msg = err?.response?.data?.error?.message || err?.message || String(err);
+    if (!res.headersSent) setStreamHeaders(res, "v1");
     res.statusCode = 500;
     res.end(`Blueprint error (500): ${msg}`);
-    console.error("[/api/blueprint] Error:", err);
   }
 }

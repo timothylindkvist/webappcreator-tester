@@ -1,9 +1,8 @@
 // api/blueprint-edit.js
 import OpenAI from "openai";
-import { MASTER_PROMPT } from "../masterPrompt.js";
-export const config = { runtime: "nodejs20.x" }
+import { MASTER_PROMPT, buildSystemPrompt } from "../masterPrompt.js";
 
-function setStreamHeaders(res, version = "v8-edit") {
+function setStreamHeaders(res, version = "v1-edit") {
   res.setHeader("Content-Type", "text/plain; charset=utf-8");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("X-Accel-Buffering", "no");
@@ -27,32 +26,42 @@ export default async function handler(req, res) {
       res.statusCode = 405;
       return res.end("Method Not Allowed");
     }
-
-    const { blueprint, brief, instructions } = await readBody(req);
     if (!process.env.OPENAI_API_KEY) {
       res.statusCode = 500;
       return res.end("Missing OPENAI_API_KEY");
     }
 
-    setStreamHeaders(res);
+    const { blueprint, brief, instructions, styleReference } = await readBody(req);
+    const MODEL = (process.env.OPENAI_MODEL || "gpt-4o-mini").trim();
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-    // Minimal “edit” prompt – preserve your contract
+    const systemText = buildSystemPrompt({
+      styleReference,
+      briefOrBlueprint: blueprint || brief
+    });
+
     const messages = [
-      { role: "system", content: MASTER_PROMPT },
+      { role: "system", content: systemText || MASTER_PROMPT },
       {
         role: "user",
         content:
-          `You are editing an existing website blueprint.\n\n` +
-          `Original blueprint (JSON):\n${JSON.stringify(blueprint || {}, null, 2)}\n\n` +
-          (brief ? `Client brief:\n${brief}\n\n` : "") +
-          (instructions ? `Edit instructions:\n${instructions}\n\n` : "") +
-          `Return ONLY the updated blueprint JSON.`
+`Edit this website blueprint according to the instructions.
+Return ONLY the updated blueprint JSON. No prose.
+
+Original blueprint:
+${JSON.stringify(blueprint || {}, null, 2)}
+
+${brief ? `Client brief:\n${brief}\n` : ""}
+${instructions ? `Edit instructions:\n${instructions}\n` : ""}`
       }
     ];
 
+    setStreamHeaders(res, "v1-edit");
+    res.setHeader("X-Model", MODEL);
+    res.flushHeaders?.();
+
     const stream = await client.chat.completions.create({
-      model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+      model: MODEL,
       messages,
       temperature: 0.2,
       stream: true
@@ -61,20 +70,14 @@ export default async function handler(req, res) {
     for await (const chunk of stream) {
       const delta =
         chunk?.choices?.[0]?.delta?.content ||
-        chunk?.choices?.[0]?.delta?.text ||
-        "";
+        chunk?.choices?.[0]?.delta?.text || "";
       if (delta) res.write(delta);
     }
     res.end();
   } catch (err) {
-    const msg =
-      err?.response?.data?.error?.message ||
-      err?.error?.message ||
-      err?.message ||
-      String(err);
-    if (!res.headersSent) setStreamHeaders(res);
+    const msg = err?.response?.data?.error?.message || err?.message || String(err);
+    if (!res.headersSent) setStreamHeaders(res, "v1-edit");
     res.statusCode = 500;
     res.end(`Blueprint Edit error (500): ${msg}`);
-    console.error("[/api/blueprint-edit] Error:", err);
   }
 }

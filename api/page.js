@@ -1,10 +1,9 @@
 // api/page.js
 import OpenAI from "openai";
-import { MASTER_PROMPT } from "../masterPrompt.js";
-export const config = { runtime: "nodejs20.x" }
+import { buildSystemPrompt, MASTER_PROMPT } from "../masterPrompt.js";
 
-function setStreamHeaders(res, version = "v8") {
-  res.setHeader("Content-Type", "text/plain; charset=utf-8");
+function setStreamHeaders(res, version = "v1-page") {
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("X-Accel-Buffering", "no");
   res.setHeader("X-Server-Version", version);
@@ -24,66 +23,48 @@ async function readBody(req) {
 export default async function handler(req, res) {
   try {
     if (req.method !== "POST") {
-      setStreamHeaders(res);
       res.statusCode = 405;
-      res.end("Page error (405): Method Not Allowed");
-      return;
+      return res.end("Method Not Allowed");
     }
-
-    const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-    const MODEL = (process.env.OPENAI_MODEL || "gpt-4o-mini").trim();
-
-    if (!OPENAI_API_KEY) {
-      setStreamHeaders(res);
+    if (!process.env.OPENAI_API_KEY) {
       res.statusCode = 500;
-      res.end("Page error (500): OPENAI_API_KEY missing");
-      return;
+      return res.end("Missing OPENAI_API_KEY");
     }
 
-    const body = await readBody(req);
-    const { blueprint, pagePath, styleReference } = body || {};
+    const { blueprint, pagePath, styleReference } = await readBody(req);
     if (!blueprint || !pagePath) {
-      setStreamHeaders(res);
       res.statusCode = 400;
-      res.end("Page error (400): 'blueprint' and 'pagePath' are required");
-      return;
+      return res.end("Page error (400): 'blueprint' and 'pagePath' are required");
     }
 
-    const bpText = typeof blueprint === "string" ? blueprint : JSON.stringify(blueprint);
+    const MODEL = (process.env.OPENAI_MODEL || "gpt-4o-mini").trim();
+    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
     const systemText = buildSystemPrompt({ styleReference, briefOrBlueprint: blueprint });
+    const bpText = typeof blueprint === "string" ? blueprint : JSON.stringify(blueprint);
 
     const userText = `
 You already created the site blueprint. Use it verbatim.
 
 Return ONLY a single, complete HTML document for the page path "${pagePath}".
-Do NOT include markdown code fences, JSON, prose, or any labels such as "FILE: /index.html".
-Start with <!doctype html> and include <html>, <head>, and <body>.
+Start with <!doctype html> and include minimal, inline CSS.
+No markdown fences, no JSON, no labels like "FILE:".
 
-REQUIREMENTS:
-- Semantic landmarks (<header>, <nav>, <main id="main">, <footer>) with correct heading order.
-- Include a visible "Skip to content" link to #main.
-- Navigation with aria-current="page" on the active link.
-- Per-page SEO: <title>, <meta name="description">, Open Graph tags; add JSON-LD when relevant.
-- CSS inline ≤ ~12 KB. Use system font stack only, clamp() typography, CSS variables for theme.
-- Respect prefers-reduced-motion, lazy-load noncritical images, avoid layout shift.
-- Responsive layout (grid/flex), rounded corners, subtle shadows, tasteful gradients.
-
-BLUEPRINT JSON (use this as the single source of truth; do not echo it):
+BLUEPRINT:
 ${bpText}
 `.trim();
 
-    setStreamHeaders(res);
+    setStreamHeaders(res, "v1-page");
     res.setHeader("X-Model", MODEL);
     res.flushHeaders?.();
 
-    const client = new OpenAI({ apiKey: OPENAI_API_KEY });
     const stream = await client.chat.completions.create({
       model: MODEL,
       stream: true,
-      temperature: 0.6,
+      temperature: 0.3,
       messages: [
-        { role: "system", content: systemText },
-        { role: "user", content: userText },
+        { role: "system", content: systemText || MASTER_PROMPT },
+        { role: "user", content: userText }
       ],
     });
 
@@ -93,14 +74,9 @@ ${bpText}
     }
     res.end();
   } catch (err) {
-    const msg =
-      err?.response?.data?.error?.message ||
-      err?.error?.message ||
-      err?.message ||
-      String(err);
-    if (!res.headersSent) setStreamHeaders(res);
+    const msg = err?.response?.data?.error?.message || err?.message || String(err);
+    if (!res.headersSent) setStreamHeaders(res, "v1-page");
     res.statusCode = 500;
     res.end(`Page error (500): ${msg}`);
-    console.error("[/api/page] Error:", err);
   }
 }

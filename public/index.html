@@ -4,413 +4,186 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Real-Time Website Generator</title>
-  <meta name="description" content="Stream a site blueprint from a brief and generate full pages in real time." />
   <style>
-    :root {
-      --bg: #f7f9fb;
-      --panel: #ffffff;
-      --text: #0f172a;
-      --muted: #64748b;
-      --primary: #1d4ed8; /* Zillow-esque strong blue */
-      --accent: #22c55e;
-      --border: #e2e8f0;
-      --shadow: 0 8px 30px rgba(2,6,23,0.06);
-      --radius: 16px;
-      --focus: 0 0 0 3px rgba(29,78,216,0.35);
-      --maxw: 1400px;
-    }
-
-    /* System UI stack, no blocking font loads */
-    html { font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial, "Apple Color Emoji", "Segoe UI Emoji"; }
-    body { margin: 0; background: var(--bg); color: var(--text); }
-
-    /* Fluid type */
-    h1 { font-size: clamp(1.5rem, 2vw + 1rem, 2.2rem); margin: 0; }
-    h2 { font-size: clamp(1.1rem, 1.2vw + .9rem, 1.6rem); margin: 0 0 .5rem; }
-    p, label, button, input, textarea { font-size: clamp(.95rem, .3vw + .9rem, 1.05rem); }
-
-    a { color: var(--primary); text-decoration: none; }
-    a:hover { text-decoration: underline; }
-    .btn {
-      background: var(--primary); color: #fff; border: 0; border-radius: 12px;
-      padding: .7rem 1rem; cursor: pointer; box-shadow: var(--shadow);
-    }
-    .btn.secondary { background: #0ea5e9; }
-    .btn.ghost { background: #eef2ff; color: var(--primary); box-shadow: none; }
-    .btn:focus-visible { outline: none; box-shadow: var(--focus); }
-    .btn[disabled] { opacity: .6; cursor: not-allowed; }
-
-    header {
-      position: sticky; top: 0; z-index: 50;
-      background: var(--panel); box-shadow: var(--shadow);
-    }
-    .header-inner {
-      max-width: var(--maxw); margin: 0 auto; display: grid; grid-template-columns: 1fr auto;
-      gap: 1rem; align-items: center; padding: .8rem 1rem;
-    }
-    .brand { display: flex; align-items: center; gap: .75rem; }
-    .brand-badge {
-      width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, var(--primary), #60a5fa);
-      box-shadow: var(--shadow);
-    }
-    .brand h1 { letter-spacing: .2px; }
-    .header-actions { display: flex; align-items: center; gap: .5rem; }
-
-    main { max-width: var(--maxw); margin: 1rem auto; padding: 0 1rem 1.5rem; }
-    .grid {
-      display: grid; grid-template-columns: 360px 1fr; gap: 1rem;
-    }
-    @media (max-width: 1100px) {
-      .grid { grid-template-columns: 1fr; }
-    }
-    .panel {
-      background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow);
-    }
-    .panel .inner { padding: 1rem; }
-    .muted { color: var(--muted); }
-
-    .controls { display: grid; gap: .75rem; }
-    .field { display: grid; gap: .35rem; }
-    .field label { font-weight: 600; }
-    .field textarea, .field input {
-      width: 100%; border: 1px solid var(--border); border-radius: 12px; padding: .7rem .8rem; background: #fff;
-    }
-    .field textarea:focus-visible, .field input:focus-visible { outline: none; box-shadow: var(--focus); border-color: #93c5fd; }
-
-    .actions { display: flex; gap: .5rem; flex-wrap: wrap; }
-
-    .progress {
-      height: 4px; background: #e5e7eb; border-radius: 999px; overflow: hidden;
-    }
-    .progress .bar {
-      width: 0%; height: 100%; background: linear-gradient(90deg, var(--primary), #60a5fa);
-      transition: width .2s linear;
-    }
-
-    .blueprint-log {
-      height: 300px; overflow: auto; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      border-radius: 12px; border: 1px solid var(--border); background: #0b1020; color: #e2e8f0; padding: .75rem; white-space: pre-wrap;
-    }
-
-    .preview {
-      display: grid; grid-template-rows: auto 1fr; min-height: 70vh;
-    }
-    .preview-header {
-      display: flex; align-items: center; gap: .5rem; justify-content: space-between; padding: .8rem 1rem; border-bottom: 1px solid var(--border);
-    }
-    .nav { display: flex; gap: .25rem; flex-wrap: wrap; }
-    .nav button {
-      background: #f1f5f9; border: 1px solid var(--border); border-radius: 999px; padding: .45rem .7rem; cursor: pointer;
-    }
-    .nav button[aria-current="page"] {
-      background: var(--primary); color: #fff; border-color: var(--primary);
-    }
-
-    .preview-frame { border: 0; width: 100%; height: calc(100vh - 220px); background: #fff; }
-    @media (max-width: 1100px) {
-      .preview-frame { height: 65vh; }
-    }
-
-    .code-view {
-      height: 200px; overflow: auto; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      border-top: 1px solid var(--border); padding: .75rem; background: #0b1020; color: #e2e8f0; white-space: pre;
-    }
-
-    .footer {
-      max-width: var(--maxw); margin: 1rem auto 2rem; padding: 0 1rem;
-      color: var(--muted);
-    }
+    :root { --bg:#0b1b2b; --card:#0e2238; --muted:#0c1f33; --text:#e9eef5; --accent:#2fb3ff; --ring:#7cc6ff; --ok:#59d38f; --warn:#ffd169; }
+    * { box-sizing: border-box; }
+    body { margin:0; font: 14px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; background: var(--bg); color: var(--text); }
+    header { position: sticky; top:0; z-index: 10; background: linear-gradient(180deg, rgba(12,31,51,.9), rgba(12,31,51,.4)); backdrop-filter: blur(6px); border-bottom: 1px solid #14314d; }
+    main { display: grid; grid-template-columns: 360px 1fr; gap: 12px; padding: 12px; }
+    .panel { background: var(--card); border:1px solid #173651; border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.2); }
+    .controls { padding: 12px; display: grid; gap: 8px; }
+    label { font-weight: 600; }
+    input, textarea { width: 100%; background: #0a1a2a; border:1px solid #16324a; color: var(--text); border-radius: 10px; padding: 10px; }
+    textarea { min-height: 100px; resize: vertical; }
+    button { background: var(--accent); color: #042034; border: none; padding: 10px 12px; border-radius: 10px; font-weight: 700; cursor: pointer; }
+    button:disabled { opacity: .6; cursor: not-allowed; }
+    .actions { display: flex; gap: 8px; align-items: center; }
+    .progress { height: 3px; background: #071425; border-radius: 999px; overflow: hidden; }
+    .progress .bar { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), #7cc6ff); transition: width .2s; }
+    .stack { display: grid; gap: 12px; padding: 12px; }
+    pre { margin: 0; white-space: pre-wrap; word-break: break-word; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; background: #071525; border-top: 1px solid #132c44; padding: 10px; border-radius: 0 0 14px 14px; }
+    nav.sitenav { display:flex; gap:6px; padding:10px; border-bottom:1px solid #173651; background:#0c1f33; border-radius: 14px 14px 0 0; }
+    nav.sitenav a { padding:8px 10px; border-radius:8px; text-decoration:none; color: var(--text); border: 1px solid #183955; }
+    nav.sitenav a.current { background: var(--accent); color:#042034; border-color: #2fb3ff; font-weight: 700; }
+    iframe { width: 100%; height: calc(100vh - 180px); border: 0; background: #fff; border-radius: 0 0 14px 14px; }
+    .status { font-size: 12px; opacity: .8; }
   </style>
 </head>
 <body>
-  <a href="#main" class="sr-only">Skip to main content</a>
-  <header>
-    <div class="header-inner" role="navigation" aria-label="Primary">
-      <div class="brand">
-        <div class="brand-badge" aria-hidden="true"></div>
-        <h1>Real-Time Website Generator</h1>
+  <header class="panel">
+    <div class="controls">
+      <div class="actions">
+        <input id="brief" placeholder="Short brief e.g., 'Landing page for an influencer agent'"/>
+        <input id="styleRef" placeholder="Optional style reference URL"/>
+        <button id="generateBtn">Generate</button>
+        <button class="cancel" id="cancelBtn" disabled>Cancel</button>
+        <button id="exportNextBtn" title="Export a Next.js (App Router) project from the current blueprint">Export Next.js</button>
+        <span class="status" id="status"></span>
       </div>
-      <div class="header-actions">
-        <button id="btn-fullscreen" class="btn ghost" title="Toggle full-screen preview">Full Screen</button>
-        <a href="/api/health" class="btn ghost" target="_blank" rel="noopener">Health</a>
-        <a href="https://www.zillow.com/" class="btn ghost" target="_blank" rel="noopener">Style Ref</a>
-      </div>
+      <div class="progress"><div class="bar" id="bar"></div></div>
     </div>
   </header>
 
-  <main id="main" tabindex="-1">
-    <div class="grid">
-      <!-- Left: Controls & Blueprint Log -->
-      <section class="panel">
-        <div class="inner">
-          <h2>Controls</h2>
-          <p class="muted">Enter a short brief; the app streams a Zillow-inspired site blueprint JSON, then generates pages on demand.</p>
-          <div class="controls" role="form" aria-label="Generator controls">
-            <div class="field">
-              <label for="brief">Client brief</label>
-              <textarea id="brief" rows="5" placeholder="e.g., Simple SaaS. Pages: Home, Features, Pricing, Contact. Tone: friendly. Primary CTA: Start free trial."></textarea>
-            </div>
-            <div class="field">
-              <label for="styleRef">Optional style reference (HTML, text, or notes)</label>
-              <textarea id="styleRef" rows="3" placeholder="e.g., Zillow-like layout: spacious grid, clear cards, strong blue accents"></textarea>
-            </div>
-            <div class="field">
-              <label for="instruction">Optional extra instruction to GPT-5</label>
-              <input id="instruction" placeholder="e.g., Use a dark hero and light cards." />
-            </div>
+  <main>
+    <section class="panel">
+      <div class="stack">
+        <strong>Blueprint stream</strong>
+        <pre id="bpLog"></pre>
+      </div>
+    </section>
 
-            <div class="actions">
-              <button id="btn-generate" class="btn">Generate Blueprint</button>
-              <button id="btn-cancel" class="btn secondary">Cancel</button>
-            </div>
-
-            <div class="progress" aria-hidden="true">
-              <div id="progress" class="bar"></div>
-            </div>
-
-            <h2 style="margin-top:1rem;">Blueprint (streamed)</h2>
-            <div id="blueprintLog" class="blueprint-log" aria-live="polite"></div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Right: Preview -->
-      <section class="panel preview" aria-label="Preview">
-        <div class="preview-header">
-          <div class="nav" id="nav" role="navigation" aria-label="Generated site navigation"></div>
-          <div style="display:flex; gap:.5rem;">
-            <button id="btn-show-html" class="btn ghost" title="Show current HTML source">Show HTML</button>
-            <button id="btn-clear-cache" class="btn ghost" title="Clear cached pages">Clear Cache</button>
-          </div>
-        </div>
-        <iframe id="preview" class="preview-frame" title="Live preview"></iframe>
-        <pre id="code" class="code-view" hidden></pre>
-      </section>
-    </div>
+    <section class="panel">
+      <nav class="sitenav" id="nav"></nav>
+      <iframe id="preview" title="Live Preview"></iframe>
+    </section>
   </main>
 
-  <div class="footer">
-    <p>CSS budget ≤ ~12KB. System fonts only. Streaming via Chat Completions. Accessibility: headings, labeled controls, skip link, visible focus outlines, reduced motion respected.</p>
-  </div>
+<script>
+let controller = null;
+let currentBlueprint = null;
+let pageCache = new Map();
 
-  <script>
-    // Accessibility: programmatic skip link target focus
-    document.querySelector('a[href="#main"]').addEventListener('click', e => {
-      const main = document.getElementById('main');
-      main.setAttribute('tabindex', '-1');
-      main.focus();
+function setStatus(msg){ document.getElementById('status').textContent = msg; }
+function setProgress(n){ document.getElementById('bar').style.width = Math.max(0, Math.min(100, n)) + '%'; }
+
+async function streamBlueprint() {
+  const brief = document.getElementById('brief').value;
+  const styleReference = document.getElementById('styleRef').value || undefined;
+
+  controller = new AbortController();
+  const res = await fetch('/api/blueprint', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ brief, styleReference }),
+    signal: controller.signal
+  });
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  const logEl = document.getElementById('bpLog');
+  logEl.textContent = '';
+  setProgress(1);
+  let total = 0;
+  while(true){
+    const { done, value } = await reader.read();
+    if(done) break;
+    const chunk = decoder.decode(value, { stream:true });
+    total += chunk.length;
+    logEl.textContent += chunk;
+    setProgress(Math.min(90, 10 + total / 50));
+  }
+  setProgress(95);
+  // try parsing
+  let txt = logEl.textContent.trim();
+  // strip code fences if any
+  txt = txt.replace(/^```(json)?/,'').replace(/```$/,'');
+  try{
+    currentBlueprint = JSON.parse(txt);
+    setStatus('Blueprint ready');
+    setProgress(100);
+    buildNav();
+  }catch(e){
+    setStatus('Invalid blueprint JSON');
+    console.error(e);
+  }
+}
+
+function buildNav(){
+  const nav = document.getElementById('nav');
+  nav.innerHTML = '';
+  const pages = (currentBlueprint?.site?.pages) || [];
+  pages.forEach((p, idx) => {
+    const a = document.createElement('a');
+    const href = (p.path || '/');
+    a.href = '#';
+    a.textContent = href === '/' ? 'Home' : href.replace('/','');
+    a.onclick = (ev)=>{ ev.preventDefault(); openPage(href); };
+    a.id = 'nav_' + idx;
+    nav.appendChild(a);
+  });
+  if (pages.length) openPage(pages[0].path || '/');
+}
+
+async function openPage(pagePath){
+  const nav = document.getElementById('nav').children;
+  for (const el of nav) el.classList.remove('current');
+  const idx = Array.from(nav).findIndex(a => a.textContent.toLowerCase() === (pagePath === '/' ? 'home' : pagePath.replace('/','')));
+  if (idx >= 0) nav[idx].classList.add('current');
+
+  const iframe = document.getElementById('preview');
+  if (pageCache.has(pagePath)) {
+    iframe.srcdoc = pageCache.get(pagePath);
+    return;
+  }
+
+  setStatus('Generating ' + pagePath);
+  const res = await fetch('/api/page', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ blueprint: currentBlueprint, pagePath })
+  });
+  const html = await res.text();
+  pageCache.set(pagePath, html);
+  iframe.srcdoc = html;
+  setStatus('Ready');
+}
+
+document.getElementById('generateBtn').addEventListener('click', async () => {
+  setStatus('Streaming blueprint…'); setProgress(3);
+  document.getElementById('bpLog').textContent='';
+  pageCache.clear();
+  try { await streamBlueprint(); } catch(e){ setStatus('Error: ' + e.message); }
+});
+
+document.getElementById('cancelBtn').addEventListener('click', () => {
+  if (controller) controller.abort();
+  setStatus('Cancelled');
+});
+
+// Export Next.js
+const exportBtn = document.getElementById('exportNextBtn');
+exportBtn.addEventListener('click', async () => {
+  try{
+    if(!currentBlueprint){ alert('Generate a blueprint first.'); return; }
+    setStatus('Exporting Next.js…');
+    const res = await fetch('/api/export-next', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ blueprint: currentBlueprint })
     });
-
-    const elBrief = document.getElementById('brief');
-    const elStyleRef = document.getElementById('styleRef');
-    const elInstruction = document.getElementById('instruction');
-    const btnGenerate = document.getElementById('btn-generate');
-    const btnCancel = document.getElementById('btn-cancel');
-    const btnFullscreen = document.getElementById('btn-fullscreen');
-    const btnShowHtml = document.getElementById('btn-show-html');
-    const btnClearCache = document.getElementById('btn-clear-cache');
-    const blueprintLog = document.getElementById('blueprintLog');
-    const navEl = document.getElementById('nav');
-    const preview = document.getElementById('preview');
-    const codeView = document.getElementById('code');
-    const progressBar = document.getElementById('progress');
-
-    let currentController = null;
-    let blueprint = null;
-    const pageCache = new Map();
-    let currentPath = '/';
-
-    function setProgress(p) {
-      progressBar.style.width = Math.max(0, Math.min(100, p)) + '%';
+    if(!res.ok){
+      const t = await res.text();
+      throw new Error(t || 'Export failed');
     }
-
-    function normalizeBlueprintText(t) {
-      // Strip code fences or accidental labels
-      return t.replace(/```[a-zA-Z]*\n?|```/g, '').replace(/^\s*FILE:[^\n]*\n/gm, '');
-    }
-
-    function normalizeHTML(t) {
-      const stripped = t.replace(/```[a-zA-Z]*\n?|```/g, '').replace(/^\s*FILE:[^\n]*\n/gm, '');
-      // Heuristic: ensure we have an <html> or <!doctype html>
-      if (!/<!doctype html>|<html[\s>]/i.test(stripped)) {
-        return '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Raw Output</title><style>body{font-family:ui-monospace,monospace;padding:1rem;white-space:pre-wrap}</style></head><body><pre>' + 
-               escapeHtml(stripped) + '</pre></body></html>';
-      }
-      return stripped;
-    }
-
-    function escapeHtml(s) {
-      return s.replace(/[&<>"']/g, c => ({
-        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
-      })[c]);
-    }
-
-    async function streamPOST(url, body, onChunk) {
-      if (currentController) currentController.abort();
-      currentController = new AbortController();
-      const signal = currentController.signal;
-      setProgress(1);
-
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-        signal
-      });
-
-      // Log server headers for diagnostics
-      try {
-        console.log('headers:', Object.fromEntries(res.headers));
-      } catch {}
-
-      if (!res.ok || !res.body) {
-        const text = await res.text().catch(()=>'Failed to read body');
-        throw new Error(text || ('HTTP ' + res.status));
-      }
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let total = 0;
-
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        total += value.byteLength;
-        setProgress(Math.min(95, 10 + Math.log10(total + 10) * 25));
-        const chunk = decoder.decode(value, { stream: true });
-        onChunk(chunk);
-      }
-
-      setProgress(100);
-      currentController = null;
-    }
-
-    function cancelCurrent() {
-      if (currentController) {
-        currentController.abort();
-        currentController = null;
-      }
-      setProgress(0);
-    }
-
-    btnCancel.addEventListener('click', cancelCurrent);
-
-    btnGenerate.addEventListener('click', async () => {
-      cancelCurrent();
-      blueprint = null;
-      blueprintLog.textContent = '';
-      navEl.innerHTML = '';
-      pageCache.clear();
-      codeView.hidden = true;
-
-      const body = {
-        brief: elBrief.value.trim(),
-        styleReference: elStyleRef.value.trim(),
-        instruction: elInstruction.value.trim()
-      };
-
-      try {
-        await streamPOST('/api/blueprint', body, (txt) => {
-          blueprintLog.textContent += txt;
-        });
-        const raw = normalizeBlueprintText(blueprintLog.textContent);
-        blueprint = JSON.parse(raw);
-        buildNav(blueprint?.site?.pages || []);
-        // Auto-load home if present
-        const home = (blueprint.site?.pages || []).find(p => p.path === '/') || (blueprint.site?.pages || [])[0];
-        if (home) show(home.path);
-      } catch (err) {
-        blueprintLog.textContent += "\n\n[Error] " + (err?.message || err);
-      } finally {
-        setTimeout(()=>setProgress(0), 600);
-      }
-    });
-
-    function buildNav(pages) {
-      navEl.innerHTML = '';
-      pages.forEach(p => {
-        const btn = document.createElement('button');
-        btn.textContent = p.path;
-        btn.setAttribute('data-path', p.path);
-        btn.addEventListener('click', () => show(p.path));
-        btn.setAttribute('aria-label', 'Show page ' + p.path);
-        navEl.appendChild(btn);
-      });
-      updateNavAria('/');
-    }
-
-    function updateNavAria(path) {
-      Array.from(navEl.querySelectorAll('button')).forEach(b => {
-        const isCurrent = b.getAttribute('data-path') === path;
-        if (isCurrent) {
-          b.setAttribute('aria-current', 'page');
-        } else {
-          b.removeAttribute('aria-current');
-        }
-      });
-    }
-
-    async function show(path) {
-      currentPath = path;
-      updateNavAria(path);
-      codeView.hidden = true;
-
-      if (pageCache.has(path)) {
-        setPreview(pageCache.get(path));
-        return;
-      }
-
-      try {
-        let html = '';
-        await streamPOST('/api/page', { blueprint, pagePath: path }, (txt) => {
-          html += txt;
-          // Progressive preview: update occasionally
-          if (html.length % 2048 < 1024) {
-            setPreview(html, true);
-          }
-        });
-        html = normalizeHTML(html);
-        pageCache.set(path, html);
-        setPreview(html);
-      } catch (err) {
-        const errorHtml = normalizeHTML(String(err?.message || err));
-        setPreview(errorHtml);
-      } finally {
-        setTimeout(()=>setProgress(0), 600);
-      }
-    }
-
-    function setPreview(html, isPartial) {
-      const doc = normalizeHTML(html);
-      preview.srcdoc = doc;
-      if (!isPartial) {
-        codeView.textContent = doc;
-      }
-    }
-
-    btnShowHtml.addEventListener('click', () => {
-      codeView.hidden = !codeView.hidden;
-    });
-
-    btnClearCache.addEventListener('click', () => {
-      pageCache.clear();
-      alert('Page cache cleared.');
-    });
-
-    // Full-screen toggle for the preview section
-    btnFullscreen.addEventListener('click', async () => {
-      const panel = document.querySelector('.panel.preview');
-      const isFs = document.fullscreenElement;
-      try {
-        if (!isFs) await panel.requestFullscreen();
-        else await document.exitFullscreen();
-      } catch {}
-    });
-
-    // Example prefill for quick testing
-    elBrief.value = "Simple SaaS. Pages: Home, Features, Pricing, Contact. Tone: friendly. Primary CTA: Start free trial.";
-    elStyleRef.value = "Zillow-like spacious grid, strong blue primary, rounded cards, subtle shadows.";
-
-  </script>
+    const blob = await res.blob();
+    const a = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    const name = (currentBlueprint?.site?.title?.toLowerCase().replace(/[^a-z0-9\-]+/g,'-') || 'site') + '.zip';
+    a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    setStatus('Export ready');
+  }catch(e){
+    setStatus('Export error');
+    alert('Export error: ' + e.message);
+  }
+});
+</script>
 </body>
 </html>

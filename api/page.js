@@ -1,81 +1,34 @@
-// api/page.js
-import { buildSystemPrompt } from "../masterPrompt.js";
-import { sseToTextStream } from "./_sseToText.js";
+import { streamChat } from "../utils/openai-client.js";
+import { systemPage } from "../masterPrompt.js";
 
-export const config = { runtime: "edge" };
+export const config = { runtime: "nodejs18.x" };
 
-export default async function handler(req) {
-  if (req.method !== "POST") {
-    return new Response("Method Not Allowed", { status: 405 });
-  }
+export default async function handler(req, res){
+  if (req.method !== "POST") { res.status(405).send("Page error (405): POST only"); return; }
+  try{
+    const { blueprint, pagePath, styleReference } = req.body || {};
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("X-Accel-Buffering", "no");
+    const ctrl = new AbortController();
+    req.on("close", ()=>ctrl.abort());
 
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    return new Response("Missing OPENAI_API_KEY", { status: 500 });
-  }
+    const messages = [
+      { role: "system", content: systemPage },
+      { role: "user", content: JSON.stringify({ blueprint, pagePath, styleReference }) }
+    ];
 
-  const { blueprint, pagePath, styleReference } = await req.json().catch(() => ({}));
-
-  if (!blueprint || !pagePath) {
-    return new Response("Missing required fields: { blueprint, pagePath }", { status: 400 });
-  }
-
-  const model = process.env.OPENAI_MODEL || "openai/gpt-5"; // or gpt-5-mini, gpt-5-nano;
-  const systemText = buildSystemPrompt(styleReference);
-
-  const blueprintText = typeof blueprint === "string" ? blueprint : JSON.stringify(blueprint, null, 2);
-
-  const htmlOnlyInstruction = [
-    `Return ONLY the complete HTML document for ${pagePath}.`,
-    "Do NOT include code fences, JSON, prose, or 'FILE:' labels.",
-    "Include: semantic landmarks (<header>, <nav>, <main>, <footer>), a skip link, accessible nav with aria-current, responsive grid, clamp() typography, per-page SEO tags, optional JSON-LD, CSS ≤ ~12KB, system fonts, and respect prefers-reduced-motion.",
-    "Design style: Zillow-inspired — modern, spacious, trust-centric visuals with rounded cards and subtle shadows.",
-    "",
-    "Use this site blueprint strictly as source of truth:",
-    "<BLUEPRINT>",
-    blueprintText,
-    "</BLUEPRINT>"
-  ].join("\n");
-
-  const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "authorization": `Bearer ${apiKey}`
-    },
-    body: JSON.stringify({
-      model,
-      stream: true,
-      temperature: 0.2,
-      messages: [
-        { role: "system", content: systemText },
-        { role: "user", content: htmlOnlyInstruction }
-      ]
-    })
-  });
-
-  if (!openaiRes.ok || !openaiRes.body) {
-    const text = await openaiRes.text().catch(() => "");
-    return new Response(`Page error (${openaiRes.status}): ${text || "No body"}`, {
-      status: 500,
-      headers: {
-        "content-type": "text/plain; charset=utf-8",
-        "cache-control": "no-cache",
-        "x-accel-buffering": "no",
-        "x-server-version": "v5"
-      }
+    const resp = await streamChat({
+      apiKey: process.env.OPENAI_API_KEY,
+      model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+      messages
     });
-  }
 
-  const textStream = sseToTextStream(openaiRes.body);
-
-  return new Response(textStream, {
-    status: 200,
-    headers: {
-      "content-type": "text/plain; charset=utf-8",
-      "cache-control": "no-cache",
-      "x-accel-buffering": "no",
-      "x-server-version": "v5"
+    for await (const chunk of resp.body){
+      res.write(chunk);
     }
-  });
+    res.end();
+  }catch(err){
+    res.status(500).send(`Page error (500): ${String(err)}`);
+  }
 }

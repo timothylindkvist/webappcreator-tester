@@ -1,7 +1,7 @@
-// api/page.js
+// api/page.js (patched)
 export const runtime = "nodejs";
 
-import { OpenAI } from "openai";
+import OpenAI from "openai";
 import { buildSystemPrompt } from "../masterPrompt.js";
 
 function setStreamHeaders(res, version = "v7") {
@@ -23,35 +23,36 @@ async function readBody(req) {
 }
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    res.statusCode = 405;
-    setStreamHeaders(res);
-    res.end("Page error (405): Method Not Allowed");
-    return;
-  }
+  try {
+    if (req.method !== "POST") {
+      res.statusCode = 405;
+      setStreamHeaders(res);
+      res.end("Page error (405): Method Not Allowed");
+      return;
+    }
 
-  const { OPENAI_API_KEY, OPENAI_MODEL } = process.env;
-  const MODEL = OPENAI_MODEL || "gpt-4o-mini";
-  if (!OPENAI_API_KEY) {
-    res.statusCode = 500;
-    setStreamHeaders(res);
-    res.end("Page error (500): OPENAI_API_KEY missing");
-    return;
-  }
+    const { OPENAI_API_KEY, OPENAI_MODEL } = process.env;
+    const MODEL = OPENAI_MODEL || "gpt-4o-mini";
+    if (!OPENAI_API_KEY) {
+      res.statusCode = 500;
+      setStreamHeaders(res);
+      res.end("Page error (500): OPENAI_API_KEY missing");
+      return;
+    }
 
-  const body = await readBody(req);
-  const { blueprint, pagePath, styleReference } = body || {};
-  if (!blueprint || !pagePath) {
-    res.statusCode = 400;
-    setStreamHeaders(res);
-    res.end("Page error (400): 'blueprint' and 'pagePath' are required");
-    return;
-  }
+    const body = await readBody(req);
+    const { blueprint, pagePath, styleReference } = body || {};
+    if (!blueprint || !pagePath) {
+      res.statusCode = 400;
+      setStreamHeaders(res);
+      res.end("Page error (400): 'blueprint' and 'pagePath' are required");
+      return;
+    }
 
-  const bpText = typeof blueprint === "string" ? blueprint : JSON.stringify(blueprint);
-  const systemText = buildSystemPrompt({ styleReference, briefOrBlueprint: blueprint });
+    const bpText = typeof blueprint === "string" ? blueprint : JSON.stringify(blueprint);
+    const systemText = buildSystemPrompt({ styleReference, briefOrBlueprint: blueprint });
 
-  const userText = `
+    const userText = `
 You already created the site blueprint. Use it verbatim.
 
 Return ONLY a single, complete HTML document for the page path "${pagePath}".
@@ -71,7 +72,6 @@ BLUEPRINT JSON (use this as the single source of truth; do not echo it):
 ${bpText}
 `.trim();
 
-  try {
     setStreamHeaders(res);
     res.flushHeaders?.();
 
@@ -92,9 +92,12 @@ ${bpText}
     }
     res.end();
   } catch (err) {
-    const msg = (err && err.message) ? err.message : String(err);
-    if (!res.headersSent) setStreamHeaders(res);
-    res.statusCode = 500;
-    res.end(`Page error (500): ${msg}`);
+    const msg =
+      err?.response?.data?.error?.message ||
+      err?.error?.message ||
+      err?.message ||
+      String(err);
+    if (res && !res.headersSent) setStreamHeaders(res);
+    try { res.statusCode = 500; res.end(`Page error (500): ${msg}`); } catch {}
   }
 }

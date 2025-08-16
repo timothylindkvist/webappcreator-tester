@@ -1,7 +1,7 @@
-// api/blueprint.js
+// api/blueprint.js (patched)
 export const runtime = "nodejs";
 
-import { OpenAI } from "openai";
+import OpenAI from "openai";
 import { buildSystemPrompt } from "../masterPrompt.js";
 
 function setStreamHeaders(res, version = "v7") {
@@ -23,28 +23,29 @@ async function readBody(req) {
 }
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    res.statusCode = 405;
-    setStreamHeaders(res);
-    res.end("Blueprint error (405): Method Not Allowed");
-    return;
-  }
+  try {
+    if (req.method !== "POST") {
+      res.statusCode = 405;
+      setStreamHeaders(res);
+      res.end("Blueprint error (405): Method Not Allowed");
+      return;
+    }
 
-  const { OPENAI_API_KEY, OPENAI_MODEL } = process.env;
-  const MODEL = OPENAI_MODEL || "gpt-4o-mini";
-  if (!OPENAI_API_KEY) {
-    res.statusCode = 500;
-    setStreamHeaders(res);
-    res.end("Blueprint error (500): OPENAI_API_KEY missing");
-    return;
-  }
+    const { OPENAI_API_KEY, OPENAI_MODEL } = process.env;
+    const MODEL = OPENAI_MODEL || "gpt-4o-mini";
+    if (!OPENAI_API_KEY) {
+      res.statusCode = 500;
+      setStreamHeaders(res);
+      res.end("Blueprint error (500): OPENAI_API_KEY missing");
+      return;
+    }
 
-  const body = await readBody(req);
-  const { brief, styleReference, instruction } = body || {};
-  const client = new OpenAI({ apiKey: OPENAI_API_KEY });
+    const body = await readBody(req);
+    const { brief, styleReference, instruction } = body || {};
+    const client = new OpenAI({ apiKey: OPENAI_API_KEY });
 
-  const systemText = buildSystemPrompt({ styleReference, briefOrBlueprint: brief });
-  const userText = `
+    const systemText = buildSystemPrompt({ styleReference, briefOrBlueprint: brief });
+    const userText = `
 Skip Step A (Clarify). Perform Step B only.
 Return ONLY the raw Blueprint JSON.
 Do NOT include markdown fences, prose, or any "FILE:" labels.
@@ -53,7 +54,6 @@ CLIENT BRIEF:
 ${brief || "Generate a sensible default business website blueprint with Home, Features, Pricing, and Contact pages. Tone: friendly. Primary CTA: Start free trial."}
 `.trim();
 
-  try {
     setStreamHeaders(res);
     res.flushHeaders?.();
 
@@ -73,12 +73,12 @@ ${brief || "Generate a sensible default business website blueprint with Home, Fe
     }
     res.end();
   } catch (err) {
-  const msg =
-    err?.response?.data?.error?.message ||
-    err?.error?.message ||
-    err?.message ||
-    String(err);
-  if (!res.headersSent) setStreamHeaders(res);
-  res.statusCode = 500;
-  res.end(`Blueprint error (500): ${msg}`);
+    const msg =
+      err?.response?.data?.error?.message ||
+      err?.error?.message ||
+      err?.message ||
+      String(err);
+    if (res && !res.headersSent) setStreamHeaders(res);
+    try { res.statusCode = 500; res.end(`Blueprint error (500): ${msg}`); } catch {}
+  }
 }

@@ -1,5 +1,4 @@
-// api/blueprint.js
-export const runtime = "nodejs";
+export const config = { runtime: "nodejs22.x" };
 
 import OpenAI from "openai";
 import { buildSystemPrompt } from "../masterPrompt.js";
@@ -15,7 +14,7 @@ async function readBody(req) {
   if (req.body && typeof req.body === "object") return req.body;
   const raw = await new Promise((resolve, reject) => {
     let data = "";
-    req.on("data", (c) => (data += c));
+    req.on("data", c => (data += c));
     req.on("end", () => resolve(data));
     req.on("error", reject);
   });
@@ -44,18 +43,12 @@ export default async function handler(req, res) {
     const body = await readBody(req);
     let { brief, styleReference, instruction } = body || {};
     if (typeof brief !== "string" || !brief.trim()) {
-      // Always provide a safe fallback so the request never fails due to empty input.
-      brief =
-        "Simple SaaS. Pages: Home, Features, Pricing, Contact. Tone: friendly. Primary CTA: Start free trial.";
+      brief = "Simple SaaS. Pages: Home, Features, Pricing, Contact. Tone: friendly. Primary CTA: Start free trial.";
     }
 
     const client = new OpenAI({ apiKey: OPENAI_API_KEY });
 
-    const systemText = buildSystemPrompt({
-      styleReference,
-      briefOrBlueprint: brief,
-    });
-
+    const systemText = buildSystemPrompt({ styleReference, briefOrBlueprint: brief });
     const userText = `
 Skip Step A (Clarify). Perform Step B only.
 Return ONLY the raw Blueprint JSON.
@@ -69,7 +62,6 @@ ${brief}
     res.setHeader("X-Model", MODEL);
     res.flushHeaders?.();
 
-    // Start streaming
     const stream = await client.chat.completions.create({
       model: MODEL,
       stream: true,
@@ -86,18 +78,14 @@ ${brief}
     }
     res.end();
   } catch (err) {
-    // Surface the *actual* OpenAI/SDK message so the Network tab shows why it failed.
     const msg =
       err?.response?.data?.error?.message ||
       err?.error?.message ||
       err?.message ||
       String(err);
-
     if (!res.headersSent) setStreamHeaders(res);
     res.statusCode = 500;
-    // Keep the body short & plain text so your UI prints it cleanly.
     res.end(`Blueprint error (500): ${msg}`);
-    // Also log to server logs for stack traces.
     console.error("[/api/blueprint] Error:", err);
   }
 }

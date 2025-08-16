@@ -1,10 +1,9 @@
-// api/page.js (patched)
-export const runtime = "nodejs";
+export const config = { runtime: "nodejs22.x" };
 
 import OpenAI from "openai";
 import { buildSystemPrompt } from "../masterPrompt.js";
 
-function setStreamHeaders(res, version = "v7") {
+function setStreamHeaders(res, version = "v8") {
   res.setHeader("Content-Type", "text/plain; charset=utf-8");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("X-Accel-Buffering", "no");
@@ -15,7 +14,7 @@ async function readBody(req) {
   if (req.body && typeof req.body === "object") return req.body;
   const raw = await new Promise((resolve, reject) => {
     let data = "";
-    req.on("data", (c) => (data += c));
+    req.on("data", c => (data += c));
     req.on("end", () => resolve(data));
     req.on("error", reject);
   });
@@ -25,17 +24,18 @@ async function readBody(req) {
 export default async function handler(req, res) {
   try {
     if (req.method !== "POST") {
-      res.statusCode = 405;
       setStreamHeaders(res);
+      res.statusCode = 405;
       res.end("Page error (405): Method Not Allowed");
       return;
     }
 
-    const { OPENAI_API_KEY, OPENAI_MODEL } = process.env;
-    const MODEL = OPENAI_MODEL || "gpt-4o-mini";
+    const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+    const MODEL = (process.env.OPENAI_MODEL || "gpt-4o-mini").trim();
+
     if (!OPENAI_API_KEY) {
-      res.statusCode = 500;
       setStreamHeaders(res);
+      res.statusCode = 500;
       res.end("Page error (500): OPENAI_API_KEY missing");
       return;
     }
@@ -43,8 +43,8 @@ export default async function handler(req, res) {
     const body = await readBody(req);
     const { blueprint, pagePath, styleReference } = body || {};
     if (!blueprint || !pagePath) {
-      res.statusCode = 400;
       setStreamHeaders(res);
+      res.statusCode = 400;
       res.end("Page error (400): 'blueprint' and 'pagePath' are required");
       return;
     }
@@ -73,6 +73,7 @@ ${bpText}
 `.trim();
 
     setStreamHeaders(res);
+    res.setHeader("X-Model", MODEL);
     res.flushHeaders?.();
 
     const client = new OpenAI({ apiKey: OPENAI_API_KEY });
@@ -97,7 +98,9 @@ ${bpText}
       err?.error?.message ||
       err?.message ||
       String(err);
-    if (res && !res.headersSent) setStreamHeaders(res);
-    try { res.statusCode = 500; res.end(`Page error (500): ${msg}`); } catch {}
+    if (!res.headersSent) setStreamHeaders(res);
+    res.statusCode = 500;
+    res.end(`Page error (500): ${msg}`);
+    console.error("[/api/page] Error:", err);
   }
 }

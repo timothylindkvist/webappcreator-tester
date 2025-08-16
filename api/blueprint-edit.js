@@ -1,5 +1,4 @@
-// api/blueprint-edit.js
-export const runtime = "nodejs";
+export const config = { runtime: "nodejs22.x" };
 
 import OpenAI from "openai";
 import { MASTER_PROMPT } from "../masterPrompt.js";
@@ -15,7 +14,7 @@ async function readBody(req) {
   if (req.body && typeof req.body === "object") return req.body;
   const raw = await new Promise((resolve, reject) => {
     let data = "";
-    req.on("data", (c) => (data += c));
+    req.on("data", c => (data += c));
     req.on("end", () => resolve(data));
     req.on("error", reject);
   });

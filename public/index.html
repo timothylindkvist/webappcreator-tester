@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Real-Time Website Generator</title>
   <meta name="description" content="Stream a site blueprint from a brief, then stream each page’s HTML into a live preview." />
+  <!-- Inline favicon to avoid 404 -->
+  <link rel="icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="%230b0d10"/><path d="M14 42l10-20 8 12 8-12 10 20" stroke="%237c96ff" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>'>
   <style>
     :root{
       --bg:#0b0d10; --card:#12161b; --muted:#9aa4af; --text:#e8eef5;
@@ -115,7 +117,8 @@
             <button id="popoutBtn" class="secondary" title="Open current page in a new tab">Pop out</button>
           </div>
         </div>
-        <iframe id="preview" title="Page preview" sandbox="allow-same-origin allow-scripts allow-forms" allow="fullscreen"></iframe>
+        <!-- Remove allow-same-origin to silence the warning -->
+        <iframe id="preview" title="Page preview" sandbox="allow-scripts allow-forms" allow="fullscreen"></iframe>
       </div>
       <div class="card pad">
         <div class="muted">Notes</div>
@@ -150,7 +153,6 @@
     let controller = null;
     let cache = Object.create(null);
     let currentPath = null;
-    const currentPathEl = { textContent: "" };
 
     // Progress helpers
     function setProgress(p){ progress.style.width = Math.max(0, Math.min(100, p)) + "%"; }
@@ -160,19 +162,25 @@
       setProgress(next);
     }
 
-    // Sanitizers
-    function normalizeBlueprintText(t){
-      return t.replace(/```[a-z]*
-?/gi,"").replace(/^\s*FILE:[^
-]*
-/gmi,"");
+    // Safer normalizers (avoid tricky regex literals)
+    function stripCodeFences(s){
+      if (!s || s.indexOf("```") === -1) return s;
+      let out = s;
+      while (true){
+        const start = out.indexOf("```");
+        if (start === -1) break;
+        const end = out.indexOf("```", start + 3);
+        if (end === -1){ out = out.slice(0, start) + out.slice(start + 3); break; }
+        out = out.slice(0, start) + out.slice(end + 3);
+      }
+      return out;
     }
-    function normalizeHTML(t){
-      return t.replace(/```[a-z]*
-?/gi,"").replace(/^\s*FILE:[^
-]*
-/gmi,"");
+    function stripFileLabels(s){
+      // Remove leading "FILE: ..." lines safely
+      return s.split(/\r?\n/).filter(line => !/^\\s*FILE:/i.test(line)).join("\\n");
     }
+    function normalizeBlueprintText(t){ return stripFileLabels(stripCodeFences(t)); }
+    function normalizeHTML(t){ return stripFileLabels(stripCodeFences(t)); }
 
     // Preview update with throttle (~60fps)
     function setPreview(html){ preview.srcdoc = html; }
@@ -225,7 +233,7 @@
       pages.forEach(p => {
         const a = document.createElement("a");
         a.href = "#"+p.path;
-        a.textContent = labelsByHref.get(p.path) || (p.path === "/" ? "Home" : p.path.replace(/\//g," ").trim());
+        a.textContent = labelsByHref.get(p.path) || (p.path === "/" ? "Home" : p.path.replace(/\\//g," ").trim());
         a.addEventListener("click", (e)=>{ e.preventDefault(); show(p.path); });
         a.setAttribute("data-path", p.path);
         nav.appendChild(a);
@@ -234,7 +242,6 @@
 
     function setActive(path){
       currentPath = path;
-      currentPathEl.textContent = path;
       nav.querySelectorAll("a").forEach(a => {
         const sel = a.getAttribute("data-path") === path;
         if (sel) a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current");
@@ -303,7 +310,7 @@
     fsBtn.addEventListener("click", async ()=>{
       try{
         if (!document.fullscreenElement) {
-          await previewCard.requestFullscreen();
+          await document.getElementById("previewCard").requestFullscreen();
           fsBtn.textContent = "Exit fullscreen";
         } else {
           await document.exitFullscreen();

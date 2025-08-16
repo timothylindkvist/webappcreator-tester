@@ -2,9 +2,8 @@ import "@/styles/globals.css";
 import type { ReactNode } from "react";
 
 export const metadata = {
-  title: "Influencer Site Generator",
-  description: "Chat + Preview builder for creator websites",
-  metadataBase: new URL("https://example.com")
+  title: "Universal Website Generator",
+  description: "Tailored websites for any idea — powered by GPT‑5 (Vercel AI Gateway)",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

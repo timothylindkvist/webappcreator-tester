@@ -1,7 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    esmExternals: true
-  }
+  experimental: { esmExternals: true }
 };
 export default nextConfig;

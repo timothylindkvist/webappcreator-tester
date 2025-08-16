@@ -1,19 +1,14 @@
-# Influencer Website Generator
+# Universal Website Generator
 
-A Lovable-inspired builder that chats with GPT-5 via **Vercel AI Gateway** and streams a live preview.
+Tailored websites for **any** idea (businesses, hobbies, nonprofits, creators). The UI captures preferences (tone, palette, density, brand hints, sections) and streams a complete HTML page — no API keys in code.
 
-## Quickstart
-```bash
+- Next.js App Router + Edge streaming via `ai` (**GPT‑5** through **Vercel AI Gateway**)
+- Tailwind via CDN inside generated HTML for instant iframe preview
+- Export .zip endpoint (Node runtime) for downloads
+
+## Dev
 pnpm install
 pnpm dev
-```
 
-## Environment (Vercel)
-Set **AI_GATEWAY_API_KEY** (and, if required, your Gateway base URL as OPENAI_BASE_URL). The app calls the model using `model: "openai/gpt-5"`—no direct OpenAI key in code.
-
-## Deploy
-Push to GitHub and import to Vercel.
-
-## Notes
-- Preview uses Tailwind via CDN inside the generated HTML, so it looks great in the iframe.
-- `/api/export` zips the last HTML for quick download.
+## Deploy on Vercel
+Configure your **AI Gateway** env (e.g. OPENAI_API_KEY or gateway-provided key). The code uses `model: "openai/gpt-5"` so requests route through the Gateway.

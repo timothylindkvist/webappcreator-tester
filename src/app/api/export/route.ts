@@ -8,14 +8,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "No HTML supplied" }, { status: 400 });
   }
   const zip = new JSZip();
-  // ensure a doctype
   const doc = html.trim().startsWith("<!DOCTYPE") ? html.trim() : "<!DOCTYPE html>\n" + html.trim();
   zip.file("index.html", doc);
   const file = await zip.generateAsync({ type: "nodebuffer" });
   return new NextResponse(file, {
     headers: {
       "Content-Type": "application/zip",
-      "Content-Disposition": "attachment; filename=influencer-site.zip",
+      "Content-Disposition": "attachment; filename=website.zip",
     },
   });
 }

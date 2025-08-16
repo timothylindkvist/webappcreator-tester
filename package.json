@@ -10,8 +10,3 @@
   },
   "dependencies": {
     "openai": "4.57.0"
-  },
-  "engines": {
-    "node": "20.x"
-  }
-}

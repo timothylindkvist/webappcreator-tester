@@ -1,10 +1,10 @@
-// api/blueprint.js (patched)
+// api/blueprint.js
 export const runtime = "nodejs";
 
 import OpenAI from "openai";
 import { buildSystemPrompt } from "../masterPrompt.js";
 
-function setStreamHeaders(res, version = "v7") {
+function setStreamHeaders(res, version = "v8") {
   res.setHeader("Content-Type", "text/plain; charset=utf-8");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("X-Accel-Buffering", "no");
@@ -25,38 +25,51 @@ async function readBody(req) {
 export default async function handler(req, res) {
   try {
     if (req.method !== "POST") {
-      res.statusCode = 405;
       setStreamHeaders(res);
+      res.statusCode = 405;
       res.end("Blueprint error (405): Method Not Allowed");
       return;
     }
 
-    const { OPENAI_API_KEY, OPENAI_MODEL } = process.env;
-    const MODEL = OPENAI_MODEL || "gpt-4o-mini";
+    const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+    const MODEL = (process.env.OPENAI_MODEL || "gpt-4o-mini").trim();
+
     if (!OPENAI_API_KEY) {
-      res.statusCode = 500;
       setStreamHeaders(res);
+      res.statusCode = 500;
       res.end("Blueprint error (500): OPENAI_API_KEY missing");
       return;
     }
 
     const body = await readBody(req);
-    const { brief, styleReference, instruction } = body || {};
+    let { brief, styleReference, instruction } = body || {};
+    if (typeof brief !== "string" || !brief.trim()) {
+      // Always provide a safe fallback so the request never fails due to empty input.
+      brief =
+        "Simple SaaS. Pages: Home, Features, Pricing, Contact. Tone: friendly. Primary CTA: Start free trial.";
+    }
+
     const client = new OpenAI({ apiKey: OPENAI_API_KEY });
 
-    const systemText = buildSystemPrompt({ styleReference, briefOrBlueprint: brief });
+    const systemText = buildSystemPrompt({
+      styleReference,
+      briefOrBlueprint: brief,
+    });
+
     const userText = `
 Skip Step A (Clarify). Perform Step B only.
 Return ONLY the raw Blueprint JSON.
 Do NOT include markdown fences, prose, or any "FILE:" labels.
 ${instruction ? `\nADDITIONAL INSTRUCTION:\n${instruction}\n` : ""}
 CLIENT BRIEF:
-${brief || "Generate a sensible default business website blueprint with Home, Features, Pricing, and Contact pages. Tone: friendly. Primary CTA: Start free trial."}
+${brief}
 `.trim();
 
     setStreamHeaders(res);
+    res.setHeader("X-Model", MODEL);
     res.flushHeaders?.();
 
+    // Start streaming
     const stream = await client.chat.completions.create({
       model: MODEL,
       stream: true,
@@ -73,12 +86,18 @@ ${brief || "Generate a sensible default business website blueprint with Home, Fe
     }
     res.end();
   } catch (err) {
+    // Surface the *actual* OpenAI/SDK message so the Network tab shows why it failed.
     const msg =
       err?.response?.data?.error?.message ||
       err?.error?.message ||
       err?.message ||
       String(err);
-    if (res && !res.headersSent) setStreamHeaders(res);
-    try { res.statusCode = 500; res.end(`Blueprint error (500): ${msg}`); } catch {}
+
+    if (!res.headersSent) setStreamHeaders(res);
+    res.statusCode = 500;
+    // Keep the body short & plain text so your UI prints it cleanly.
+    res.end(`Blueprint error (500): ${msg}`);
+    // Also log to server logs for stack traces.
+    console.error("[/api/blueprint] Error:", err);
   }
 }

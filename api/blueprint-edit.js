@@ -1,10 +1,10 @@
 // api/blueprint-edit.js
 export const runtime = "nodejs";
 
-import { OpenAI } from "openai";
+import OpenAI from "openai";
 import { MASTER_PROMPT } from "../masterPrompt.js";
 
-function setStreamHeaders(res, version = "v7-edit") {
+function setStreamHeaders(res, version = "v8-edit") {
   res.setHeader("Content-Type", "text/plain; charset=utf-8");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("X-Accel-Buffering", "no");
@@ -23,33 +23,36 @@ async function readBody(req) {
 }
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    res.statusCode = 405;
-    setStreamHeaders(res);
-    res.end("Blueprint Edit error (405): Method Not Allowed");
-    return;
-  }
+  try {
+    if (req.method !== "POST") {
+      setStreamHeaders(res);
+      res.statusCode = 405;
+      res.end("Blueprint Edit error (405): Method Not Allowed");
+      return;
+    }
 
-  const { OPENAI_API_KEY, OPENAI_MODEL } = process.env;
-  const MODEL = OPENAI_MODEL || "gpt-4o-mini";
-  if (!OPENAI_API_KEY) {
-    res.statusCode = 500;
-    setStreamHeaders(res);
-    res.end("Blueprint Edit error (500): OPENAI_API_KEY missing");
-    return;
-  }
+    const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+    const MODEL = (process.env.OPENAI_MODEL || "gpt-4o-mini").trim();
 
-  const body = await readBody(req);
-  const { blueprint, instruction } = body || {};
-  if (!blueprint || !instruction) {
-    res.statusCode = 400;
-    setStreamHeaders(res);
-    res.end("Blueprint Edit error (400): 'blueprint' and 'instruction' are required");
-    return;
-  }
+    if (!OPENAI_API_KEY) {
+      setStreamHeaders(res);
+      res.statusCode = 500;
+      res.end("Blueprint Edit error (500): OPENAI_API_KEY missing");
+      return;
+    }
 
-  const bpText = typeof blueprint === "string" ? blueprint : JSON.stringify(blueprint);
-  const userText = `
+    const body = await readBody(req);
+    const { blueprint, instruction } = body || {};
+    if (!blueprint || !instruction) {
+      setStreamHeaders(res);
+      res.statusCode = 400;
+      res.end("Blueprint Edit error (400): 'blueprint' and 'instruction' are required");
+      return;
+    }
+
+    const bpText = typeof blueprint === "string" ? blueprint : JSON.stringify(blueprint);
+
+    const userText = `
 You will minimally edit the existing site blueprint JSON according to the instruction.
 
 Return ONLY the updated Blueprint JSON object.
@@ -63,8 +66,8 @@ CURRENT BLUEPRINT JSON:
 ${bpText}
 `.trim();
 
-  try {
     setStreamHeaders(res);
+    res.setHeader("X-Model", MODEL);
     res.flushHeaders?.();
 
     const client = new OpenAI({ apiKey: OPENAI_API_KEY });
@@ -84,9 +87,14 @@ ${bpText}
     }
     res.end();
   } catch (err) {
-    const msg = (err && err.message) ? err.message : String(err);
+    const msg =
+      err?.response?.data?.error?.message ||
+      err?.error?.message ||
+      err?.message ||
+      String(err);
     if (!res.headersSent) setStreamHeaders(res);
     res.statusCode = 500;
     res.end(`Blueprint Edit error (500): ${msg}`);
+    console.error("[/api/blueprint-edit] Error:", err);
   }
 }

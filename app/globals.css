@@ -1,0 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Subtle global look */
+:root { color-scheme: dark; }
+html, body { background: #0B0B0C; }
+.scrollbar-thin { scrollbar-width: thin; }
+
+/* Glass utility */
+.glass { @apply border border-white/10 bg-white/5 backdrop-blur; }

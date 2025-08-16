@@ -1,5 +1,13 @@
+// api/health.js
 export const runtime = "nodejs";
-
+export default async function handler(req, res) {
+  res.status(200).json({
+    ok: true,
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY ? "present" : "missing",
+    OPENAI_MODEL: process.env.OPENAI_MODEL || "gpt-4o-mini",
+    time: new Date().toISOString()
+  });
+}
 function setHeaders(res, version = "v8") {
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   res.setHeader("Cache-Control", "no-cache");

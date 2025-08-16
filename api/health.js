@@ -1,5 +1,5 @@
 // api/health.js
-
+export const config = { runtime: "nodejs20.x" }
 
 function setHeaders(res, version = "v8") {
   res.setHeader("Content-Type", "application/json; charset=utf-8");

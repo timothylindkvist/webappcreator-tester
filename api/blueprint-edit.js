@@ -1,7 +1,7 @@
 // api/blueprint-edit.js
 import OpenAI from "openai";
 import { MASTER_PROMPT } from "../masterPrompt.js";
-
+export const config = { runtime: "nodejs20.x" }
 
 function setStreamHeaders(res, version = "v8-edit") {
   res.setHeader("Content-Type", "text/plain; charset=utf-8");

@@ -20,7 +20,6 @@ export default async function handler(req, res){
 
     const resp = await streamChat({
       apiKey: process.env.OPENAI_API_KEY,
-      model: process.env.OPENAI_MODEL || "openai/gpt-5",
       messages
     });
 

@@ -1,24 +1,29 @@
-const BASE_URL = (process.env.AI_GATEWAY_URL || 'https://ai-gateway.vercel.sh/v1').replace(/\/$/, '');
-const API_KEY = process.env.VERCEL_AI_GATEWAY_API_KEY || process.env.OPENAI_API_KEY;
+// Server-only helper (do NOT import in client bundles)
+const BASE_URL = "https://ai-gateway.vercel.sh/v1";    // hardcoded Gateway URL
+const API_KEY = process.env.VERCEL_AI_GATEWAY_API_KEY || process.env.OPENAI_API_KEY; // prefer gateway key
 
 if (!API_KEY) {
-  console.warn("[AI Gateway] Missing API key. Set VERCEL_AI_GATEWAY_API_KEY (preferred) or OPENAI_API_KEY.");
+  console.warn("[AI Gateway] Missing API key. Set VERCEL_AI_GATEWAY_API_KEY in your Vercel project.");
 }
 
-export async function streamChat({ apiKey = API_KEY, model, messages, response_format }) {
+export async function streamChat({
+  messages,
+  response_format,
+  model = "openai/gpt-5",        // hard default to GPT-5 (Gateway string)
+  apiKey = API_KEY,
+}) {
   const res = await fetch(`${BASE_URL}/chat/completions`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`
+      "Authorization": `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      // Use GPT‑5 family on the AI Gateway by default. You may override with OPENAI_MODEL.
-      model: model || process.env.OPENAI_MODEL || "openai/gpt-5",
+      model,
       messages,
       stream: true,
-      response_format
-    })
+      response_format,
+    }),
   });
   if (!res.ok) throw new Error(`AI Gateway error (${res.status}): ${await res.text()}`);
   return res;

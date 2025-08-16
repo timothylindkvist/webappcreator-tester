@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "functions": {
+    "api/**/*.{js,mjs}": {
+      "runtime": "nodejs22.x",
+      "memory": 512
+    }
+  }
+}

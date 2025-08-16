@@ -1,4 +1,4 @@
-// api/health.js
+// api/blueprint.js
 import OpenAI from "openai";
 import { MASTER_PROMPT } from "../masterPrompt.js";
 export const config = { runtime: "nodejs20.x" }

@@ -1,4 +1,4 @@
-export const config = { runtime: "nodejs22.x" };
+export const runtime = "nodejs";
 
 import OpenAI from "openai";
 import { MASTER_PROMPT } from "../masterPrompt.js";

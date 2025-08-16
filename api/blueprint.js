@@ -73,9 +73,12 @@ ${brief || "Generate a sensible default business website blueprint with Home, Fe
     }
     res.end();
   } catch (err) {
-    const msg = (err && err.message) ? err.message : String(err);
-    if (!res.headersSent) setStreamHeaders(res);
-    res.statusCode = 500;
-    res.end(`Blueprint error (500): ${msg}`);
-  }
+  const msg =
+    err?.response?.data?.error?.message ||
+    err?.error?.message ||
+    err?.message ||
+    String(err);
+  if (!res.headersSent) setStreamHeaders(res);
+  res.statusCode = 500;
+  res.end(`Blueprint error (500): ${msg}`);
 }

@@ -34,7 +34,7 @@ export default function Builder() {
             {(data.features.items || []).map((it, i) => (
               <div key={i} className="rounded-xl border p-4 bg-muted">
                 <div className="font-medium">{it.title}</div>
-                <div className="text-sm text-muted-foreground">{it.body}</div>
+                <div className="text-sm text-muted-foreground">{it.description ?? it.body}</div>
               </div>
             ))}
           </div>
@@ -77,7 +77,7 @@ export default function Builder() {
                 <div className="font-semibold">{p.name}</div>
                 <div className="text-2xl my-2">{p.price}</div>
                 <ul className="text-sm text-muted-foreground list-disc ml-5 space-y-1">
-                  {(p.features || []).map((f, j) => <li key={j}>{f}</li>)}
+                  {(p.includes ?? p.features ?? [] || []).map((f, j) => <li key={j}>{f}</li>)}
                 </ul>
               </div>
             ))}

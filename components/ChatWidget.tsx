@@ -10,7 +10,7 @@ export default function ChatWidget() {
     { role: 'assistant', content: '👋 I handle everything. Describe your website (business, audience, tone, colors, sections)…' }
   ]);
   const [input, setInput] = useState('');
-
+ 
   async function send() {
     if (!input.trim()) return;
     const userMsg: Msg = { role: 'user', content: input.trim() };

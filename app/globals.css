@@ -1,3 +1,4 @@
+:root:not([data-theme-ready]) body { visibility: hidden; }
 /* === Dynamic theme tokens (chat-controlled) === */
 /* The chat sets these at runtime with documentElement.style.setProperty('--brand', ...), etc. */
 /* Provide neutral fallbacks only; no hardcoded brand colors. */

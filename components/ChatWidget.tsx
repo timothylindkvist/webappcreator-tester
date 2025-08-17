@@ -42,6 +42,7 @@ export default function ChatWidget() {
               break;
             case 'setTheme':
               applyTheme(t.palette);
+              try { localStorage.setItem('themeV1', JSON.stringify({ brand: t.palette.brand, accent: t.palette.accent, bg: t.palette.background, fg: t.palette.foreground })); } catch {}
               break;
             case 'addSection':
               addSection(t.section, t.payload);

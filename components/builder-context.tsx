@@ -1,6 +1,8 @@
 
 'use client';
 
+import React from 'react';
+
 import { createContext, useContext, useState, useCallback } from 'react';
 import { Schema } from './Builder';
 
@@ -52,6 +54,46 @@ export function BuilderProvider({ children }: { children: React.ReactNode }) {
       return copy;
     });
   }, []);
+
+  
+  // Initialize theme from localStorage or via chat tool on first mount
+  React.useEffect(() => {
+    try {
+      const saved = localStorage.getItem('themeV1');
+      if (saved) return; // boot script already applied
+    } catch {}
+    // Ask chat API for a neutral, tasteful theme; expect a setTheme tool
+    (async function(){
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: [{ role: 'user', content: 'Initialize theme with a tasteful neutral palette. Only return a setTheme tool instruction; no assistant text.' }],
+            state: {}
+          })
+        });
+        const data = await res.json();
+        if (Array.isArray(data.tools)) {
+          for (const t of data.tools) {
+            if (t.type === 'setTheme' && t.palette) {
+              applyTheme(t.palette);
+              try {
+                localStorage.setItem('themeV1', JSON.stringify({
+                  brand: t.palette.brand,
+                  accent: t.palette.accent,
+                  bg: t.palette.background,
+                  fg: t.palette.foreground,
+                }));
+              } catch {}
+            }
+          }
+        }
+      } catch(e) {
+        // ignore init failure; fallbacks remain
+      }
+    })();
+  }, [applyTheme]);
 
   const fixImages = useCallback((seed: string) => {
     setData((prev: any) => {

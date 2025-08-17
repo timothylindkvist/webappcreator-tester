@@ -21,7 +21,7 @@ const gateway = createGateway({
 export async function POST(req: NextRequest) {
   const { brief } = await req.json();
 
-  const system = `You are a senior brand web designer. Given a brief, output a JSON object matching the provided Zod schema. Use vibrant purple→pink gradients with cyan accents, mobile-first, and influencer aesthetics. Use placeholder images via https://picsum.photos/seed/{slug}/800/600.`;
+  const system = `You are a senior brand web designer. Given a brief, output a JSON object matching the provided Zod schema. Return a palette appropriate to the brief.`;
 
   const { object } = await generateObject({
     model: gateway(MODEL),

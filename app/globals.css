@@ -49,7 +49,7 @@ body {
 .text-accent-foreground { color: hsl(var(--accent-foreground)); }
 
 .gradient-text {
-  background: linear-gradient(90deg, hsl(var(--brand)), hsl(var(--accent)));
+  background: linear-gradient(90deg, hsl(var(--brand)), hsl(var(--accent)))), hsl(var(--accent)));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -57,10 +57,15 @@ body {
 
 .glass {
   backdrop-filter: blur(8px);
-  background: linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.06));
+  background: linear-gradient(90deg, hsl(var(--brand)), hsl(var(--accent))), rgba(255,255,255,.06));
   border: 1px solid rgba(255,255,255,.2);
 }
 
 /* micro-animations */
 @keyframes float { 0%{ transform: translateY(0) } 50%{ transform: translateY(-6px) } 100%{ transform: translateY(0) } }
 .animate-float { animation: float 6s ease-in-out infinite; }
+
+
+/* Gradient blobs driven by theme tokens */
+.blob-brand { background: radial-gradient(closest-side, hsl(var(--brand) / .55), transparent); }
+.blob-accent { background: radial-gradient(closest-side, hsl(var(--accent) / .55), transparent); }

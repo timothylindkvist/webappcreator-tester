@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
 
       try {
         const response = await client.chat.completions.create({
-          model: process.env.NEXT_PUBLIC_AI_MODEL || "gpt-4o-mini",
+          model: process.env.NEXT_PUBLIC_AI_MODEL || "gpt-5",
           stream: true,
           temperature: 0.7,
           tool_choice: "auto",

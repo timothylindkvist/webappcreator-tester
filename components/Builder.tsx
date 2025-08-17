@@ -12,14 +12,66 @@ import FAQ from './sections/FAQ';
 import { Button, Card } from './ui';
 
 export const Schema = z.object({
-  theme: z.object({ vibe: z.string(), palette: z.object({ brand: z.string(), accent: z.string(), background: z.string(), foreground: z.string() }) }).passthrough(),
-  brand: z.object({ name: z.string(), tagline: z.string(), industry: z.string() }),
+  theme: z.object({
+    vibe: z.string(),
+    palette: z.object({
+      brand: z.string(),
+      accent: z.string(),
+      background: z.string(),
+      foreground: z.string()
+    }),
+    font: z.object({ heading: z.string(), body: z.string() }).optional()
+  }),
+  brand: z.object({
+    name: z.string(),
+    tagline: z.string(),
+    industry: z.string()
+  }),
   nav: z.array(z.object({ label: z.string(), href: z.string() })).optional(),
-  hero: z.object({ title: z.string(), subtitle: z.string(), cta: z.object({ label: z.string() }) }),
-  about: z.object({ heading: z.string(), body: z.string(), bullets: z.array(z.string()).max(6) }),
-  gallery: z.object({ items: z.array(z.object({ title: z.string(), image: z.string().url() })).max(9) }),
-  testimonials: z.object({ quotes: z.array(z.object({ quote: z.string(), author: z.string() })).max(6) }),
-  cta: z.object({ heading: z.string(), subheading: z.string(), primary: z.object({ label: z.string() }) })
+
+  hero: z.object({
+    title: z.string(),
+    subtitle: z.string(),
+    badge: z.string().optional(),
+    cta: z.object({ label: z.string(), url: z.string().optional() })
+  }),
+
+  about: z.object({
+    heading: z.string(),
+    body: z.string(),
+    bullets: z.array(z.string()).max(6)
+  }),
+
+  features: z.object({
+    items: z.array(z.object({ title: z.string(), description: z.string() })).max(6)
+  }).optional(),
+
+  gallery: z.object({
+    items: z.array(z.object({ title: z.string(), image: z.string().url() })).max(9)
+  }).optional(),
+
+  testimonials: z.object({
+    quotes: z.array(z.object({ quote: z.string(), author: z.string() })).max(6)
+  }).optional(),
+
+  pricing: z.object({
+    heading: z.string(),
+    plans: z.array(z.object({
+      name: z.string(),
+      price: z.string(),
+      includes: z.array(z.string()).max(6)
+    })).max(4)
+  }).optional(),
+
+  faq: z.object({
+    items: z.array(z.object({ q: z.string(), a: z.string() })).max(8)
+  }).optional(),
+
+  cta: z.object({
+    heading: z.string(),
+    subheading: z.string(),
+    primary: z.object({ label: z.string(), url: z.string().optional() })
+  })
 });
 
 export type SiteData = z.infer<typeof Schema>;

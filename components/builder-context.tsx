@@ -16,6 +16,11 @@ type CtxType = {
   addSection: (section: string, payload: any) => void;
   removeSection: (section: string) => void;
   fixImages: (seed: string) => void;
+  applyStylePreset: (preset: 'minimal'|'playful'|'editorial'|'brutalist'|'luxury'|'retro') => void;
+  setTypography: (heading: string, body: string) => void;
+  setDensity: (density: 'compact'|'cozy'|'comfortable') => void;
+  patchSection: (section: string, content: any) => void;
+  redesign: (directives: string, keep?: { palette?: boolean; layout?: boolean; copyTone?: boolean }) => void;
 };
 
 const Ctx = createContext<CtxType | null>(null);
@@ -54,6 +59,34 @@ export function BuilderProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  
+  const applyStylePreset = useCallback((preset: 'minimal'|'playful'|'editorial'|'brutalist'|'luxury'|'retro') => {
+    document.documentElement.setAttribute('data-style', preset);
+  }, []);
+
+  const setTypography = useCallback((heading: string, body: string) => {
+    const r = document.documentElement;
+    r.style.setProperty('--font-heading', heading);
+    r.style.setProperty('--font-body', body);
+    try { localStorage.setItem('fontsV1', JSON.stringify({ heading, body })); } catch {}
+  }, []);
+
+  const setDensity = useCallback((density: 'compact'|'cozy'|'comfortable') => {
+    document.documentElement.setAttribute('data-density', density);
+  }, []);
+
+  const patchSection = useCallback((section: string, content: any) => {
+    setData((prev: any) => prev ? { ...prev, [section]: content } : prev);
+  }, []);
+
+  const redesign = useCallback(async (directives: string, keep?: { palette?: boolean; layout?: boolean; copyTone?: boolean }) => {
+    setBrief((b) => {
+      const keepTxt = keep ? ` Keep:${JSON.stringify(keep)}.` : '';
+      return `${b}\n\nDirectives: ${directives}.${keepTxt}`;
+    });
+    await rebuild();
+  }, [rebuild]);
+
   const fixImages = useCallback((seed: string) => {
     setData((prev: any) => {
       if (!prev || !prev.gallery?.items) return prev;
@@ -79,7 +112,7 @@ export function BuilderProvider({ children }: { children: React.ReactNode }) {
   }, [applyTheme]);
 
   return (
-    <Ctx.Provider value={{ brief, setBrief, data, setData, applyTheme, rebuild, addSection, removeSection, fixImages }}>
+    <Ctx.Provider value={{ brief, setBrief, data, setData, applyTheme, rebuild, addSection, removeSection, fixImages, applyStylePreset, setTypography, setDensity, patchSection, redesign }}>
       {children}
     </Ctx.Provider>
   );

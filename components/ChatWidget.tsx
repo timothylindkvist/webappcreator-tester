@@ -8,7 +8,7 @@ import { useBuilder } from './builder-context';
 type Msg = { role: 'user' | 'assistant'; content: string };
 
 export default function ChatWidget() {
-  const { setBrief, rebuild, applyTheme, addSection, removeSection, fixImages } = useBuilder();
+  const { brief, data, setBrief, rebuild, applyTheme, addSection, removeSection, fixImages, applyStylePreset, setTypography, setDensity, patchSection, redesign } = useBuilder();
   const [messages, setMessages] = useState<Msg[]>([
     { role: 'assistant', content: 'Describe how you want your website to be (business type, audience, tone, colors, sections)…' }
   ]);
@@ -28,7 +28,7 @@ export default function ChatWidget() {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: next, state: {} }),
+        body: JSON.stringify({ messages: next, state: { brief, data } }),
       });
       const data = await res.json();
 
@@ -50,6 +50,24 @@ export default function ChatWidget() {
               break;
             case 'removeSection':
               removeSection(t.section);
+              break;
+            case 'setStylePreset':
+              applyStylePreset(t.preset);
+              break;
+            case 'setTypography':
+              setTypography(t.heading, t.body);
+              break;
+            case 'setDensity':
+              setDensity(t.density);
+              break;
+            case 'patchSection':
+              patchSection(t.section, t.content);
+              break;
+            case 'suggestPaletteFromBrand':
+              if (t.palette) applyTheme(t.palette);
+              break;
+            case 'redesign':
+              redesign(t.directives, t.keep);
               break;
             case 'fixImages':
               fixImages(t.seed || 'fallback');

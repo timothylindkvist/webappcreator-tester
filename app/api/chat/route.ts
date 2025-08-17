@@ -20,15 +20,29 @@ const ToolInstruction = z.discriminatedUnion('type', [
       foreground: z.string(),
     }),
   }),
+  // NEW: design-level controls
+  z.object({ type: z.literal('setStylePreset'), preset: z.enum(['minimal','playful','editorial','brutalist','luxury','retro']) }),
+  z.object({ type: z.literal('setTypography'), heading: z.string(), body: z.string() }),
+  z.object({ type: z.literal('setDensity'), density: z.enum(['compact','cozy','comfortable']) }),
+  // Section patching (server suggests new content based on provided state)
   z.object({
-    type: z.literal('addSection'),
-    section: z.enum(['features','gallery','testimonials','pricing','faq']),
-    payload: z.record(z.any()),
+    type: z.literal('patchSection'),
+    section: z.enum(['hero','about','features','gallery','testimonials','pricing','faq','cta']),
+    content: z.record(z.any())
   }),
+  // Palette ideation from brand keywords
+  z.object({ type: z.literal('suggestPaletteFromBrand'), keywords: z.string(), palette: z.object({
+    brand: z.string(), accent: z.string(), background: z.string(), foreground: z.string()
+  }).optional() }),
+  // High-level redesign: apply directives then rebuild
   z.object({
-    type: z.literal('removeSection'),
-    section: z.enum(['features','gallery','testimonials','pricing','faq']),
+    type: z.literal('redesign'),
+    directives: z.string().min(1), // what to change; client will merge into brief and rebuild
+    keep: z.object({ palette: z.boolean().optional(), layout: z.boolean().optional(), copyTone: z.boolean().optional() }).optional()
   }),
+  // Utilities
+  z.object({ type: z.literal('addSection'), section: z.enum(['features','gallery','testimonials','pricing','faq']), payload: z.record(z.any()) }),
+  z.object({ type: z.literal('removeSection'), section: z.enum(['features','gallery','testimonials','pricing','faq']) }),
   z.object({ type: z.literal('fixImages'), seed: z.string().default('fallback') }),
   z.object({ type: z.literal('explainError'), message: z.string() }),
 ]);
@@ -46,21 +60,28 @@ export async function POST(req: NextRequest) {
   const { messages, state } = await req.json();
 
   const system = `
-You are a website-building copilot that LISTENS carefully to the user's intent.
-- If the user describes a business or changes, emit tools to update the brief and rebuild.
-- If they ask for colors, emit setTheme with a tasteful palette.
-- If sections need changes, add/remove sections with minimal payloads.
-- After tool calls, include a short "assistant" summary of what changed.
-Keep outputs concise. Never leak secrets. Use placeholders unless real data is provided.
+You are a DESIGN DIRECTOR + web copilot that LISTENS to the user.
+You may change theme, layout, or copy when it improves the brief. Be tasteful and opinionated, not just obedient.
+
+You have access to the current "state" (brief and data). When users ask for changes, output a series of tool instructions to implement them:
+- updateBrief / redesign: update the brief or add directives; then rebuild.
+- setTheme or suggestPaletteFromBrand: choose an on-brand palette (brand/accent/background/foreground).
+- setStylePreset: minimal / playful / editorial / brutalist / luxury / retro.
+- setTypography: heading and body font families (use safe, widely-available fonts or system stacks).
+- setDensity: compact/cozy/comfortable (affects spacing variables).
+- patchSection: return JSON for a specific section only (use the existing state to keep consistency).
+- addSection / removeSection / fixImages.
+After tools, include a short assistant summary.
+Keep outputs concise and never include secrets.
 `;
 
-  // We let the model decide which tools to call by producing the instruction list
   const { object } = await generateObject({
     model: gateway ? gateway(MODEL) : (MODEL as any),
     system,
+    // Give the model access to the current brief & data to make targeted patches
     prompt: JSON.stringify({ messages, state }),
     schema: OutputSchema,
-    temperature: 0.2,
+    temperature: 0.3,
   });
 
   return new Response(JSON.stringify(object), {

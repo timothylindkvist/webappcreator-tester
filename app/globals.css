@@ -1,4 +1,4 @@
-:root:not([data-theme-ready]) body { visibility: hidden; }
+/* removed hide-until-ready to avoid blank page */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

@@ -1,136 +1,89 @@
 'use client';
-import { useState } from 'react';
-import { z } from 'zod';
-import Hero from './sections/Hero';
-import About from './sections/About';
-import Gallery from './sections/Gallery';
-import Testimonials from './sections/Testimonials';
-import CTA from './sections/CTA';
-import Features from './sections/Features';
-import Pricing from './sections/Pricing';
-import FAQ from './sections/FAQ';
-import { Button, Card } from './ui';
-
-export const Schema = z.object({
-  theme: z.object({
-    vibe: z.string(),
-    palette: z.object({
-      brand: z.string(),
-      accent: z.string(),
-      background: z.string(),
-      foreground: z.string()
-    }),
-    font: z.object({ heading: z.string(), body: z.string() }).optional()
-  }),
-  brand: z.object({
-    name: z.string(),
-    tagline: z.string(),
-    industry: z.string()
-  }),
-  nav: z.array(z.object({ label: z.string(), href: z.string() })).optional(),
-
-  hero: z.object({
-    title: z.string(),
-    subtitle: z.string(),
-    badge: z.string().optional(),
-    cta: z.object({ label: z.string(), url: z.string().optional() })
-  }),
-
-  about: z.object({
-    heading: z.string(),
-    body: z.string(),
-    bullets: z.array(z.string()).max(6)
-  }),
-
-  features: z.object({
-    items: z.array(z.object({ title: z.string(), description: z.string() })).max(6)
-  }).optional(),
-
-  gallery: z.object({
-    items: z.array(z.object({ title: z.string(), image: z.string().url() })).max(9)
-  }).optional(),
-
-  testimonials: z.object({
-    quotes: z.array(z.object({ quote: z.string(), author: z.string() })).max(6)
-  }).optional(),
-
-  pricing: z.object({
-    heading: z.string(),
-    plans: z.array(z.object({
-      name: z.string(),
-      price: z.string(),
-      includes: z.array(z.string()).max(6)
-    })).max(4)
-  }).optional(),
-
-  faq: z.object({
-    items: z.array(z.object({ q: z.string(), a: z.string() })).max(8)
-  }).optional(),
-
-  cta: z.object({
-    heading: z.string(),
-    subheading: z.string(),
-    primary: z.object({ label: z.string(), url: z.string().optional() })
-  })
-});
-
-export type SiteData = z.infer<typeof Schema>;
-
-async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit, ms = 35000): Promise<Response> {
-  const ctrl = new AbortController();
-  const id = setTimeout(() => ctrl.abort(), ms);
-  try { return await fetch(input, { ...init, signal: ctrl.signal }); }
-  finally { clearTimeout(id); }
-}
+import { useEffect } from 'react';
+import { useBuilder } from '@/components/builder-context';
 
 export default function Builder() {
-  const [brief, setBrief] = useState('Create a cool website for influencers');
-  const [data, setData] = useState<SiteData | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const build = async () => {
-    setLoading(true); setError(null);
-    try {
-      const res = await fetchWithTimeout('/api/build', { method: 'POST', body: JSON.stringify({ brief }) });
-      if (!res.ok) throw new Error(await res.text());
-      const json = await res.json();
-      setData(json as SiteData);
-    } catch (e:any) {
-      setError(e.message);
-    } finally { setLoading(false); }
-  };
+  const { data } = useBuilder();
+  // apply CSS vars for theme palette
+  useEffect(() => {
+    const r = document.documentElement;
+    r.style.setProperty('--brand', data.theme.palette.brand);
+    r.style.setProperty('--accent', data.theme.palette.accent);
+    r.style.setProperty('--background', data.theme.palette.background);
+    r.style.setProperty('--foreground', data.theme.palette.foreground);
+  }, [data.theme]);
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-10">
-      <div className="flex flex-col gap-3 md:flex-row">
-        <Card className="w-full p-4 md:w-1/3">
-          <h2 className="text-lg font-semibold">Your brief</h2>
-          <textarea value={brief} onChange={(e)=>setBrief(e.target.value)} placeholder="Describe the site…" className="mt-2 h-40 w-full rounded-xl border border-input bg-transparent p-3 outline-none" />
-          <Button onClick={build} className="mt-3 w-full" disabled={loading}>{loading ? 'Generating…' : 'Generate Site'}</Button>
-          {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
-          <p className="mt-3 text-xs text-muted-foreground">Model: {process.env.NEXT_PUBLIC_AI_MODEL ?? 'openai/gpt-5'}</p>
-        </Card>
-        <Card className="w-full p-0 md:w-2/3">
-          {!data && (
-            <div className="flex h-full min-h-[420px] items-center justify-center p-10 text-center text-muted-foreground">
-              Your generated site will appear here.
-            </div>
-          )}
-          {data && (
-            <div className="[&>*:not(:first-child)]:border-t [&>*:not(:first-child)]:border-border/60">
-              <Hero {...data.hero} />
-              <About {...data.about} />
-              {data.features && <Features {...data.features} />}
-              {data.gallery && <Gallery {...data.gallery} />}
-              {data.testimonials && <Testimonials {...data.testimonials} />}
-              {data.pricing && <Pricing {...data.pricing} />}
-              {data.faq && <FAQ {...data.faq} />}
-              <CTA {...data.cta} />
-            </div>
-          )}
-        </Card>
-      </div>
+    <div className="space-y-8">
+      <section className="p-8 rounded-2xl bg-card border border-border">
+        <h1 className="text-3xl font-bold" style={{ color: 'var(--brand)' }}>{data.hero?.title}</h1>
+        <p className="mt-2 text-muted-foreground">{data.hero?.subtitle}</p>
+      </section>
+
+      {data.about && (
+        <section className="p-6 rounded-2xl bg-card border border-border">
+          <h2 className="text-xl font-semibold">{data.about.heading}</h2>
+          <p className="mt-2 text-muted-foreground">{data.about.body}</p>
+        </section>
+      )}
+
+      {data.features && (
+        <section className="p-6 rounded-2xl bg-card border border-border">
+          <h2 className="text-xl font-semibold">{data.features.title || 'Features'}</h2>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+            {(data.features.items || []).map((it, i) => (
+              <div key={i} className="rounded-xl border p-4 bg-muted">
+                <div className="font-medium">{it.title}</div>
+                <div className="text-sm text-muted-foreground">{it.body}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {data.gallery && (
+        <section className="p-6 rounded-2xl bg-card border border-border">
+          <h2 className="text-xl font-semibold">{data.gallery.title || 'Gallery'}</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+            {(data.gallery.images || []).map((img, i) => (
+              <div key={i} className="aspect-video rounded-xl bg-muted border flex items-center justify-center text-xs text-muted-foreground">
+                {img.alt || 'Image'}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {data.testimonials && (
+        <section className="p-6 rounded-2xl bg-card border border-border">
+          <h2 className="text-xl font-semibold">{data.testimonials.title || 'Testimonials'}</h2>
+          <div className="grid sm:grid-cols-2 gap-4 mt-4">
+            {(data.testimonials.items || []).map((t, i) => (
+              <div key={i} className="rounded-xl border p-4 bg-muted">
+                <div className="italic">“{t.quote}”</div>
+                <div className="text-sm text-muted-foreground mt-2">— {t.author || 'Anonymous'}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {data.pricing && (
+        <section className="p-6 rounded-2xl bg-card border border-border">
+          <h2 className="text-xl font-semibold">{data.pricing.title || 'Pricing'}</h2>
+          <div className="grid md:grid-cols-3 gap-4 mt-4">
+            {(data.pricing.plans || []).map((p, i) => (
+              <div key={i} className="rounded-xl border p-4 bg-muted">
+                <div className="font-semibold">{p.name}</div>
+                <div className="text-2xl my-2">{p.price}</div>
+                <ul className="text-sm text-muted-foreground list-disc ml-5 space-y-1">
+                  {(p.features || []).map((f, j) => <li key={j}>{f}</li>)}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

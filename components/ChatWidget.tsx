@@ -1,4 +1,3 @@
-
 'use client';
 import { useState } from 'react';
 import { useBuilder } from '@/components/builder-context';
@@ -6,30 +5,30 @@ import { useBuilder } from '@/components/builder-context';
 type Msg = { role: 'user' | 'assistant'; content: string };
 
 export default function ChatWidget() {
-  const { brief, setBrief, rebuild, applyTheme, addSection, removeSection, fixImages, applyStylePreset, setTypography, setDensity, patchSection, redesign } = useBuilder();
+  const { brief, setBrief, data, setData, applyTheme, addSection, removeSection, fixImages, applyStylePreset, setTypography, setDensity, patchSection, redesign, rebuild } = useBuilder();
   const [messages, setMessages] = useState<Msg[]>([
-    { role: 'assistant', content: '👋 Describe how you want your website to be (business type, audience, tone, colors, sections)…' }
+    { role: 'assistant', content: '👋 I handle everything. Describe your website (business, audience, tone, colors, sections)…' }
   ]);
   const [input, setInput] = useState('');
 
   async function send() {
     if (!input.trim()) return;
     const userMsg: Msg = { role: 'user', content: input.trim() };
-    setMessages((cur) => [...cur, userMsg]);
+    setMessages(cur => [...cur, userMsg]);
     setInput('');
 
     const res = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: [...messages, userMsg], state: { brief } }),
+      body: JSON.stringify({ messages: [...messages, userMsg], state: { brief, data } }),
     });
 
     const reader = res.body?.getReader();
     if (!reader) return;
 
-    // Insert a streaming assistant bubble
-    const assistantIndex = messages.length + 1;
-    setMessages((cur) => [...cur, { role: 'assistant', content: '' }]);
+    // start streaming bubble
+    const idx = messages.length + 1;
+    setMessages(cur => [...cur, { role: 'assistant', content: '' }]);
 
     const decoder = new TextDecoder();
     let buffer = '';
@@ -38,28 +37,30 @@ export default function ChatWidget() {
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
 
-      const parts = buffer.split('\n\n');
-      buffer = parts.pop() || '';
+      // NDJSON: split by \n, ignore pings
+      let lines = buffer.split('\n');
+      buffer = lines.pop() || '';
 
-      for (const part of parts) {
-        if (!part.trim()) continue;
-        let json: any;
-        try { json = JSON.parse(part); } catch { continue; }
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        if (line.startsWith(':ping')) continue;
 
-        // Stream assistant narration
-        if (json.type === 'assistant' && typeof json.delta === 'string') {
-          setMessages((cur) => {
+        let msg: any;
+        try { msg = JSON.parse(line); } catch { continue; }
+
+        if (msg.type === 'assistant' && typeof msg.delta === 'string') {
+          setMessages(cur => {
             const copy = [...cur];
-            copy[assistantIndex] = { role: 'assistant', content: (copy[assistantIndex]?.content || '') + json.delta };
+            copy[idx] = { role: 'assistant', content: (copy[idx]?.content || '') + msg.delta };
             return copy;
           });
         }
 
-        // Handle tool events -> execute + inline confirmation
-        if (json.type === 'tool' && typeof json.name === 'string') {
-          const args = json.args || {};
+        if (msg.type === 'tool') {
+          const args = msg.args || {};
           let confirm = '';
-          switch (json.name) {
+
+          switch (msg.name) {
             case 'updateBrief':
               setBrief(args.brief);
               confirm = `\n\n📝 Updated brief.`;
@@ -69,10 +70,9 @@ export default function ChatWidget() {
               confirm = `\n\n🔄 Rebuilt the site.`;
               break;
             case 'setTheme': {
-              const { brand, accent, background, foreground } = args;
-              applyTheme({ brand, accent, background, foreground });
-              const vibe = args.vibe ? ` (vibe: ${args.vibe})` : '';
-              confirm = `\n\n🎨 Applied theme${vibe}.`;
+              const { brand, accent, background, foreground, vibe } = args;
+              applyTheme({ brand, accent, background, foreground, vibe });
+              confirm = `\n\n🎨 Applied theme${vibe ? ` (${vibe})` : ''}.`;
               break;
             }
             case 'addSection':
@@ -84,65 +84,74 @@ export default function ChatWidget() {
               confirm = `\n\n➖ Removed section “${args.section}”.`;
               break;
             case 'fixImages':
-              fixImages(args.section || 'fallback');
-              confirm = `\n\n🖼️ Fixed images${args.section ? ' in “' + args.section + '”' : ''}.`;
+              fixImages(args.section);
+              confirm = `\n\n🖼️ Fixed images${args.section ? ` in “${args.section}”` : ''}.`;
               break;
             case 'applyStylePreset':
               applyStylePreset(args.preset);
               confirm = `\n\n🎭 Applied style preset “${args.preset}”.`;
               break;
             case 'setTypography':
-              setTypography(args.font || args.heading, args.body || args.font);
-              confirm = `\n\n🔤 Typography updated.`;
+              setTypography(args.font);
+              confirm = `\n\n🔤 Typography → ${args.font}.`;
               break;
             case 'setDensity':
               setDensity(args.density);
-              confirm = `\n\n📐 Density set to “${args.density}”.`;
+              confirm = `\n\n📐 Density → ${args.density}.`;
               break;
             case 'patchSection':
               patchSection(args.section, args.content);
               confirm = `\n\n✏️ Updated “${args.section}”.`;
               break;
             case 'redesign':
-              redesign(args.concept || args.directives);
-              confirm = `\n\n✨ Redesigned site.`;
+              redesign(args.concept);
+              confirm = `\n\n✨ Redesigned layout.`;
+              break;
+            case 'setSiteData':
+              setData(args); // replace entire object
+              confirm = `\n\n🧩 Applied full site structure.`;
               break;
           }
+
           if (confirm) {
-            setMessages((cur) => {
+            setMessages(cur => {
               const copy = [...cur];
-              copy[assistantIndex] = { role: 'assistant', content: (copy[assistantIndex]?.content || '') + confirm };
+              copy[idx] = { role: 'assistant', content: (copy[idx]?.content || '') + confirm };
               return copy;
             });
           }
+        }
+
+        if (msg.type === 'error') {
+          setMessages(cur => {
+            const copy = [...cur];
+            copy[idx] = { role: 'assistant', content: (copy[idx]?.content || '') + `\n\n⚠️ ${msg.message}` };
+            return copy;
+          });
         }
       }
     }
   }
 
   return (
-    <div className="fixed bottom-4 right-4 w-96 max-h-[70vh] flex flex-col bg-card border border-border rounded-2xl shadow-lg overflow-hidden">
+    <div className="h-full flex flex-col bg-card border border-border rounded-2xl overflow-hidden">
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {messages.map((m, i) => (
           <div key={i} className={m.role === 'user' ? 'text-right' : ''}>
-            <div className={'inline-block rounded-xl border border-border/60 px-3 py-2 text-sm whitespace-pre-wrap ' + (m.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted')}>
+            <div className={'inline-block max-w-[85%] whitespace-pre-wrap rounded-xl border px-3 py-2 text-sm ' + (m.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted')}>
               {m.content}
             </div>
           </div>
         ))}
       </div>
-      <div className="border-t border-border/60 p-2 flex gap-2 items-center">
+      <div className="p-2 border-t flex gap-2">
         <input
-          className="flex-1 rounded-xl border border-border/60 bg-transparent px-3 py-2 outline-none"
+          className="flex-1 rounded-xl border px-3 py-2 bg-background"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Describe your website, colors, sections…"
         />
-        <button
-          onClick={send}
-          className="rounded-xl px-4 py-2 bg-primary text-primary-foreground disabled:opacity-50"
-          disabled={!input.trim()}
-        >
+        <button onClick={send} className="rounded-xl px-4 py-2 bg-primary text-primary-foreground disabled:opacity-50" disabled={!input.trim()}>
           Send
         </button>
       </div>

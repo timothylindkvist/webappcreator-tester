@@ -79,8 +79,9 @@ export default function ChatWidget() {
         }
       }
 
-      if (result.assistant) {
-        setMessages((cur) => [...cur, { role: 'assistant', content: result.assistant }]);
+      if (typeof result.assistant === 'string') {
+        const reply: Msg = { role: 'assistant', content: result.assistant };
+        setMessages((cur) => [...cur, reply]);
       }
     } catch (e: any) {
       setLastError(e.message || 'Chat error');

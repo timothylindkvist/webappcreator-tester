@@ -8,7 +8,7 @@ import { useBuilder } from './builder-context';
 type Msg = { role: 'user' | 'assistant'; content: string };
 
 export default function ChatWidget() {
-  const { brief, , setBrief, rebuild, applyTheme, addSection, removeSection, fixImages, applyStylePreset, setTypography, setDensity, patchSection, redesign } = useBuilder();
+  const { brief, data: builderData, setBrief, rebuild, applyTheme, addSection, removeSection, fixImages, applyStylePreset, setTypography, setDensity, patchSection, redesign } = useBuilder();
   const [messages, setMessages] = useState<Msg[]>([
     { role: 'assistant', content: 'Describe how you want your website to be (business type, audience, tone, colors, sections)…' }
   ]);

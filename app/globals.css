@@ -61,3 +61,6 @@ body { font-family: var(--font-body); }
 :root[data-style="luxury"] .rounded-2xl { border-radius: 1.25rem !important; }
 :root[data-density="compact"] .p-5 { padding: 1rem !important; }
 :root[data-density="comfortable"] .p-5 { padding: 1.75rem !important; }
+
+.changed-flash { animation: flash 1.2s ease-in-out; }
+@keyframes flash { 0%{ box-shadow: 0 0 0 0 hsla(var(--accent),.6);} 100%{ box-shadow: 0 0 0 0 transparent;} }

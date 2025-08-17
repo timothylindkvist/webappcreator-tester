@@ -76,6 +76,13 @@ export const Schema = z.object({
 
 export type SiteData = z.infer<typeof Schema>;
 
+async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit, ms = 35000): Promise<Response> {
+  const ctrl = new AbortController();
+  const id = setTimeout(() => ctrl.abort(), ms);
+  try { return await fetch(input, { ...init, signal: ctrl.signal }); }
+  finally { clearTimeout(id); }
+}
+
 export default function Builder() {
   const [brief, setBrief] = useState('Create a cool website for influencers');
   const [data, setData] = useState<SiteData | null>(null);
@@ -85,7 +92,7 @@ export default function Builder() {
   const build = async () => {
     setLoading(true); setError(null);
     try {
-      const res = await fetch('/api/build', { method: 'POST', body: JSON.stringify({ brief }) });
+      const res = await fetchWithTimeout('/api/build', { method: 'POST', body: JSON.stringify({ brief }) });
       if (!res.ok) throw new Error(await res.text());
       const json = await res.json();
       setData(json as SiteData);

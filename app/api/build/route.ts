@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+export const runtime = 'edge';
 
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
@@ -5,7 +7,7 @@ import { generateObject } from 'ai';
 import { MODEL } from '@/lib/models';
 import { createGateway } from '@ai-sdk/gateway';
 
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 // Any-business output schema (relevant copy, images, palette)
 const OutputSchema = z.object({

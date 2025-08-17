@@ -7,6 +7,13 @@ import { useBuilder } from './builder-context';
 
 type Msg = { role: 'user' | 'assistant'; content: string };
 
+async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit, ms = 35000): Promise<Response> {
+  const ctrl = new AbortController();
+  const id = setTimeout(() => ctrl.abort(), ms);
+  try { return await fetch(input, { ...init, signal: ctrl.signal }); }
+  finally { clearTimeout(id); }
+}
+
 export default function ChatWidget() {
   const { brief, data: builderData, setBrief, rebuild, applyTheme, addSection, removeSection, fixImages, applyStylePreset, setTypography, setDensity, patchSection, redesign } = useBuilder();
   const [messages, setMessages] = useState<Msg[]>([
@@ -25,7 +32,7 @@ export default function ChatWidget() {
     setLastError(null);
 
     try {
-      const res: Response = await fetch('/api/chat', {
+      const res: Response = await fetchWithTimeout('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: next, state: { brief, data: builderData } }),

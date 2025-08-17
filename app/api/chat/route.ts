@@ -1,6 +1,5 @@
-
-export const runtime = 'edge';
-export const dynamic = 'force-dynamic';
+export const runtime = "edge";
+export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 import { NextRequest } from "next/server";
@@ -8,9 +7,9 @@ import OpenAI from "openai";
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-function sendJSON(writer: WritableStreamDefaultWriter<Uint8Array>, obj: any) {
+function sendJSON(controller: ReadableStreamDefaultController<Uint8Array>, obj: any) {
   const enc = new TextEncoder();
-  writer.write(enc.encode(JSON.stringify(obj) + "\n\n"));
+  controller.enqueue(enc.encode(JSON.stringify(obj) + "\n\n"));
 }
 
 export async function POST(req: NextRequest) {
@@ -18,11 +17,18 @@ export async function POST(req: NextRequest) {
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
-      const writer = controller.writable.getWriter();
+      // 🔄 keep-alive pings
+      const ping = setInterval(() => {
+        try {
+          controller.enqueue(new TextEncoder().encode(":ping\n\n"));
+        } catch {
+          clearInterval(ping);
+        }
+      }, 15000);
 
       try {
         const response = await client.chat.completions.create({
-          model: process.env.NEXT_PUBLIC_AI_MODEL || "gpt-5",
+          model: process.env.NEXT_PUBLIC_AI_MODEL || "gpt-4o-mini",
           messages,
           stream: true,
           tools: [
@@ -46,7 +52,7 @@ export async function POST(req: NextRequest) {
           // Assistant narration deltas
           const contentDelta = choice?.delta?.content;
           if (typeof contentDelta === "string" && contentDelta.length > 0) {
-            sendJSON(writer, { type: "assistant", delta: contentDelta });
+            sendJSON(controller, { type: "assistant", delta: contentDelta });
           }
 
           // Tool calls (function calls)
@@ -57,17 +63,23 @@ export async function POST(req: NextRequest) {
               if (!fn?.name) continue;
               let args: any = {};
               if (typeof fn.arguments === "string") {
-                try { args = JSON.parse(fn.arguments); } catch { args = { raw: fn.arguments }; }
+                try {
+                  args = JSON.parse(fn.arguments);
+                } catch {
+                  args = { raw: fn.arguments };
+                }
               }
-              sendJSON(writer, { type: "tool", name: fn.name, args });
+              sendJSON(controller, { type: "tool", name: fn.name, args });
             }
           }
         }
 
-        await writer.close();
+        clearInterval(ping);
+        controller.close();
       } catch (err: any) {
-        sendJSON(writer, { type: "error", message: err?.message || "stream error" });
-        await writer.close();
+        clearInterval(ping);
+        sendJSON(controller, { type: "error", message: err?.message || "stream error" });
+        controller.close();
       }
     },
   });

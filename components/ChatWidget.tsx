@@ -25,12 +25,12 @@ export default function ChatWidget() {
     setLastError(null);
 
     try {
-      const res = await fetch('/api/chat', {
+      const res: Response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: next, state: { brief, data } }),
       });
-      const data = await res.json();
+      const data: { assistant?: string; tools?: any[] } = await res.json();
 
       // Apply tool instructions
       if (Array.isArray(data.tools)) {

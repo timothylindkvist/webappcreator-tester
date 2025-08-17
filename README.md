@@ -23,15 +23,3 @@ Open http://localhost:3000
 
 - Push to GitHub and import the repo in Vercel
 - Ensure env vars above are set for **Production** and **Preview**
-
-
-
-## Universal (topic-agnostic) mode
-
-The builder now accepts **any business/topic** (cooking, cars, SaaS, cafés, portfolios, etc.) and returns a structured page with:
-- `theme` (vibe & palette),
-- `brand` (name/tagline/industry),
-- optional `nav`,
-- sections: `hero`, `about`, optional `features`, `gallery`, `testimonials`, `pricing`, `faq`, and a closing `cta`.
-
-UI conditionally renders whatever sections are returned and applies palette colors via CSS variables.

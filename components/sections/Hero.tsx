@@ -10,7 +10,7 @@ export default function Hero({ title, subtitle, cta }: { title: string; subtitle
       </div>
       <div className="mx-auto max-w-3xl text-center">
         <p className="mb-4 inline-block rounded-full border border-border/60 px-3 py-1 text-xs uppercase tracking-widest text-muted-foreground glass">
-          Creator portfolio
+          
         </p>
         <h1 className="text-4xl font-extrabold leading-tight sm:text-5xl md:text-6xl gradient-text">
           {title}

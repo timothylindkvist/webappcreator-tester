@@ -19,7 +19,7 @@ export const Schema = z.object({
 export type SiteData = z.infer<typeof Schema>;
 
 export default function Builder() {
-  const [brief, setBrief] = useState('Create a cool website for influencers');
+  const [brief, setBrief] = useState('Create a cool website for site');
   const [data, setData] = useState<SiteData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +41,7 @@ export default function Builder() {
       <div className="flex flex-col gap-3 md:flex-row">
         <Card className="w-full p-4 md:w-1/3">
           <h2 className="text-lg font-semibold">Your brief</h2>
-          <textarea value={brief} onChange={(e)=>setBrief(e.target.value)} placeholder="Describe the site…" className="mt-2 h-40 w-full rounded-xl border border-input bg-transparent p-3 outline-none" />
+          <textarea value={brief} onChange={(e)=>setBrief(e.target.value)} placeholder="Describe how you want your website to be (purpose, audience, tone, colors, sections)…" className="mt-2 h-40 w-full rounded-xl border border-input bg-transparent p-3 outline-none" />
           <Button onClick={build} className="mt-3 w-full" disabled={loading}>{loading ? 'Generating…' : 'Generate Site'}</Button>
           {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
           <p className="mt-3 text-xs text-muted-foreground">Model: {process.env.NEXT_PUBLIC_AI_MODEL ?? 'openai/gpt-5'}</p>

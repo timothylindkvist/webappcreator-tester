@@ -3,8 +3,8 @@ import type { Metadata } from 'next';
 import { clsx } from 'clsx';
 
 export const metadata: Metadata = {
-  title: 'Influencer Site Builder',
-  description: 'Generate stunning influencer websites with AI.',
+  title: 'site Site Builder',
+  description: 'Generate stunning site websites with AI.',
   metadataBase: new URL('https://example.com'),
 };
 

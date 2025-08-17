@@ -1,6 +1,6 @@
-# Influencer Site Builder
+# site Site Builder
 
-A Next.js App Router project that uses **Vercel AI SDK v5** with **AI Gateway** to generate influencer websites.
+A Next.js App Router project that uses **Vercel AI SDK v5** with **AI Gateway** to generate site websites.
 Styling via Tailwind with fixed keyframes and dark theme variable scopes (resolves common CSS errors).
 
 ## Environment

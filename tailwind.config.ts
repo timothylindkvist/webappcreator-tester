@@ -38,8 +38,8 @@ const config: Config = {
           '50%': { transform: 'translateY(-6px)' },
         },
         'pulse-glow': {
-          '0%, 100%': { boxShadow: '0 0 0 0 hsla(var(--brand), 0.6)' },
-          '50%': { boxShadow: '0 0 30px 8px hsla(var(--accent), 0.35)' },
+          '0%, 100%': { boxShadow: '0 0 0 0 rgba(255, 102, 244, 0.6)' },
+          '50%': { boxShadow: '0 0 30px 8px rgba(75, 115, 255, 0.35)' },
         },
         'slide-up': {
           '0%': { opacity: '0', transform: 'translateY(12px)' },

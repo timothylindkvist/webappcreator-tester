@@ -1,9 +1,7 @@
 
 'use client';
 
-import React from 'react';
-
-import { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback } from 'react';
 import { Schema } from './Builder';
 
 type Data = any; // z.infer<typeof Schema>
@@ -32,6 +30,7 @@ export function BuilderProvider({ children }: { children: React.ReactNode }) {
     r.style.setProperty('--accent', p.accent);
     r.style.setProperty('--bg', p.background);
     r.style.setProperty('--fg', p.foreground);
+    try { localStorage.setItem('themeV1', JSON.stringify({ brand: p.brand, accent: p.accent, bg: p.background, fg: p.foreground })); } catch {}
   }, []);
 
   const rebuild = useCallback(async () => {
@@ -55,46 +54,6 @@ export function BuilderProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  
-  // Initialize theme from localStorage or via chat tool on first mount
-  React.useEffect(() => {
-    try {
-      const saved = localStorage.getItem('themeV1');
-      if (saved) return; // boot script already applied
-    } catch {}
-    // Ask chat API for a neutral, tasteful theme; expect a setTheme tool
-    (async function(){
-      try {
-        const res = await fetch('/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            messages: [{ role: 'user', content: 'Initialize theme with a tasteful neutral palette. Only return a setTheme tool instruction; no assistant text.' }],
-            state: {}
-          })
-        });
-        const data = await res.json();
-        if (Array.isArray(data.tools)) {
-          for (const t of data.tools) {
-            if (t.type === 'setTheme' && t.palette) {
-              applyTheme(t.palette);
-              try {
-                localStorage.setItem('themeV1', JSON.stringify({
-                  brand: t.palette.brand,
-                  accent: t.palette.accent,
-                  bg: t.palette.background,
-                  fg: t.palette.foreground,
-                }));
-              } catch {}
-            }
-          }
-        }
-      } catch(e) {
-        // ignore init failure; fallbacks remain
-      }
-    })();
-  }, [applyTheme]);
-
   const fixImages = useCallback((seed: string) => {
     setData((prev: any) => {
       if (!prev || !prev.gallery?.items) return prev;
@@ -107,6 +66,17 @@ export function BuilderProvider({ children }: { children: React.ReactNode }) {
       return { ...prev, gallery: { ...prev.gallery, items } };
     });
   }, []);
+
+  // Boot theme from localStorage before paint (paired with layout boot script)
+  React.useEffect(() => {
+    try {
+      const saved = localStorage.getItem('themeV1');
+      if (saved) {
+        const t = JSON.parse(saved);
+        applyTheme({ brand: t.brand, accent: t.accent, background: t.bg, foreground: t.fg });
+      }
+    } catch {}
+  }, [applyTheme]);
 
   return (
     <Ctx.Provider value={{ brief, setBrief, data, setData, applyTheme, rebuild, addSection, removeSection, fixImages }}>

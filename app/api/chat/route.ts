@@ -7,7 +7,7 @@ import { createGateway } from '@ai-sdk/gateway';
 
 export const maxDuration = 30;
 
-// Tool instruction schema (client will execute these)
+// Tool instruction schema to be executed on the client
 const ToolInstruction = z.discriminatedUnion('type', [
   z.object({ type: z.literal('updateBrief'), brief: z.string().min(1) }),
   z.object({ type: z.literal('rebuild') }),
@@ -34,7 +34,7 @@ const ToolInstruction = z.discriminatedUnion('type', [
 ]);
 
 const OutputSchema = z.object({
-  assistant: z.string().min(1),
+  assistant: z.string().default(''),
   tools: z.array(ToolInstruction).default([]),
 });
 
@@ -46,16 +46,15 @@ export async function POST(req: NextRequest) {
   const { messages, state } = await req.json();
 
   const system = `
-You are a website-building copilot.
-- Understand user requests about the generated site.
-- Emit tool instructions to update the brief, rebuild, tweak theme, manage sections, or fix images.
-- Be concise and helpful in "assistant". Avoid code unless asked.
-Important:
-- Keep copy concise and on-topic for any business domain.
-- Use placeholders unless the user provides real data.
-- Never output secrets.
+You are a website-building copilot that LISTENS carefully to the user's intent.
+- If the user describes a business or changes, emit tools to update the brief and rebuild.
+- If they ask for colors, emit setTheme with a tasteful palette.
+- If sections need changes, add/remove sections with minimal payloads.
+- After tool calls, include a short "assistant" summary of what changed.
+Keep outputs concise. Never leak secrets. Use placeholders unless real data is provided.
 `;
 
+  // We let the model decide which tools to call by producing the instruction list
   const { object } = await generateObject({
     model: gateway ? gateway(MODEL) : (MODEL as any),
     system,

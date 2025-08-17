@@ -9,7 +9,9 @@ type Msg = { role: 'user' | 'assistant'; content: string };
 
 export default function ChatWidget() {
   const { setBrief, rebuild, applyTheme, addSection, removeSection, fixImages } = useBuilder();
-  const [messages, setMessages] = useState<Msg[]>([]);
+  const [messages, setMessages] = useState<Msg[]>([
+    { role: 'assistant', content: 'Describe how you want your website to be (business type, audience, tone, colors, sections)…' }
+  ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [lastError, setLastError] = useState<string | null>(null);
@@ -42,7 +44,6 @@ export default function ChatWidget() {
               break;
             case 'setTheme':
               applyTheme(t.palette);
-              try { localStorage.setItem('themeV1', JSON.stringify({ brand: t.palette.brand, accent: t.palette.accent, bg: t.palette.background, fg: t.palette.foreground })); } catch {}
               break;
             case 'addSection':
               addSection(t.section, t.payload);
@@ -60,7 +61,9 @@ export default function ChatWidget() {
         }
       }
 
-      setMessages((cur) => [...cur, { role: 'assistant', content: data.assistant || 'Done.' }]);
+      if (data.assistant) {
+        setMessages((cur) => [...cur, { role: 'assistant', content: data.assistant }]);
+      }
     } catch (e: any) {
       setLastError(e.message || 'Chat error');
     } finally {
@@ -78,16 +81,14 @@ export default function ChatWidget() {
             </div>
           </div>
         ))}
-        {lastError && (
-          <div className="text-xs text-red-500">{lastError}</div>
-        )}
+        {lastError && <div className="text-xs text-red-500">{lastError}</div>}
       </div>
-      <div className="border-t border-border/60 p-2 flex gap-2">
+      <div className="border-top border-border/60 p-2 flex gap-2">
         <input
           className="flex-1 rounded-xl border border-border/60 bg-transparent px-3 py-2 outline-none"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask to change colors, add pricing, rebuild, etc."
+          placeholder="Tell me the business and vibe, and what to change."
           disabled={loading}
         />
         <Button onClick={send} disabled={loading}>Send</Button>

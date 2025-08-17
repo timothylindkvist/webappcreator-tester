@@ -39,9 +39,9 @@ export async function POST(req: NextRequest) {
 
       try {
         const response = await client.chat.completions.create({
-          model: process.env.NEXT_PUBLIC_AI_MODEL || "gpt-5",
+          model: gateway ? gateway(MODEL) : (MODEL as any),
           stream: true,
-          temperature: 0.7,
+          temperature: 0.6,
           tool_choice: "auto",
           parallel_tool_calls: true,
           messages: [systemMsg, ...messages],

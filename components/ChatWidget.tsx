@@ -8,7 +8,7 @@ import { useBuilder } from './builder-context';
 type Msg = { role: 'user' | 'assistant'; content: string };
 
 export default function ChatWidget() {
-  const { brief, data, setBrief, rebuild, applyTheme, addSection, removeSection, fixImages, applyStylePreset, setTypography, setDensity, patchSection, redesign } = useBuilder();
+  const { brief, , setBrief, rebuild, applyTheme, addSection, removeSection, fixImages, applyStylePreset, setTypography, setDensity, patchSection, redesign } = useBuilder();
   const [messages, setMessages] = useState<Msg[]>([
     { role: 'assistant', content: 'Describe how you want your website to be (business type, audience, tone, colors, sections)…' }
   ]);
@@ -28,13 +28,13 @@ export default function ChatWidget() {
       const res: Response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: next, state: { brief, data } }),
+        body: JSON.stringify({ messages: next, state: { brief, data: builderData } }),
       });
-      const data: { assistant?: string; tools?: any[] } = await res.json();
+      const result: { assistant?: string; tools?: any[] } = await res.json();
 
       // Apply tool instructions
-      if (Array.isArray(data.tools)) {
-        for (const t of data.tools) {
+      if (Array.isArray(result.tools)) {
+        for (const t of result.tools) {
           switch (t.type) {
             case 'updateBrief':
               setBrief(t.brief);
@@ -79,8 +79,8 @@ export default function ChatWidget() {
         }
       }
 
-      if (data.assistant) {
-        setMessages((cur) => [...cur, { role: 'assistant', content: data.assistant }]);
+      if (result.assistant) {
+        setMessages((cur) => [...cur, { role: 'assistant', content: result.assistant }]);
       }
     } catch (e: any) {
       setLastError(e.message || 'Chat error');

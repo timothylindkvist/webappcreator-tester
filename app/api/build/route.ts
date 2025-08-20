@@ -42,9 +42,9 @@ export async function POST(req: NextRequest) {
   const { state } = await req.json();
 
   try {
+    // Cast to `any` so we can pass `response_format` (SDK’s TS types may not expose it yet)
     const completion = await client.responses.create({
       model: MODEL,
-      // ✅ Responses API uses `input` with content types like `input_text`
       input: [
         {
           role: 'system',
@@ -58,27 +58,22 @@ export async function POST(req: NextRequest) {
           ],
         },
       ],
-      response_format: { type: 'json_object' }, // ✅ force valid JSON
+      response_format: { type: 'json_object' }, // force valid JSON
       temperature: 0.4,
-    });
+    } as any);
 
-    // Pull the model's JSON output safely
-    // The SDK returns a structured object; in JSON mode, the first output is the JSON string.
+    // Extract JSON text from the response
     const out = completion.output?.[0];
     if (out?.type === 'message' && out.content?.[0]?.type === 'output_text') {
-      const json = out.content[0].text || '{}';
-      return new Response(json, { headers: { 'Content-Type': 'application/json' } });
+      const jsonText = out.content[0].text || '{}';
+      return new Response(jsonText, { headers: { 'Content-Type': 'application/json' } });
     }
 
-    // Fallback: stringify the entire response if shape differs
-    return new Response(JSON.stringify({ error: 'No JSON returned', raw: completion }, null, 2), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    // Fallback if shape differs
+    return new Response(
+      JSON.stringify({ error: 'No JSON returned', raw: completion }, null, 2),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
   } catch (err: any) {
-    return new Response(JSON.stringify({ error: err?.message || 'Build failed' }, null, 2), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-}
+    return new Response(
+      JSON.stringif

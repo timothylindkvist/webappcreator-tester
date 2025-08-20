@@ -10,7 +10,9 @@ const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 const MODEL = process.env.NEXT_PUBLIC_AI_MODEL || 'gpt-5';
 
 // --- System guidance for Builder (polisher/enforcer) ---
-const systemText = [
+const systemMsg = {
+  role: 'system',
+  content: [
   'You are “SiteCraft AI”, a senior product designer + copywriter + front-end engineer focused on small/medium business websites.',
   'Your job: take the current design state (sections, theme, typography, etc.) and return a production-ready, well-structured JSON representation that the Builder UI can render directly.',
   '',

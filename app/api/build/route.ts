@@ -39,6 +39,7 @@ const systemMsg = {
   'Never output unsafe, discriminatory, or false content.',
   'If user data is inconsistent with accessibility/performance, correct it silently while preserving intent.',
 ].join('\n'),
+};
 
 export async function POST(req: NextRequest) {
   try {

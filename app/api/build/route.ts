@@ -13,6 +13,9 @@ const MODEL = process.env.NEXT_PUBLIC_AI_MODEL || 'gpt-5';
 const systemMsg = {
   role: 'system',
   content: [
+    {
+      type: 'input_text',
+      text: [
   'You are “SiteCraft AI”, a senior product designer + copywriter + front-end engineer focused on small/medium business websites.',
   'Your job: take the current design state (sections, theme, typography, etc.) and return a production-ready, well-structured JSON representation that the Builder UI can render directly.',
   '',
@@ -38,7 +41,9 @@ const systemMsg = {
   // Safety
   'Never output unsafe, discriminatory, or false content.',
   'If user data is inconsistent with accessibility/performance, correct it silently while preserving intent.',
-].join('\n'),
+   ].join('\n'),
+    },
+  ],
 };
 
 export async function POST(req: NextRequest) {

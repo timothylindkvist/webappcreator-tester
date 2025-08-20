@@ -9,6 +9,15 @@ function featureText(it: { title: string; body?: string } & Record<string, unkno
   return it.body ?? '';
 }
 
+// Some plans use `includes`, others `features`
+function planFeatures(
+  p: { features?: string[] } & Record<string, unknown>
+): string[] {
+  const inc = (p as any)?.includes;
+  if (Array.isArray(inc)) return inc as string[];
+  return p.features ?? [];
+}
+
 export default function Builder() {
   const { data } = useBuilder();
   // apply CSS vars for theme palette
@@ -82,10 +91,9 @@ export default function Builder() {
             {(data.pricing.plans || []).map((p, i) => (
               <div key={i} className="rounded-xl border p-4 bg-muted">
                 <div className="font-semibold">{p.name}</div>
-                <div className="text-2xl my-2">{p.price}</div>
                 <ul className="text-sm text-muted-foreground list-disc ml-5 space-y-1">
-                  {(p.includes ?? p.features ?? []).map((f, j) => <li key={j}>{f}</li>)}
-                </ul>
+  {planFeatures(p).map((f, j) => <li key={j}>{f}</li>)}
+</ul>
               </div>
             ))}
           </div>

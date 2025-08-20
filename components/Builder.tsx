@@ -2,6 +2,13 @@
 import { useEffect } from 'react';
 import { useBuilder } from '@/components/builder-context';
 
+// Accept items that may have either `description` or `body`
+function featureText(it: { title: string; body?: string } & Record<string, unknown>) {
+  const desc = (it as any)?.description;
+  if (typeof desc === 'string' && desc.length) return desc;
+  return it.body ?? '';
+}
+
 export default function Builder() {
   const { data } = useBuilder();
   // apply CSS vars for theme palette
@@ -34,7 +41,7 @@ export default function Builder() {
             {(data.features.items || []).map((it, i) => (
               <div key={i} className="rounded-xl border p-4 bg-muted">
                 <div className="font-medium">{it.title}</div>
-                <div className="text-sm text-muted-foreground">{it.description ?? it.body}</div>
+                <div className="text-sm text-muted-foreground">{featureText(it)}</div>
               </div>
             ))}
           </div>

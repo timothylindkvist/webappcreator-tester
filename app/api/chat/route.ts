@@ -27,9 +27,7 @@ const tools: OpenAI.Responses.Tool[] = [
     parameters: {
       type: 'object',
       additionalProperties: false,
-      properties: {
-        brief: { type: 'string', minLength: 1 },
-      },
+      properties: { brief: { type: 'string', minLength: 1 } },
       required: ['brief'],
     },
   },
@@ -239,7 +237,8 @@ export async function POST(req: NextRequest) {
       try {
         const s = await client.responses.stream({
           model: MODEL,
-          messages: [systemMsg as any, ...messages],
+          // ✅ responses.stream expects `input`, not `messages`
+          input: [systemMsg as any, ...messages],
           tools,
           tool_choice: 'auto',
           parallel_tool_calls: true,

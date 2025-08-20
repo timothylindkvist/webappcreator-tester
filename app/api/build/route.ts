@@ -39,41 +39,30 @@ const systemText = [
 ].join('\n');
 
 export async function POST(req: NextRequest) {
-  const { state } = await req.json();
-
   try {
-    // Cast to `any` so we can pass `response_format` (SDK’s TS types may not expose it yet)
+    const { state } = await req.json();
+
     const completion = await client.responses.create({
       model: MODEL,
       input: [
-        {
-          role: 'system',
-          content: [{ type: 'input_text', text: systemText }],
-        },
+        systemMsg,
         {
           role: 'user',
           content: [
-            { type: 'input_text', text: 'Here is the current site state. Please return a corrected, production-ready JSON only.' },
-            { type: 'input_text', text: JSON.stringify(state ?? {}) },
+            { type: 'input_text', text: JSON.stringify(state) }
           ],
         },
       ],
-      response_format: { type: 'json_object' }, // force valid JSON
       temperature: 0.4,
-    } as any);
+    });
 
-    // Extract JSON text from the response
     const out = completion.output?.[0];
-    if (out?.type === 'message' && out.content?.[0]?.type === 'output_text') {
-      const jsonText = out.content[0].text || '{}';
-      return new Response(jsonText, { headers: { 'Content-Type': 'application/json' } });
-    }
+    const jsonText = out?.content?.[0]?.text || '{}';
 
-    // Fallback if shape differs
-    return new Response(
-      JSON.stringify({ error: 'No JSON returned', raw: completion }, null, 2),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
-  } catch (err: any) {
-    return new Response(
-      JSON.stringif
+    return new Response(jsonText, {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch {
+    return new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } });
+  }
+}

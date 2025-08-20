@@ -72,29 +72,26 @@ export const BuilderProvider: React.FC<React.PropsWithChildren> = ({ children })
 
   const addSection: Ctx['addSection'] = (section, payload) => setData(cur => ({ ...cur, [section]: payload ?? (cur as any)[section] ?? {} }));
   const removeSection: Ctx['removeSection'] = (section) => setData(cur => { const clone: any = { ...cur }; delete clone[section]; return clone; });
-  const patchSection: Ctx['patchSection'] = (section, content) => setData(cur => ({
+  const patchSection: Ctx['patchSection'] = (section, content) => setData(cur => {
+  // Normalize features.body -> description
+  if (section === 'features' && Array.isArray((content as any)?.items)) {
+    content = {
+      ...content,
+      items: (content as any).items.map((it: any) => ({
+        ...it,
+        description: it.description ?? it.body ?? it.text ?? ''
+      }))
+    };
+  }
 
-    // Normalize features.body -> description
-    if (section === 'features' && Array.isArray((content as any)?.items)) {
-      content = {
-        ...content,
-        items: (content as any).items.map((it: any) => ({
-          ...it,
-          description: (it as any).description ?? (it as any).body ?? '',
-        })),
-      };
+  return {
+    ...cur,
+    [section]: {
+      ...(cur as any)[section],
+      ...(content as any)
     }
-    // Normalize pricing.features -> includes
-    if (section === 'pricing' && Array.isArray((content as any)?.plans)) {
-      content = {
-        ...content,
-        plans: (content as any).plans.map((p: any) => ({
-          ...p,
-          includes: (p as any).includes ?? (p as any).features ?? [],
-        })),
-      };
-    }
- ...cur, [section]: { ...(cur as any)[section], ...content } }));
+  };
+});
   const setTypography: Ctx['setTypography'] = (font) => font && patchSection('theme', { typography: { body: font, headings: font } });
   const setDensity: Ctx['setDensity'] = (density) => patchSection('theme', { density });
   const applyStylePreset: Ctx['applyStylePreset'] = (preset) => {

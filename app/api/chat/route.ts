@@ -15,17 +15,190 @@ function sendJSON(controller: ReadableStreamDefaultController<Uint8Array>, obj: 
 const MODEL = process.env.NEXT_PUBLIC_AI_MODEL || 'gpt-5';
 
 const tools: OpenAI.Responses.Tool[] = [
-  { type: 'function', name: 'updateBrief', description: 'Replace the current creative brief', parameters: { type: 'object', additionalProperties: false, properties: { brief: { type: 'string', minLength: 1 } }, required: ['brief'] } },
-  { type: 'function', name: 'rebuild', description: 'Regenerate the entire site from the current brief', parameters: { type: 'object', additionalProperties: false, properties: {} } } },
-  { type: 'function', name: 'setTheme', description: 'Set the site color palette (CSS-safe values) and vibe label', parameters: { type: 'object', additionalProperties: false, properties: { brand: { type: 'string' }, accent: { type: 'string' }, background: { type: 'string' }, foreground: { type: 'string' }, vibe: { type: 'string' } }, required: ['brand', 'accent', 'background', 'foreground'] } } },
-  { type: 'function', name: 'addSection', description: 'Add a section with strictly typed payloads', parameters: { type: 'object', additionalProperties: false, properties: { section: { type: 'string', enum: ['hero', 'about', 'features', 'gallery', 'testimonials', 'pricing', 'faq', 'cta'] }, payload: { type: 'object', additionalProperties: true } }, required: ['section'] } } },
-  { type: 'function', name: 'removeSection', description: 'Remove a section by key', parameters: { type: 'object', additionalProperties: false, properties: { section: { type: 'string', enum: ['hero', 'about', 'features', 'gallery', 'testimonials', 'pricing', 'faq', 'cta'] } }, required: ['section'] } } },
-  { type: 'function', name: 'patchSection', description: 'Patch a section with a shallow object merge', parameters: { type: 'object', additionalProperties: false, properties: { section: { type: 'string', enum: ['hero', 'about', 'features', 'gallery', 'testimonials', 'pricing', 'faq', 'cta', 'theme'] }, content: { type: 'object', additionalProperties: true } }, required: ['section', 'content'] } } },
-  { type: 'function', name: 'setTypography', description: 'Set a single font family name for headings and body', parameters: { type: 'object', additionalProperties: false, properties: { font: { type: 'string' } }, required: ['font'] } } },
-  { type: 'function', name: 'setDensity', description: 'Control global density', parameters: { type: 'object', additionalProperties: false, properties: { density: { type: 'string', enum: ['compact', 'cozy', 'comfortable'] } }, required: ['density'] } } },
-  { type: 'function', name: 'applyStylePreset', description: 'Apply a named preset (e.g., playful, editorial)', parameters: { type: 'object', additionalProperties: false, properties: { preset: { type: 'string' } }, required: ['preset'] } } },
-  { type: 'function', name: 'fixImages', description: 'Fix image placeholders for a section or all', parameters: { type: 'object', additionalProperties: false, properties: { section: { type: 'string' } } } } },
-  { type: 'function', name: 'redesign', description: 'High-level creative direction to refresh the look', parameters: { type: 'object', additionalProperties: false, properties: { concept: { type: 'string' } }, required: ['concept'] } } },
+  const tools: OpenAI.Responses.Tool[] = [
+  {
+    type: "function",
+    name: "updateBrief",
+    description: "Replace the current creative brief",
+    parameters: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        brief: { type: "string", minLength: 1 },
+      },
+      required: ["brief"],
+    },
+  },
+  {
+    type: "function",
+    name: "rebuild",
+    description: "Regenerate the entire site from the current brief",
+    parameters: {
+      type: "object",
+      additionalProperties: false,
+      properties: {},
+    },
+  },
+  {
+    type: "function",
+    name: "setTheme",
+    description: "Set the site color palette (CSS-safe values) and vibe label",
+    parameters: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        brand: { type: "string" },
+        accent: { type: "string" },
+        background: { type: "string" },
+        foreground: { type: "string" },
+        vibe: { type: "string" },
+      },
+      required: ["brand", "accent", "background", "foreground"],
+    },
+  },
+  {
+    type: "function",
+    name: "addSection",
+    description: "Add a section with strictly typed payloads",
+    parameters: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        section: {
+          type: "string",
+          enum: [
+            "hero",
+            "about",
+            "features",
+            "gallery",
+            "testimonials",
+            "pricing",
+            "faq",
+            "cta",
+          ],
+        },
+        payload: { type: "object", additionalProperties: true },
+      },
+      required: ["section"],
+    },
+  },
+  {
+    type: "function",
+    name: "removeSection",
+    description: "Remove a section by key",
+    parameters: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        section: {
+          type: "string",
+          enum: [
+            "hero",
+            "about",
+            "features",
+            "gallery",
+            "testimonials",
+            "pricing",
+            "faq",
+            "cta",
+          ],
+        },
+      },
+      required: ["section"],
+    },
+  },
+  {
+    type: "function",
+    name: "patchSection",
+    description: "Patch a section with a shallow object merge",
+    parameters: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        section: {
+          type: "string",
+          enum: [
+            "hero",
+            "about",
+            "features",
+            "gallery",
+            "testimonials",
+            "pricing",
+            "faq",
+            "cta",
+            "theme",
+          ],
+        },
+        content: { type: "object", additionalProperties: true },
+      },
+      required: ["section", "content"],
+    },
+  },
+  {
+    type: "function",
+    name: "setTypography",
+    description: "Set a single font family name for headings and body",
+    parameters: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        font: { type: "string" },
+      },
+      required: ["font"],
+    },
+  },
+  {
+    type: "function",
+    name: "setDensity",
+    description: "Control global density",
+    parameters: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        density: { type: "string", enum: ["compact", "cozy", "comfortable"] },
+      },
+      required: ["density"],
+    },
+  },
+  {
+    type: "function",
+    name: "applyStylePreset",
+    description: "Apply a named preset (e.g., playful, editorial)",
+    parameters: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        preset: { type: "string" },
+      },
+      required: ["preset"],
+    },
+  },
+  {
+    type: "function",
+    name: "fixImages",
+    description: "Fix image placeholders for a section or all",
+    parameters: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        section: { type: "string" }, // optional → fixes all when omitted
+      },
+    },
+  },
+  {
+    type: "function",
+    name: "redesign",
+    description: "High-level creative direction to refresh the look",
+    parameters: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        concept: { type: "string" },
+      },
+      required: ["concept"],
+    },
+  },
+];
 ];
 
 const systemMsg = {

@@ -187,9 +187,7 @@ const tools: OpenAI.Responses.Tool[] = [
     parameters: {
       type: 'object',
       additionalProperties: false,
-      properties: {
-        section: { type: 'string' }, // optional → fixes all when omitted
-      },
+      properties: { section: { type: 'string' } }, // optional → fixes all when omitted
     },
   },
   {
@@ -275,7 +273,7 @@ export async function POST(req: NextRequest) {
       try {
         const s = await client.responses.stream({
           model: MODEL,
-          // ✅ responses.stream expects `input`, not `messages`
+          // ✅ Responses API expects `input` for streaming
           input: [systemMsg as any, ...messages],
           tools,
           tool_choice: 'auto',
@@ -283,17 +281,36 @@ export async function POST(req: NextRequest) {
           temperature: 0.7,
         });
 
-        s.on('text.delta', (delta) =>
-          sendJSON(controller, { type: 'assistant', delta })
-        );
+        // ✅ Use the generic "event" listener to stay compatible with SDK typings
+        s.on('event', (event: any) => {
+          // Text output deltas
+          if (event.type === 'response.output_text.delta') {
+            sendJSON(controller, { type: 'assistant', delta: event.delta });
+            return;
+          }
+          if (event.type === 'response.output_text.done') {
+            // Optional: final text chunk complete
+            return;
+          }
 
-        s.on('tool.call', (toolCall) => {
-          const name = toolCall.name;
-          let args: any = {};
-          try {
-            args = toolCall.arguments ? JSON.parse(toolCall.arguments) : {};
-          } catch {}
-          sendJSON(controller, { type: 'tool', name, args });
+          // Tool call deltas/created/completed
+          if (
+            event.type === 'response.tool_call.delta' ||
+            event.type === 'response.tool_call.created' ||
+            event.type === 'response.tool_call.completed'
+          ) {
+            // Forward raw tool event payload; your frontend can aggregate args
+            sendJSON(controller, { type: 'toolEvent', event });
+            return;
+          }
+
+          // Terminal / error events
+          if (event.type === 'response.completed') {
+            return; // handled by 'end' as well
+          }
+          if (event.type === 'response.error') {
+            sendJSON(controller, { type: 'error', message: event.error?.message || 'response error' });
+          }
         });
 
         s.on('end', () => {

@@ -17,11 +17,13 @@ function sendJSON(
 
 const MODEL = process.env.NEXT_PUBLIC_AI_MODEL || 'gpt-5';
 
+// Tools must include `strict` for this SDK version
 const tools: OpenAI.Responses.Tool[] = [
   {
     type: 'function',
     name: 'updateBrief',
     description: 'Replace the current creative brief',
+    strict: true,
     parameters: {
       type: 'object',
       additionalProperties: false,
@@ -35,6 +37,7 @@ const tools: OpenAI.Responses.Tool[] = [
     type: 'function',
     name: 'rebuild',
     description: 'Regenerate the entire site from the current brief',
+    strict: true,
     parameters: {
       type: 'object',
       additionalProperties: false,
@@ -45,6 +48,7 @@ const tools: OpenAI.Responses.Tool[] = [
     type: 'function',
     name: 'setTheme',
     description: 'Set the site color palette (CSS-safe values) and vibe label',
+    strict: true,
     parameters: {
       type: 'object',
       additionalProperties: false,
@@ -62,6 +66,7 @@ const tools: OpenAI.Responses.Tool[] = [
     type: 'function',
     name: 'addSection',
     description: 'Add a section with strictly typed payloads',
+    strict: true,
     parameters: {
       type: 'object',
       additionalProperties: false,
@@ -88,6 +93,7 @@ const tools: OpenAI.Responses.Tool[] = [
     type: 'function',
     name: 'removeSection',
     description: 'Remove a section by key',
+    strict: true,
     parameters: {
       type: 'object',
       additionalProperties: false,
@@ -113,6 +119,7 @@ const tools: OpenAI.Responses.Tool[] = [
     type: 'function',
     name: 'patchSection',
     description: 'Patch a section with a shallow object merge',
+    strict: true,
     parameters: {
       type: 'object',
       additionalProperties: false,
@@ -140,6 +147,7 @@ const tools: OpenAI.Responses.Tool[] = [
     type: 'function',
     name: 'setTypography',
     description: 'Set a single font family name for headings and body',
+    strict: true,
     parameters: {
       type: 'object',
       additionalProperties: false,
@@ -151,6 +159,7 @@ const tools: OpenAI.Responses.Tool[] = [
     type: 'function',
     name: 'setDensity',
     description: 'Control global density',
+    strict: true,
     parameters: {
       type: 'object',
       additionalProperties: false,
@@ -164,6 +173,7 @@ const tools: OpenAI.Responses.Tool[] = [
     type: 'function',
     name: 'applyStylePreset',
     description: 'Apply a named preset (e.g., playful, editorial)',
+    strict: true,
     parameters: {
       type: 'object',
       additionalProperties: false,
@@ -175,6 +185,7 @@ const tools: OpenAI.Responses.Tool[] = [
     type: 'function',
     name: 'fixImages',
     description: 'Fix image placeholders for a section or all',
+    strict: true,
     parameters: {
       type: 'object',
       additionalProperties: false,
@@ -187,6 +198,7 @@ const tools: OpenAI.Responses.Tool[] = [
     type: 'function',
     name: 'redesign',
     description: 'High-level creative direction to refresh the look',
+    strict: true,
     parameters: {
       type: 'object',
       additionalProperties: false,

@@ -17,7 +17,7 @@ function sendJSON(
 
 const MODEL = process.env.NEXT_PUBLIC_AI_MODEL || 'gpt-5';
 
-// Tools must include `strict` for this SDK version
+// ---- Tools (strict schemas; required includes every key in properties) ----
 const tools: OpenAI.Responses.Tool[] = [
   {
     type: 'function',
@@ -40,6 +40,7 @@ const tools: OpenAI.Responses.Tool[] = [
       type: 'object',
       additionalProperties: false,
       properties: {},
+      required: [], // explicit for this SDK
     },
   },
   {
@@ -84,7 +85,7 @@ const tools: OpenAI.Responses.Tool[] = [
         },
         payload: { type: 'object', additionalProperties: true },
       },
-      required: ['section'],
+      required: ['section', 'payload'],
     },
   },
   {
@@ -187,7 +188,8 @@ const tools: OpenAI.Responses.Tool[] = [
     parameters: {
       type: 'object',
       additionalProperties: false,
-      properties: { section: { type: 'string' } }, // optional → fixes all when omitted
+      properties: { section: { type: 'string' } }, // pass 'all' to affect every section
+      required: ['section'],
     },
   },
   {
@@ -204,6 +206,7 @@ const tools: OpenAI.Responses.Tool[] = [
   },
 ];
 
+// ---- System guidance (vague + detailed users, action-first) ----
 const systemMsg = {
   role: 'system' as const,
   content: [
@@ -218,44 +221,43 @@ const systemMsg = {
     'SEO basics: single H1 per page, descriptive titles/meta, semantic HTML, alt text, sensible copy length.',
     'Consistency: coherent color palette, typographic scale, spacing rhythm, and consistent CTA language.',
 
-    // How to behave with different user types
+    // Behavior for different users
     'IF USER IS VAGUE: Ask up to 3 concise bullet questions only (brand/audience/primary CTA). If any remain unanswered, pick sensible defaults and proceed. Do not stall.',
-    'IF USER IS DETAILED: Mirror their requirements precisely; highlight any conflicts and propose 1 safe resolution. Proceed without extra questions.',
+    'IF USER IS DETAILED: Mirror their requirements precisely; highlight conflicts and propose 1 safe resolution. Proceed without extra questions.',
     'Always show progress: when you can improve the canvas, call tools immediately (addSection, patchSection, setTheme, etc.).',
 
     // Output quality bar
     'Site structure defaults: hero, about, features, social-proof/testimonials, pricing (if relevant), FAQ, final CTA.',
     'Copy style: benefit-first, scannable, short sentences, active voice, concrete outcomes; 4–6 sections total unless asked otherwise.',
-    'Tone presets (examples): clean, friendly, technical, luxury, playful, editorial. Use “applyStylePreset” or setTheme + setTypography accordingly.',
+    'Tone presets: clean, friendly, technical, luxury, playful, editorial. Use “applyStylePreset” or setTheme + setTypography accordingly.',
     'Typography: one heading family + one body family. Use setTypography. Keep line-length ~60–75 chars.',
-    'Color: choose accessible pairs; ensure text contrast ≥ 4.5:1; provide dark and light variants.',
-    'Layouts: clear visual hierarchy; generous white space; mobile-first; avoid edge-to-edge long lines; keep CTAs visible above the fold.',
+    'Color: ensure contrast ≥ 4.5:1; provide dark and light variants.',
+    'Layouts: clear hierarchy; generous white space; mobile-first; keep CTAs visible above the fold.',
 
     // Tooling policy
-    'Golden rule: prefer tools over free-form text when you can make a concrete change.',
+    'Prefer tools over free-form text when you can make a concrete change.',
     'Use patchSection to refine content iteratively (e.g., fix headings, bullets, CTAs).',
     'Use addSection/removeSection to restructure; setTheme/applyStylePreset/setTypography/setDensity for global look and feel.',
-    'If images are missing or mismatched, call fixImages with a target section or leave it blank to fix all.',
+    'If images are missing or mismatched, call fixImages with a target section or pass "all".',
     'Do not invent external assets or credentials; do not assume write access beyond the provided tools.',
 
     // Clarifying micro-questions (max 3, only if needed)
-    'When needed, ask up to 3 bullets, exactly like:',
+    'Ask up to 3 bullets, exactly like:',
     '1) Primary goal? (e.g., book demo / contact / purchase)',
     '2) Audience? (1 sentence)',
     '3) Brand direction? (e.g., clean tech blue / luxury serif / playful pastel)',
 
-    // Vague → default fallbacks (only if unanswered)
-    'Defaults if unanswered: goal=“capture leads”, audience=“SMBs evaluating solutions”, tone=“clean/friendly”, CTA=“Get Started”, palette=brand:#3B82F6, accent:#22C55E, neutral=#0B1220 on #FFFFFF, typography=heading “Inter”, body “Inter”.',
+    // Defaults (used only if unanswered)
+    'Defaults: goal="capture leads", audience="SMBs evaluating solutions", tone="clean/friendly", CTA="Get Started", palette brand:#3B82F6 accent:#22C55E neutral:#0B1220 on #FFFFFF, typography heading "Inter" body "Inter".',
 
-    // Safety & editing rules
-    'Never output discriminatory or unsafe content. Keep claims truthful and generic unless user provides specifics.',
-    'If user instructions conflict with accessibility/perf basics, warn once, propose a compliant alternative, then proceed with the safest option.',
+    // Safety
+    'Never output discriminatory or unsafe content. Keep claims truthful unless user provides specifics.',
+    'If instructions conflict with accessibility/perf basics, warn once, propose a compliant alternative, then proceed with the safest option.',
 
-    // Response format expectations
-    'For each user turn: (a) briefly confirm intent and plan (1–2 sentences), (b) immediately call tools to apply changes, (c) if needed, ask at most 3 bullets, then continue building.',
+    // Response format
+    'For each user turn: (a) confirm intent/plan (1–2 sentences), (b) call tools to apply changes, (c) if needed, ask ≤3 bullets, then continue building.',
   ].join('\n'),
 };
-
 
 export async function POST(req: NextRequest) {
   const { messages = [], state } = await req.json();
@@ -273,43 +275,32 @@ export async function POST(req: NextRequest) {
       try {
         const s = await client.responses.stream({
           model: MODEL,
-          // ✅ Responses API expects `input` for streaming
-          input: [systemMsg as any, ...messages],
+          input: [systemMsg as any, ...messages], // Responses API uses `input` for streaming
           tools,
           tool_choice: 'auto',
           parallel_tool_calls: true,
           temperature: 0.7,
         });
 
-        // ✅ Use the generic "event" listener to stay compatible with SDK typings
+        // Generic "event" handler is future-proof with this SDK
         s.on('event', (event: any) => {
-          // Text output deltas
           if (event.type === 'response.output_text.delta') {
             sendJSON(controller, { type: 'assistant', delta: event.delta });
             return;
           }
-          if (event.type === 'response.output_text.done') {
-            // Optional: final text chunk complete
-            return;
-          }
-
-          // Tool call deltas/created/completed
           if (
             event.type === 'response.tool_call.delta' ||
             event.type === 'response.tool_call.created' ||
             event.type === 'response.tool_call.completed'
           ) {
-            // Forward raw tool event payload; your frontend can aggregate args
             sendJSON(controller, { type: 'toolEvent', event });
             return;
           }
-
-          // Terminal / error events
-          if (event.type === 'response.completed') {
-            return; // handled by 'end' as well
-          }
           if (event.type === 'response.error') {
-            sendJSON(controller, { type: 'error', message: event.error?.message || 'response error' });
+            sendJSON(controller, {
+              type: 'error',
+              message: event.error?.message || 'response error',
+            });
           }
         });
 

@@ -92,7 +92,7 @@ export default function Builder() {
               <div key={i} className="rounded-xl border p-4 bg-muted">
                 <div className="font-semibold">{p.name}</div>
                 <ul className="text-sm text-muted-foreground list-disc ml-5 space-y-1">
-  {planFeatures(p).map((f, j) => <li key={j}>{f}</li>)}
+                    {planFeatures(p).map((f, j) => <li key={j}>{f}</li>)}
 </ul>
               </div>
             ))}

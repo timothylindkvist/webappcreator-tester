@@ -57,7 +57,7 @@ const tools: OpenAI.Responses.Tool[] = [
         foreground: { type: 'string' },
         vibe: { type: 'string' },
       },
-      required: ['brand', 'accent', 'background', 'foreground'],
+      required: ['brand', 'accent', 'background', 'foreground', 'vibe'],
     },
   },
   {

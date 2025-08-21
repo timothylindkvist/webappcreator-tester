@@ -1,5 +1,5 @@
 // lib/toolRuntime.ts
-import { useSite } from '@/store/site'
+import { useSite, type SiteState } from '@/store/site'
 
 const argsById = new Map<string, string>()
 
@@ -38,43 +38,43 @@ function executeTool(name: string, args: any) {
   switch (name) {
     case 'updateBrief': {
       const { brief } = args
-      apply((s) => { s.brief = brief })
+      apply((s: SiteState) => { s.brief = brief })
       break
     }
     case 'rebuild': {
-      apply((s) => { s.sections = {} })
+      apply((s: SiteState) => { s.sections = {} })
       break
     }
     case 'setTheme': {
       const { brand, accent, background, foreground, vibe } = args
-      apply((s) => { s.theme = { brand, accent, background, foreground, vibe } })
+      apply((s: SiteState) => { s.theme = { brand, accent, background, foreground, vibe } })
       break
     }
     case 'removeSection': {
       const { section } = args
-      apply((s) => { delete (s.sections as any)[section] })
+      apply((s: SiteState) => { delete (s.sections as any)[section] })
       break
     }
     case 'addSection': {
       const { section, payload } = args
-      apply((s) => { (s.sections as any)[section] = payload })
+      apply((s: SiteState) => { (s.sections as any)[section] = payload })
       break
     }
     case 'patchSection': {
       const { section, content } = args
-      apply((s) => {
+      apply((s: SiteState) => {
         (s.sections as any)[section] = { ...(s.sections as any)[section], ...content }
       })
       break
     }
     case 'setTypography': {
       const { font } = args
-      apply((s) => { s.typography = { font } })
+      apply((s: SiteState) => { s.typography = { font } })
       break
     }
     case 'setDensity': {
       const { density } = args
-      apply((s) => { s.density = density })
+      apply((s: SiteState) => { s.density = density })
       break
     }
     case 'applyStylePreset': {
@@ -97,7 +97,7 @@ function executeTool(name: string, args: any) {
         },
       }
       const p = presets[preset] || presets.clean
-      apply((s) => {
+      apply((s: SiteState) => {
         s.theme = p.theme
         s.typography = { font: p.font }
         s.density = p.density
@@ -106,7 +106,7 @@ function executeTool(name: string, args: any) {
     }
     case 'fixImages': {
       const { section } = args
-      apply((s) => {
+      apply((s: SiteState) => {
         if (section === 'all') {
           Object.keys(s.sections).forEach((k) => {
             const sec: any = (s.sections as any)[k]

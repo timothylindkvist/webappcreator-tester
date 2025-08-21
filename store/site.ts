@@ -4,7 +4,7 @@ import { create } from 'zustand'
 export type SectionKey = 'hero'|'about'|'features'|'gallery'|'testimonials'|'pricing'|'faq'|'cta'
 export type Theme = { brand:string; accent:string; background:string; foreground:string; vibe:string }
 
-type SiteState = {
+export type SiteState = {
   theme: Theme | null
   sections: Partial<Record<SectionKey, any>>
   typography?: { font: string }

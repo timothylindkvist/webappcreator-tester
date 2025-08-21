@@ -88,132 +88,156 @@ const tools: OpenAI.Responses.Tool[] = [
     },
   },
   {
-    type: 'function',
-    name: 'addSection',
-    description: 'Add a section with strictly typed payloads',
-    strict: true,
-    parameters: {
-      type: 'object',
-      additionalProperties: false,
-      properties: {
-        section: {
-          type: 'string',
-          enum: [
-            'hero',
-            'about',
-            'features',
-            'gallery',
-            'testimonials',
-            'pricing',
-            'faq',
-            'cta',
-          ],
-        },
-        payload: {
-          type: 'object',
-          additionalProperties: false,
-          properties: {
-            // common fields
-            title: { type: 'string' },
-            subtitle: { type: 'string' },
-            eyebrow: { type: 'string' },
-            body: { type: 'string' },
-            kicker: { type: 'string' },
+  type: 'function',
+  name: 'addSection',
+  description: 'Add a section with strictly typed payloads',
+  strict: true,
+  parameters: {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      section: {
+        type: 'string',
+        enum: [
+          'hero',
+          'about',
+          'features',
+          'gallery',
+          'testimonials',
+          'pricing',
+          'faq',
+          'cta',
+        ],
+      },
+      payload: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          // common fields (not all required at top level)
+          title: { type: 'string' },
+          subtitle: { type: 'string' },
+          eyebrow: { type: 'string' },
+          body: { type: 'string' },
+          kicker: { type: 'string' },
 
-            // CTAs
-            ctaLabel: { type: 'string' },
-            ctaHref: { type: 'string' },
-            secondaryCtaLabel: { type: 'string' },
-            secondaryCtaHref: { type: 'string' },
+          // CTAs
+          ctaLabel: { type: 'string' },
+          ctaHref: { type: 'string' },
+          secondaryCtaLabel: { type: 'string' },
+          secondaryCtaHref: { type: 'string' },
 
-            // lists / bullets
-            bullets: { type: 'array', items: { type: 'string' } },
+          // lists / bullets
+          bullets: { type: 'array', items: { type: 'string' } },
 
-            // items (features/cards/gallery etc.)
+          // items (features/cards/gallery etc.)
+          items: {
+            type: 'array',
             items: {
-              type: 'array',
-              items: {
-                type: 'object',
-                additionalProperties: false,
-                properties: {
-                  title: { type: 'string' },
-                  description: { type: 'string' },
-                  body: { type: 'string' },
-                  icon: { type: 'string' },
-                  image: { type: 'string' },
-                  alt: { type: 'string' },
-                  href: { type: 'string' },
-                },
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                title: { type: 'string' },
+                description: { type: 'string' },
+                body: { type: 'string' },
+                icon: { type: 'string' },
+                image: { type: 'string' },
+                alt: { type: 'string' },
+                href: { type: 'string' },
               },
+              required: [
+                'title',
+                'description',
+                'body',
+                'icon',
+                'image',
+                'alt',
+                'href',
+              ],
             },
-
-            // images
-            images: {
-              type: 'array',
-              items: {
-                type: 'object',
-                additionalProperties: false,
-                properties: {
-                  src: { type: 'string' },
-                  alt: { type: 'string' },
-                  caption: { type: 'string' },
-                },
-              },
-            },
-
-            // testimonials
-            testimonials: {
-              type: 'array',
-              items: {
-                type: 'object',
-                additionalProperties: false,
-                properties: {
-                  name: { type: 'string' },
-                  role: { type: 'string' },
-                  quote: { type: 'string' },
-                  avatar: { type: 'string' },
-                  rating: { type: 'number' },
-                },
-              },
-            },
-
-            // pricing
-            plans: {
-              type: 'array',
-              items: {
-                type: 'object',
-                additionalProperties: false,
-                properties: {
-                  name: { type: 'string' },
-                  price: { type: 'string' },
-                  period: { type: 'string' },
-                  features: { type: 'array', items: { type: 'string' } },
-                  ctaLabel: { type: 'string' },
-                  ctaHref: { type: 'string' },
-                  highlighted: { type: 'boolean' },
-                },
-              },
-            },
-
-            // faq
-            faqs: {
-              type: 'array',
-              items: {
-                type: 'object',
-                additionalProperties: false,
-                properties: {
-                  q: { type: 'string' },
-                  a: { type: 'string' },
-                },
-              },
-            },
-
-            // layout/style hints
-            layout: { type: 'string' },
-            themeHint: { type: 'string' },
           },
+
+          // images
+          images: {
+            type: 'array',
+            items: {
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                src: { type: 'string' },
+                alt: { type: 'string' },
+                caption: { type: 'string' },
+              },
+              required: ['src', 'alt', 'caption'],
+            },
+          },
+
+          // testimonials
+          testimonials: {
+            type: 'array',
+            items: {
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                name: { type: 'string' },
+                role: { type: 'string' },
+                quote: { type: 'string' },
+                avatar: { type: 'string' },
+                rating: { type: 'number' },
+              },
+              required: ['name', 'role', 'quote', 'avatar', 'rating'],
+            },
+          },
+
+          // pricing
+          plans: {
+            type: 'array',
+            items: {
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                name: { type: 'string' },
+                price: { type: 'string' },
+                period: { type: 'string' },
+                features: { type: 'array', items: { type: 'string' } },
+                ctaLabel: { type: 'string' },
+                ctaHref: { type: 'string' },
+                highlighted: { type: 'boolean' },
+              },
+              required: [
+                'name',
+                'price',
+                'period',
+                'features',
+                'ctaLabel',
+                'ctaHref',
+                'highlighted',
+              ],
+            },
+          },
+
+          // faq
+          faqs: {
+            type: 'array',
+            items: {
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                q: { type: 'string' },
+                a: { type: 'string' },
+              },
+              required: ['q', 'a'],
+            },
+          },
+
+          // layout/style hints
+          layout: { type: 'string' },
+          themeHint: { type: 'string' },
         },
       },
+    },
+    required: ['section', 'payload'],
+  },
+}
       required: ['section', 'payload'],
     },
   }, // <-- IMPORTANT: comma after the tool object

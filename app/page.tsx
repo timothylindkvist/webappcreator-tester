@@ -1,7 +1,15 @@
 import Builder from '@/components/Builder';
 import ChatWidget from '@/components/ChatWidget';
 import { BuilderProvider } from '@/components/builder-context';
+import StreamChatDemo from '@/components/StreamChatDemo'
 
+export default function Page() {
+  return (
+    <main className="p-6">
+      <StreamChatDemo />
+    </main>
+  )
+}
 export default function Page() {
   return (
     <BuilderProvider>

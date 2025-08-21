@@ -19,7 +19,7 @@ const MODEL = process.env.NEXT_PUBLIC_AI_MODEL || 'gpt-5';
 
 // ---- Tools (strict schemas; required includes every key in properties) ----
 const tools: OpenAI.Responses.Tool[] = [
-  {
+{
     type: 'function',
     name: 'updateBrief',
     description: 'Replace the current creative brief',
@@ -40,7 +40,7 @@ const tools: OpenAI.Responses.Tool[] = [
       type: 'object',
       additionalProperties: false,
       properties: {},
-      required: [], // explicit for this SDK
+      required: [],
     },
   },
   {
@@ -87,177 +87,140 @@ const tools: OpenAI.Responses.Tool[] = [
       required: ['section'],
     },
   },
- {
-  type: 'function',
-  name: 'addSection',
-  description: 'Add a section with strictly typed payloads',
-  strict: true,
-  parameters: {
-    type: 'object',
-    additionalProperties: false,
-    properties: {
-      section: {
-        type: 'string',
-        enum: ['hero','about','features','gallery','testimonials','pricing','faq','cta'],
-      },
-      payload: {
-        type: 'object',
-        additionalProperties: false,
-        properties: {
-          // common fields
-          title: { type: 'string' },
-          subtitle: { type: 'string' },
-          eyebrow: { type: 'string' },
-          body: { type: 'string' },
-          kicker: { type: 'string' },
-
-          // CTAs
-          ctaLabel: { type: 'string' },
-          ctaHref: { type: 'string' },
-          secondaryCtaLabel: { type: 'string' },
-          secondaryCtaHref: { type: 'string' },
-
-          // lists / bullets
-          bullets: { type: 'array', items: { type: 'string' } },
-
-          // items (features/cards/gallery etc.)
-          items: {
-            type: 'array',
-            items: {
-              type: 'object',
-              additionalProperties: false,
-              properties: {
-                title: { type: 'string' },
-                description: { type: 'string' },
-                body: { type: 'string' },
-                icon: { type: 'string' },
-                image: { type: 'string' },
-                alt: { type: 'string' },
-                href: { type: 'string' },
-              },
-              required: ['title','description','body','icon','image','alt','href'],
-            },
-          },
-
-          // images
-          images: {
-            type: 'array',
-            items: {
-              type: 'object',
-              additionalProperties: false,
-              properties: {
-                src: { type: 'string' },
-                alt: { type: 'string' },
-                caption: { type: 'string' },
-              },
-              required: ['src','alt','caption'],
-            },
-          },
-
-          // testimonials
-          testimonials: {
-            type: 'array',
-            items: {
-              type: 'object',
-              additionalProperties: false,
-              properties: {
-                name: { type: 'string' },
-                role: { type: 'string' },
-                quote: { type: 'string' },
-                avatar: { type: 'string' },
-                rating: { type: 'number' },
-              },
-              required: ['name','role','quote','avatar','rating'],
-            },
-          },
-
-          // pricing
-          plans: {
-            type: 'array',
-            items: {
-              type: 'object',
-              additionalProperties: false,
-              properties: {
-                name: { type: 'string' },
-                price: { type: 'string' },
-                period: { type: 'string' },
-                features: { type: 'array', items: { type: 'string' } },
-                ctaLabel: { type: 'string' },
-                ctaHref: { type: 'string' },
-                highlighted: { type: 'boolean' },
-              },
-              required: ['name','price','period','features','ctaLabel','ctaHref','highlighted'],
-            },
-          },
-
-          // faq
-          faqs: {
-            type: 'array',
-            items: {
-              type: 'object',
-              additionalProperties: false,
-              properties: {
-                q: { type: 'string' },
-                a: { type: 'string' },
-              },
-              required: ['q','a'],
-            },
-          },
-
-          // layout/style hints
-          layout: { type: 'string' },
-          themeHint: { type: 'string' },
+  {
+    type: 'function',
+    name: 'addSection',
+    description: 'Add a section with strictly typed payloads',
+    strict: true,
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        section: {
+          type: 'string',
+          enum: ['hero','about','features','gallery','testimonials','pricing','faq','cta'],
         },
-        // >>> This is the key addition:
-        required: [
-          'title',
-          'subtitle',
-          'eyebrow',
-          'body',
-          'kicker',
-          'ctaLabel',
-          'ctaHref',
-          'secondaryCtaLabel',
-          'secondaryCtaHref',
-          'bullets',
-          'items',
-          'images',
-          'testimonials',
-          'plans',
-          'faqs',
-          'layout',
-          'themeHint'
-        ],
+        payload: {
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            title: { type: 'string' },
+            subtitle: { type: 'string' },
+            eyebrow: { type: 'string' },
+            body: { type: 'string' },
+            kicker: { type: 'string' },
+            ctaLabel: { type: 'string' },
+            ctaHref: { type: 'string' },
+            secondaryCtaLabel: { type: 'string' },
+            secondaryCtaHref: { type: 'string' },
+            bullets: { type: 'array', items: { type: 'string' } },
+            items: {
+              type: 'array',
+              items: {
+                type: 'object',
+                additionalProperties: false,
+                properties: {
+                  title: { type: 'string' },
+                  description: { type: 'string' },
+                  body: { type: 'string' },
+                  icon: { type: 'string' },
+                  image: { type: 'string' },
+                  alt: { type: 'string' },
+                  href: { type: 'string' },
+                },
+                required: ['title','description','body','icon','image','alt','href'],
+              },
+            },
+            images: {
+              type: 'array',
+              items: {
+                type: 'object',
+                additionalProperties: false,
+                properties: {
+                  src: { type: 'string' },
+                  alt: { type: 'string' },
+                  caption: { type: 'string' },
+                },
+                required: ['src','alt','caption'],
+              },
+            },
+            testimonials: {
+              type: 'array',
+              items: {
+                type: 'object',
+                additionalProperties: false,
+                properties: {
+                  name: { type: 'string' },
+                  role: { type: 'string' },
+                  quote: { type: 'string' },
+                  avatar: { type: 'string' },
+                  rating: { type: 'number' },
+                },
+                required: ['name','role','quote','avatar','rating'],
+              },
+            },
+            plans: {
+              type: 'array',
+              items: {
+                type: 'object',
+                additionalProperties: false,
+                properties: {
+                  name: { type: 'string' },
+                  price: { type: 'string' },
+                  period: { type: 'string' },
+                  features: { type: 'array', items: { type: 'string' } },
+                  ctaLabel: { type: 'string' },
+                  ctaHref: { type: 'string' },
+                  highlighted: { type: 'boolean' },
+                },
+                required: ['name','price','period','features','ctaLabel','ctaHref','highlighted'],
+              },
+            },
+            faqs: {
+              type: 'array',
+              items: {
+                type: 'object',
+                additionalProperties: false,
+                properties: {
+                  q: { type: 'string' },
+                  a: { type: 'string' },
+                },
+                required: ['q','a'],
+              },
+            },
+            layout: { type: 'string' },
+            themeHint: { type: 'string' },
+          },
+          required: [
+            'title','subtitle','eyebrow','body','kicker',
+            'ctaLabel','ctaHref','secondaryCtaLabel','secondaryCtaHref',
+            'bullets','items','images','testimonials','plans','faqs',
+            'layout','themeHint'
+          ],
+        },
       },
+      required: ['section','payload'],
     },
-    required: ['section','payload'],
   },
-}, // keep the comma to separate from the next tool
-
-// next tool...
-{
-  type: 'function',
-  name: 'patchSection',
-  description: 'Patch a section with a shallow object merge',
-  strict: false, // <-- allow open-ended content
-  parameters: {
-    type: 'object',
-    additionalProperties: false,
-    properties: {
-      section: {
-        type: 'string',
-        enum: ['hero','about','features','gallery','testimonials','pricing','faq','cta','theme'],
+  {
+    type: 'function',
+    name: 'patchSection',
+    description: 'Patch a section with a shallow object merge',
+    strict: false,
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        section: {
+          type: 'string',
+          enum: ['hero','about','features','gallery','testimonials','pricing','faq','cta','theme'],
+        },
+        content: { type: 'object', additionalProperties: true },
       },
-      content: {
-        type: 'object',
-        additionalProperties: true, // <-- arbitrary keys allowed
-      },
+      required: ['section', 'content'],
     },
-    required: ['section', 'content'],
   },
-},
-    
-    {
+  {
     type: 'function',
     name: 'setTypography',
     description: 'Set a single font family name for headings and body',
@@ -303,7 +266,7 @@ const tools: OpenAI.Responses.Tool[] = [
     parameters: {
       type: 'object',
       additionalProperties: false,
-      properties: { section: { type: 'string' } }, // pass 'all' to affect every section
+      properties: { section: { type: 'string' } },
       required: ['section'],
     },
   },
@@ -388,7 +351,7 @@ export async function POST(req: NextRequest) {
       }, 15000);
 
       try {
-const s = await client.responses.stream({
+const s = const s = await client.responses.stream({
   model: MODEL,
   input: [systemMsg as any, ...messages],
   tools,

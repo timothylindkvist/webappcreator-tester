@@ -331,7 +331,7 @@ export async function POST(req: NextRequest) {
       }, 15000);
 
       try {
-const s = const s = await client.responses.stream({
+const s = await client.responses.stream({
   model: MODEL,
   input: [systemMsg as any, ...messages],
   tools,

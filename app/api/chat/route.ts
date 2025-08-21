@@ -324,88 +324,150 @@ const systemMsg = {
   ].join('\n'),
 };
 
+// ...keep your imports, env, tools array, systemMsg, etc. unchanged
+
 export async function POST(req: NextRequest) {
   const { messages = [], state } = await req.json();
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       const ping = setInterval(() => {
-        try {
-          controller.enqueue(new TextEncoder().encode(':ping\n'));
-        } catch {
-          clearInterval(ping);
-        }
+        try { controller.enqueue(new TextEncoder().encode(':ping\n')); }
+        catch { clearInterval(ping); }
       }, 15000);
 
       try {
+        // --- 1) Ask the model for a JSON Action Plan instead of tool-calls ---
+        const actionSchema = {
+          name: 'ActionPlan',
+          schema: {
+            type: 'object',
+            additionalProperties: false,
+            properties: {
+              // Optional short summary for chat UI
+              summary: { type: 'string' },
+              // Steps that correspond 1:1 to your client switch cases
+              steps: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  additionalProperties: false,
+                  properties: {
+                    name: {
+                      type: 'string',
+                      enum: [
+                        'updateBrief',
+                        'rebuild',
+                        'setTheme',
+                        'addSection',
+                        'removeSection',
+                        'fixImages',
+                        'applyStylePreset',
+                        'setTypography',
+                        'setDensity',
+                        'patchSection',
+                        'redesign',
+                        'setSiteData'
+                      ],
+                    },
+                    args: { type: 'object', additionalProperties: true }
+                  },
+                  required: ['name','args']
+                }
+              }
+            },
+            required: ['steps']
+          },
+          strict: true
+        } as const;
+
+        const planBuffer: string[] = [];
+
         const s = await client.responses.stream({
-          model: MODEL,
+          model: process.env.NEXT_PUBLIC_AI_MODEL || 'gpt-5',
+          // Give clear instructions to output JSON plan ONLY
           input: [
             systemMsg as any,
             {
               role: 'system',
               content:
-                'Current site state (JSON, may be partial):\n```json\n' +
-                JSON.stringify(state ?? {}, null, 2) +
-                '\n```',
+                [
+                  'TOOLS ARE UNAVAILABLE. Do not call any tools.',
+                  'Instead, output ONLY JSON matching the ActionPlan schema.',
+                  'Populate steps that directly implement the user request using these actions: setTheme, addSection, patchSection, setTypography, setDensity, applyStylePreset, removeSection, fixImages, rebuild, updateBrief, redesign, setSiteData.',
+                  'Be concrete and minimal: 1–6 steps. No prose.'
+                ].join('\n')
             } as any,
-            ...messages,
+            {
+              role: 'system',
+              content:
+                'Current site state (JSON):\n```json\n' +
+                JSON.stringify(state ?? {}, null, 2) +
+                '\n```'
+            } as any,
+            ...messages
           ],
-          tools,
-          tool_choice: 'auto',
-          parallel_tool_calls: true,
+          // force JSON output we can parse
+          response_format: { type: 'json_schema', json_schema: actionSchema },
+          // tools removed on purpose — gpt-5 won’t call them
+          parallel_tool_calls: false
         });
 
         s.on('event', (event: any) => {
+          // For json_schema, the model streams text deltas that form a single JSON object.
           if (event.type === 'response.output_text.delta') {
-            sendJSON(controller, { type: 'assistant', delta: event.delta });
-            return;
-          }
-          if (
-            event.type === 'response.tool_call.created' ||
-            event.type === 'response.tool_call.delta' ||
-            event.type === 'response.tool_call.completed'
-          ) {
-            sendJSON(controller, { type: 'toolEvent', event });
+            planBuffer.push(event.delta ?? '');
+            // optional: let the user see a tiny “working” message
+            // sendJSON(controller, { type: 'assistant', delta: '' });
             return;
           }
           if (event.type === 'response.error') {
-            sendJSON(controller, {
-              type: 'error',
-              message: event.error?.message || 'response error',
-            });
+            sendJSON(controller, { type: 'error', message: event.error?.message || 'response error' });
           }
         });
 
         s.on('end', () => {
-          clearInterval(ping);
-          controller.close();
+          try {
+            const jsonText = planBuffer.join('').trim();
+            const plan = JSON.parse(jsonText || '{}') as { summary?: string; steps: Array<{name:string; args:any}> };
+
+            // 1) Show the optional summary in chat
+            if (plan?.summary) {
+              sendJSON(controller, { type: 'assistant', delta: plan.summary });
+            }
+
+            // 2) Re-emit each step as a synthetic client-side tool call
+            for (const step of plan?.steps ?? []) {
+              if (!step || typeof step.name !== 'string') continue;
+              sendJSON(controller, { type: 'tool', name: step.name, args: step.args || {} });
+            }
+          } catch (err: any) {
+            sendJSON(controller, { type: 'error', message: 'ActionPlan parse failed: ' + (err?.message || String(err)) });
+          } finally {
+            clearInterval(ping);
+            controller.close();
+          }
         });
 
         s.on('error', (err) => {
           clearInterval(ping);
-          sendJSON(controller, {
-            type: 'error',
-            message: (err as any)?.message || 'stream error',
-          });
+          sendJSON(controller, { type: 'error', message: (err as any)?.message || 'stream error' });
           controller.close();
         });
       } catch (err: any) {
         clearInterval(ping);
-        sendJSON(controller, {
-          type: 'error',
-          message: err?.message || 'stream failed',
-        });
+        sendJSON(controller, { type: 'error', message: err?.message || 'stream failed' });
         controller.close();
       }
-    },
+    }
   });
 
   return new Response(stream, {
     headers: {
       'Content-Type': 'text/event-stream; charset=utf-8',
       'Cache-Control': 'no-cache, no-transform',
-      Connection: 'keep-alive',
-    },
+      Connection: 'keep-alive'
+    }
   });
 }
+

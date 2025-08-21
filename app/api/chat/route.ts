@@ -210,8 +210,6 @@ const tools: OpenAI.Responses.Tool[] = [
           layout: { type: 'string' },
           themeHint: { type: 'string' },
         },
-      },
-    },
     required: ['section','payload'],
   },
 }, // <-- keep this comma so the next tool parses!

@@ -2,7 +2,7 @@
 export const runtime = 'edge'
 
 import OpenAI from 'openai'
-import { StreamingTextResponse } from 'ai'
+import { StreamingTextResponse } from '@ai-sdk/next'
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! })
 

@@ -115,7 +115,7 @@ const tools: OpenAI.Responses.Tool[] = [
     },
   },
   {
-   {
+   
   type: 'function',
   name: 'addSection',
   description: 'Add a section with strictly typed payloads',

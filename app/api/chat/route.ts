@@ -408,7 +408,7 @@ export async function POST(req: NextRequest) {
             ...messages
           ],
           // force JSON output we can parse
-          response_format: { type: 'json_schema', json_schema: actionSchema },
+           text_format: { type: 'json_schema', json_schema: actionSchema },
           // tools removed on purpose — gpt-5 won’t call them
           parallel_tool_calls: false
         });

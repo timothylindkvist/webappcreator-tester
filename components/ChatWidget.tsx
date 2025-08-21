@@ -35,28 +35,27 @@ export default function ChatWidget() {
   const controllerRef = useRef<AbortController | null>(null)
   const assistantIndexRef = useRef<number | null>(null)
 
+  // Buffer for streaming tool calls (Responses API)
+  const toolBufRef = useRef<Record<string, { name?: string; args: string }>>({})
+
   useEffect(() => {
-    return () => {
-      controllerRef.current?.abort()
-    }
+    return () => controllerRef.current?.abort()
   }, [])
 
   async function send() {
     const trimmed = input.trim()
     if (!trimmed) return
 
-    // Prepare payload for the server using the *current* messages + new user msg
     const userMsg: Msg = { role: 'user', content: trimmed }
     const payloadMessages = [...messages, userMsg]
 
-    // Optimistically render user msg + an empty assistant bubble
-    // and remember where the assistant bubble is
+    // Optimistic UI: add user + an empty assistant bubble
     assistantIndexRef.current = payloadMessages.length
     setMessages((cur) => [...cur, userMsg, { role: 'assistant', content: '' }])
     setInput('')
     setIsTyping(true)
 
-    // Cancel any previous request
+    // cancel any previous request
     controllerRef.current?.abort()
     controllerRef.current = new AbortController()
 
@@ -68,10 +67,7 @@ export default function ChatWidget() {
         body: JSON.stringify({ messages: payloadMessages, state: { brief, data } }),
         signal: controllerRef.current.signal,
       })
-
-      if (!res.ok || !res.body) {
-        throw new Error(`Request failed: ${res.status}`)
-      }
+      if (!res.ok || !res.body) throw new Error(`Request failed: ${res.status}`)
 
       reader = res.body.getReader()
       const decoder = new TextDecoder()
@@ -82,26 +78,22 @@ export default function ChatWidget() {
         if (done) break
         buffer += decoder.decode(value, { stream: true })
 
-        // We expect NDJSON lines. If your server ever prefixes SSE "data: ",
-        // the parser below strips it safely.
         const lines = buffer.split('\n')
         buffer = lines.pop() || ''
 
         for (const raw of lines) {
-          const line = raw.trim()
+          let line = raw.trim()
           if (!line || line.startsWith(':ping')) continue
-
-          let json = line
-          if (json.startsWith('data:')) json = json.slice(5).trim()
+          if (line.startsWith('data:')) line = line.slice(5).trim()
 
           let msg: any
           try {
-            msg = JSON.parse(json)
+            msg = JSON.parse(line)
           } catch {
             continue
           }
 
-          // 1) Text deltas from the assistant
+          // ====== TEXT DELTAS ======
           if (msg.type === 'assistant' && typeof msg.delta === 'string') {
             setMessages((cur) => {
               const copy = [...cur]
@@ -114,7 +106,119 @@ export default function ChatWidget() {
             continue
           }
 
-          // 2) Tool calls (your server emits explicit 'tool' messages)
+          // ====== RESPONSES API TOOL STREAMING ======
+          if (msg.type === 'toolEvent') {
+            const ev = msg.event || {}
+            const evType: string = ev.type || ''
+            const id: string | undefined = ev.id || ev.tool_call_id || ev.call_id
+
+            // created -> remember tool name
+            if (evType === 'response.tool_call.created' && id) {
+              const name = ev.name || ev.tool_name || ev.tool?.name
+              toolBufRef.current[id] = { name, args: '' }
+            }
+
+            // delta -> accumulate args
+            if (evType === 'response.tool_call.delta' && id) {
+              const deltaArgs =
+                ev.delta?.arguments ??
+                ev.delta?.args ??
+                ev.arguments_delta ??
+                ev.arguments ??
+                ''
+              if (!toolBufRef.current[id]) toolBufRef.current[id] = { name: ev.name, args: '' }
+              toolBufRef.current[id].args += String(deltaArgs)
+            }
+
+            // completed -> parse & execute
+            if (evType === 'response.tool_call.completed' && id) {
+              const entry = toolBufRef.current[id] || { name: ev.name, args: '' }
+              const toolName = entry.name || ev.name || ev.tool_name
+              let args: any = {}
+              try {
+                args = entry.args ? JSON.parse(entry.args) : {}
+              } catch {
+                try {
+                  args = JSON.parse(
+                    entry.args?.replace(/,\s*]$/, ']')?.replace(/,\s*}$/, '}') || '{}'
+                  )
+                } catch {}
+              }
+
+              let confirm = ''
+              switch (toolName) {
+                case 'updateBrief':
+                  setBrief(args.brief)
+                  confirm = `\n\n📝 Updated brief.`
+                  break
+                case 'rebuild':
+                  await rebuild()
+                  confirm = `\n\n🔄 Rebuilt the site.`
+                  break
+                case 'setTheme': {
+                  const { brand, accent, background, foreground, vibe } = args
+                  applyTheme({ brand, accent, background, foreground, vibe })
+                  confirm = `\n\n🎨 Applied theme${vibe ? ` (${vibe})` : ''}.`
+                  break
+                }
+                case 'addSection':
+                  addSection(args.section, args.payload)
+                  confirm = `\n\n➕ Added section “${args.section}”.`
+                  break
+                case 'removeSection':
+                  removeSection(args.section)
+                  confirm = `\n\n➖ Removed section “${args.section}”.`
+                  break
+                case 'fixImages':
+                  fixImages(args.section)
+                  confirm = `\n\n🖼️ Fixed images${args.section ? ` in “${args.section}”` : ''}.`
+                  break
+                case 'applyStylePreset':
+                  applyStylePreset(args.preset)
+                  confirm = `\n\n🎭 Applied style preset “${args.preset}”.`
+                  break
+                case 'setTypography':
+                  setTypography(args.font)
+                  confirm = `\n\n🔤 Typography → ${args.font}.`
+                  break
+                case 'setDensity':
+                  setDensity(args.density)
+                  confirm = `\n\n📐 Density → ${args.density}.`
+                  break
+                case 'patchSection':
+                  patchSection(args.section, args.content)
+                  confirm = `\n\n✏️ Updated “${args.section}”.`
+                  break
+                case 'redesign':
+                  redesign(args.concept)
+                  confirm = `\n\n✨ Redesigned layout.`
+                  break
+                case 'setSiteData':
+                  setData(args)
+                  confirm = `\n\n🧩 Applied full site structure.`
+                  break
+              }
+
+              if (confirm) {
+                setMessages((cur) => {
+                  const copy = [...cur]
+                  const idx =
+                    assistantIndexRef.current != null ? assistantIndexRef.current : copy.length - 1
+                  copy[idx] = {
+                    role: 'assistant',
+                    content: (copy[idx]?.content || '') + confirm,
+                  }
+                  return copy
+                })
+              }
+
+              delete toolBufRef.current[id]
+            }
+
+            continue
+          }
+
+          // ====== FALLBACK: synthetic tool messages (if your API ever sends them) ======
           if (msg.type === 'tool') {
             const args = msg.args || {}
             let confirm = ''
@@ -187,13 +291,7 @@ export default function ChatWidget() {
             continue
           }
 
-          // 3) Some builds emit 'toolEvent' objects; we can ignore or log them
-          if (msg.type === 'toolEvent') {
-            // Optionally: console.log('toolEvent', msg.event)
-            continue
-          }
-
-          // 4) Error payloads
+          // ====== ERROR PAYLOADS ======
           if (msg.type === 'error') {
             setMessages((cur) => {
               const copy = [...cur]
@@ -240,12 +338,7 @@ export default function ChatWidget() {
             </div>
           </div>
         ))}
-
-        {isTyping && (
-          <div className="mt-1 text-xs text-muted-foreground">
-            Assistant is typing…
-          </div>
-        )}
+        {isTyping && <div className="mt-1 text-xs text-muted-foreground">Assistant is typing…</div>}
       </div>
 
       <div className="p-2 border-t flex gap-2">

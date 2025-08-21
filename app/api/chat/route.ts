@@ -109,9 +109,15 @@ stream.on('event', (event: any) => {
 })
 
       // tool events passthrough
-      stream.on('response.tool_call.created', (ev) => sendJSON(controller, { type: 'toolEvent', event: ev }))
-      stream.on('response.tool_call.delta', (ev) => sendJSON(controller, { type: 'toolEvent', event: ev }))
-      stream.on('response.tool_call.completed', (ev) => sendJSON(controller, { type: 'toolEvent', event: ev }))
+;(stream as any).on('response.tool_call.created', (ev: any) =>
+  sendJSON(controller, { type: 'toolEvent', event: ev })
+)
+;(stream as any).on('response.tool_call.delta', (ev: any) =>
+  sendJSON(controller, { type: 'toolEvent', event: ev })
+)
+;(stream as any).on('response.tool_call.completed', (ev: any) =>
+  sendJSON(controller, { type: 'toolEvent', event: ev })
+)
 
       await stream.finalize()
     }

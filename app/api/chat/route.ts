@@ -119,7 +119,7 @@ stream.on('event', (event: any) => {
   sendJSON(controller, { type: 'toolEvent', event: ev })
 )
 
-      await stream.finalize()
+    await (stream as any).finalize()
     }
   })
 

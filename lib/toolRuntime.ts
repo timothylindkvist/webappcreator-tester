@@ -7,11 +7,13 @@ export function handleToolEvent(event: any) {
   const t = event.type as string
 
   if (t === 'response.tool_call.created') {
+    console.log('tool_call.created', event.tool_call?.name, event.tool_call?.id);
     argsById.set(event.tool_call.id, '')
     return
   }
 
   if (t === 'response.tool_call.delta') {
+    console.log('tool_call.delta', event.tool_call?.id, event.delta?.arguments);
     const id = event.tool_call.id
     const prev = argsById.get(id) || ''
     argsById.set(id, prev + (event.delta?.arguments ?? ''))
@@ -19,6 +21,7 @@ export function handleToolEvent(event: any) {
   }
 
   if (t === 'response.tool_call.completed') {
+    console.log('tool_call.completed', event.tool_call?.name, event.tool_call?.id);
     const id = event.tool_call.id
     const name = event.tool_call.name as string
     const raw = argsById.get(id) || '{}'
@@ -27,7 +30,7 @@ export function handleToolEvent(event: any) {
     let args: any
     try { args = JSON.parse(raw) } catch { args = {} }
 
-    executeTool(name, args)
+    console.log('executeTool', name, args); executeTool(name, args)
     return
   }
 }

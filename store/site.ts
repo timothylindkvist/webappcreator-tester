@@ -19,5 +19,6 @@ export const useSite = create<SiteState>()(
     theme: null,
     sections: {},
     apply: (fn) => set(fn), // with immer, set(fn) receives a *draft* you can mutate
-  }))
+    }))
+)
 )

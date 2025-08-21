@@ -72,16 +72,7 @@ const tools: OpenAI.Responses.Tool[] = [
       properties: {
         section: {
           type: 'string',
-          enum: [
-            'hero',
-            'about',
-            'features',
-            'gallery',
-            'testimonials',
-            'pricing',
-            'faq',
-            'cta',
-          ],
+          enum: ['hero','about','features','gallery','testimonials','pricing','faq','cta'],
         },
       },
       required: ['section'],
@@ -90,8 +81,8 @@ const tools: OpenAI.Responses.Tool[] = [
   {
     type: 'function',
     name: 'addSection',
-    description: 'Add a section with strictly typed payloads',
-    strict: true,
+    description: 'Add a section with structured content',
+    strict: false,
     parameters: {
       type: 'object',
       additionalProperties: false,
@@ -102,7 +93,7 @@ const tools: OpenAI.Responses.Tool[] = [
         },
         payload: {
           type: 'object',
-          additionalProperties: false,
+          additionalProperties: true,
           properties: {
             title: { type: 'string' },
             subtitle: { type: 'string' },
@@ -118,7 +109,7 @@ const tools: OpenAI.Responses.Tool[] = [
               type: 'array',
               items: {
                 type: 'object',
-                additionalProperties: false,
+                additionalProperties: true,
                 properties: {
                   title: { type: 'string' },
                   description: { type: 'string' },
@@ -128,27 +119,25 @@ const tools: OpenAI.Responses.Tool[] = [
                   alt: { type: 'string' },
                   href: { type: 'string' },
                 },
-                required: ['title','description','body','icon','image','alt','href'],
               },
             },
             images: {
               type: 'array',
               items: {
                 type: 'object',
-                additionalProperties: false,
+                additionalProperties: true,
                 properties: {
                   src: { type: 'string' },
                   alt: { type: 'string' },
                   caption: { type: 'string' },
                 },
-                required: ['src','alt','caption'],
               },
             },
             testimonials: {
               type: 'array',
               items: {
                 type: 'object',
-                additionalProperties: false,
+                additionalProperties: true,
                 properties: {
                   name: { type: 'string' },
                   role: { type: 'string' },
@@ -156,14 +145,13 @@ const tools: OpenAI.Responses.Tool[] = [
                   avatar: { type: 'string' },
                   rating: { type: 'number' },
                 },
-                required: ['name','role','quote','avatar','rating'],
               },
             },
             plans: {
               type: 'array',
               items: {
                 type: 'object',
-                additionalProperties: false,
+                additionalProperties: true,
                 properties: {
                   name: { type: 'string' },
                   price: { type: 'string' },
@@ -173,30 +161,22 @@ const tools: OpenAI.Responses.Tool[] = [
                   ctaHref: { type: 'string' },
                   highlighted: { type: 'boolean' },
                 },
-                required: ['name','price','period','features','ctaLabel','ctaHref','highlighted'],
               },
             },
             faqs: {
               type: 'array',
               items: {
                 type: 'object',
-                additionalProperties: false,
+                additionalProperties: true,
                 properties: {
                   q: { type: 'string' },
                   a: { type: 'string' },
                 },
-                required: ['q','a'],
               },
             },
             layout: { type: 'string' },
             themeHint: { type: 'string' },
           },
-          required: [
-            'title','subtitle','eyebrow','body','kicker',
-            'ctaLabel','ctaHref','secondaryCtaLabel','secondaryCtaHref',
-            'bullets','items','images','testimonials','plans','faqs',
-            'layout','themeHint'
-          ],
         },
       },
       required: ['section','payload'],
@@ -217,7 +197,7 @@ const tools: OpenAI.Responses.Tool[] = [
         },
         content: { type: 'object', additionalProperties: true },
       },
-      required: ['section', 'content'],
+      required: ['section','content'],
     },
   },
   {
@@ -351,7 +331,7 @@ export async function POST(req: NextRequest) {
       }, 15000);
 
       try {
-const s = await client.responses.stream({
+const s = const s = await client.responses.stream({
   model: MODEL,
   input: [systemMsg as any, ...messages],
   tools,

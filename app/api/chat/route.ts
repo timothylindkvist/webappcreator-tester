@@ -235,10 +235,7 @@ const tools: OpenAI.Responses.Tool[] = [
         },
       },
     },
-    required: ['section', 'payload'],
-  },
-}
-      required: ['section', 'payload'],
+         required: ['section', 'payload'],
     },
   }, // <-- IMPORTANT: comma after the tool object
 

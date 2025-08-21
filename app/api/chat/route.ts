@@ -262,8 +262,7 @@ const tools: OpenAI.Responses.Tool[] = [
       required: ['section', 'content'],
     },
   },
-    },  
-  {
+    {
     type: 'function',
     name: 'setTypography',
     description: 'Set a single font family name for headings and body',

@@ -257,34 +257,6 @@ const tools: OpenAI.Responses.Tool[] = [
   },
 },
     
-  {
-    type: 'function',
-    name: 'patchSection',
-    description: 'Patch a section with a shallow object merge',
-    strict: true,
-    parameters: {
-      type: 'object',
-      additionalProperties: false,
-      properties: {
-        section: {
-          type: 'string',
-          enum: [
-            'hero',
-            'about',
-            'features',
-            'gallery',
-            'testimonials',
-            'pricing',
-            'faq',
-            'cta',
-            'theme',
-          ],
-        },
-        content: { type: 'object', additionalProperties: true },
-      },
-      required: ['section', 'content'],
-    },
-  },
     {
     type: 'function',
     name: 'setTypography',

@@ -98,16 +98,7 @@ const tools: OpenAI.Responses.Tool[] = [
     properties: {
       section: {
         type: 'string',
-        enum: [
-          'hero',
-          'about',
-          'features',
-          'gallery',
-          'testimonials',
-          'pricing',
-          'faq',
-          'cta',
-        ],
+        enum: ['hero','about','features','gallery','testimonials','pricing','faq','cta'],
       },
       payload: {
         type: 'object',
@@ -144,15 +135,7 @@ const tools: OpenAI.Responses.Tool[] = [
                 alt: { type: 'string' },
                 href: { type: 'string' },
               },
-              required: [
-                'title',
-                'description',
-                'body',
-                'icon',
-                'image',
-                'alt',
-                'href',
-              ],
+              required: ['title','description','body','icon','image','alt','href'],
             },
           },
 
@@ -167,7 +150,7 @@ const tools: OpenAI.Responses.Tool[] = [
                 alt: { type: 'string' },
                 caption: { type: 'string' },
               },
-              required: ['src', 'alt', 'caption'],
+              required: ['src','alt','caption'],
             },
           },
 
@@ -184,7 +167,7 @@ const tools: OpenAI.Responses.Tool[] = [
                 avatar: { type: 'string' },
                 rating: { type: 'number' },
               },
-              required: ['name', 'role', 'quote', 'avatar', 'rating'],
+              required: ['name','role','quote','avatar','rating'],
             },
           },
 
@@ -203,15 +186,7 @@ const tools: OpenAI.Responses.Tool[] = [
                 ctaHref: { type: 'string' },
                 highlighted: { type: 'boolean' },
               },
-              required: [
-                'name',
-                'price',
-                'period',
-                'features',
-                'ctaLabel',
-                'ctaHref',
-                'highlighted',
-              ],
+              required: ['name','price','period','features','ctaLabel','ctaHref','highlighted'],
             },
           },
 
@@ -225,7 +200,7 @@ const tools: OpenAI.Responses.Tool[] = [
                 q: { type: 'string' },
                 a: { type: 'string' },
               },
-              required: ['q', 'a'],
+              required: ['q','a'],
             },
           },
 
@@ -235,6 +210,29 @@ const tools: OpenAI.Responses.Tool[] = [
         },
       },
     },
+    required: ['section','payload'],
+  },
+}, // <-- keep this comma so the next tool parses!
+
+// next tool...
+{
+  type: 'function',
+  name: 'patchSection',
+  description: 'Patch a section with a shallow object merge',
+  strict: true,
+  parameters: {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      section: {
+        type: 'string',
+        enum: ['hero','about','features','gallery','testimonials','pricing','faq','cta','theme'],
+      },
+      content: { type: 'object', additionalProperties: true },
+    },
+    required: ['section','content'],
+  },
+},
     
   {
     type: 'function',
@@ -264,7 +262,7 @@ const tools: OpenAI.Responses.Tool[] = [
       required: ['section', 'content'],
     },
   },
-     
+    },  
   {
     type: 'function',
     name: 'setTypography',

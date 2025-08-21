@@ -388,7 +388,13 @@ export async function POST(req: NextRequest) {
       }, 15000);
 
       try {
-
+const s = await client.responses.stream({
+  model: MODEL,
+  input: [systemMsg as any, ...messages],
+  tools,
+  tool_choice: 'auto',
+  parallel_tool_calls: true,
+});
 
         // Generic "event" handler is future-proof with this SDK
         s.on('event', (event: any) => {

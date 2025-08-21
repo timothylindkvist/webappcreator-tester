@@ -1,5 +1,6 @@
 // store/site.ts
 import { create } from 'zustand'
+import { immer } from 'zustand/middleware/immer'
 
 export type SectionKey = 'hero'|'about'|'features'|'gallery'|'testimonials'|'pricing'|'faq'|'cta'
 export type Theme = { brand:string; accent:string; background:string; foreground:string; vibe:string }
@@ -13,8 +14,10 @@ export type SiteState = {
   apply: (fn: (s: SiteState) => void) => void
 }
 
-export const useSite = create<SiteState>((set) => ({
-  theme: null,
-  sections: {},
-  apply: (fn) => set((s) => { fn(s) }),
-}))
+export const useSite = create<SiteState>()(
+  immer((set) => ({
+    theme: null,
+    sections: {},
+    apply: (fn) => set(fn), // with immer, set(fn) receives a *draft* you can mutate
+  }))
+)

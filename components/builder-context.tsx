@@ -1,6 +1,81 @@
 'use client';
 import React, { createContext, useContext, useState } from 'react';
 
+<<<<<<< HEAD
+export type Theme = {
+  vibe?: string;
+  palette: { brand: string; accent: string; background: string; foreground: string };
+};
+
+export type SiteData = {
+  theme: Theme;
+  hero?: { title?: string; subtitle?: string; cta?: { label?: string; href?: string } };
+  about?: { heading?: string; body?: string };
+  features?: { title?: string; items?: { title?: string; description?: string }[] };
+  faq?: { title?: string; items?: { q?: string; a?: string }[] };
+  cta?: { title?: string; subtitle?: string; cta?: { label?: string; href?: string } };
+  [k: string]: any;
+};
+
+type Ctx = {
+  data: SiteData;
+  setData: React.Dispatch<React.SetStateAction<SiteData>>;
+  patchSection: (section: string, content: any) => void;
+  addSection: (section: string, payload?: any) => void;
+  setTheme: (t: Partial<Theme> | { brand?: string; accent?: string; background?: string; foreground?: string; vibe?: string }) => void;
+};
+
+const Ctx = createContext<Ctx | null>(null);
+
+export const BuilderProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
+  const [data, setData] = useState<SiteData>({
+    theme: { palette: { brand: '#2563EB', accent: '#22C55E', background: '#FFFFFF', foreground: '#0B1220' } },
+    hero: { title: 'Describe your site in the chat →', subtitle: 'The assistant will design & edit live.' },
+  });
+
+  const patchSection: Ctx['patchSection'] = (section, content) => {
+    setData((cur) => ({
+      ...cur,
+      [section]: { ...(cur as any)[section], ...(content ?? {}) },
+    }));
+  };
+
+  const addSection: Ctx['addSection'] = (section, payload) => {
+    setData((cur) => ({ ...cur, [section]: payload ?? ((cur as any)[section] ?? {}) }));
+  };
+
+  const setTheme: Ctx['setTheme'] = (t) => {
+    const p = 'palette' in (t as any)
+      ? (t as any).palette
+      : { brand: (t as any).brand, accent: (t as any).accent, background: (t as any).background, foreground: (t as any).foreground };
+    setData((cur) => ({
+      ...cur,
+      theme: {
+        vibe: (t as any).vibe ?? cur.theme.vibe,
+        palette: {
+          brand: p.brand ?? cur.theme.palette.brand,
+          accent: p.accent ?? cur.theme.palette.accent,
+          background: p.background ?? cur.theme.palette.background,
+          foreground: p.foreground ?? cur.theme.palette.foreground,
+        },
+      },
+    }));
+  };
+
+  return (
+    <Ctx.Provider value={{ data, setData, patchSection, addSection, setTheme }}>
+      {children}
+    </Ctx.Provider>
+  );
+};
+
+export const useBuilder = () => {
+  const ctx = useContext(Ctx);
+  if (!ctx) throw new Error('useBuilder must be used within BuilderProvider');
+  return ctx;
+};
+
+=======
 export type Theme = {
   vibe?: string;
   palette: { brand: string; accent: string; background: string; foreground: string };
@@ -113,3 +188,5 @@ export const useBuilder = () => {
   if (!ctx) throw new Error('useBuilder must be used within BuilderProvider');
   return ctx;
 }
+
+>>>>>>> bca90faad890ea65b9a7059caf10c0e171881ae6

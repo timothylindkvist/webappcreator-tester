@@ -2,9 +2,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { useBuilder } from '@/components/builder-context'
 
-type Msg = { role: 'user' | 'assistant'; content: string }
-
 export default function ChatWidget() {
+<<<<<<< HEAD
+  const { addSection, patchSection, setTheme } = useBuilder();
+=======
   const {
     brief,
     setBrief,
@@ -22,7 +23,14 @@ export default function ChatWidget() {
     rebuild,
   } = useBuilder()
 
+>>>>>>> bca90faad890ea65b9a7059caf10c0e171881ae6
   const [messages, setMessages] = useState<Msg[]>([
+<<<<<<< HEAD
+    { role: 'assistant', content: '👋 I handle everything. Describe your website (business, audience, tone, colors, sections)…' },
+  ]);
+  const [input, setInput] = useState('');
+  const toolBufRef = useRef<Record<string, { name?: string; args: string }>>({});
+=======
     {
       role: 'assistant',
       content:
@@ -34,7 +42,10 @@ export default function ChatWidget() {
 
   const controllerRef = useRef<AbortController | null>(null)
   const assistantIndexRef = useRef<number | null>(null)
+>>>>>>> bca90faad890ea65b9a7059caf10c0e171881ae6
 
+<<<<<<< HEAD
+=======
   // Buffer for streaming tool calls (Responses API)
   const toolBufRef = useRef<Record<string, { name?: string; args: string }>>({})
 
@@ -42,10 +53,20 @@ export default function ChatWidget() {
     return () => controllerRef.current?.abort()
   }, [])
 
+>>>>>>> bca90faad890ea65b9a7059caf10c0e171881ae6
   async function send() {
-    const trimmed = input.trim()
-    if (!trimmed) return
+    if (!input.trim()) return;
+    const userMsg: Msg = { role: 'user', content: input.trim() };
+    setMessages((cur) => [...cur, userMsg]);
+    setInput('');
 
+<<<<<<< HEAD
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: [...messages, userMsg], state: {} }),
+    });
+=======
     const userMsg: Msg = { role: 'user', content: trimmed }
     const payloadMessages = [...messages, userMsg]
 
@@ -54,11 +75,85 @@ export default function ChatWidget() {
     setMessages((cur) => [...cur, userMsg, { role: 'assistant', content: '' }])
     setInput('')
     setIsTyping(true)
+>>>>>>> bca90faad890ea65b9a7059caf10c0e171881ae6
 
+<<<<<<< HEAD
+    const reader = res.body?.getReader();
+    if (!reader) return;
+=======
     // cancel any previous request
     controllerRef.current?.abort()
     controllerRef.current = new AbortController()
+>>>>>>> bca90faad890ea65b9a7059caf10c0e171881ae6
 
+<<<<<<< HEAD
+    // assistant bubble
+    const idx = messages.length + 1;
+    setMessages((cur) => [...cur, { role: 'assistant', content: '' }]);
+
+    const dec = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += dec.decode(value, { stream: true });
+
+      let lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (!line.trim() || line.startsWith(':ping')) continue;
+
+        let m: any;
+        try { m = JSON.parse(line); } catch { continue; }
+
+        if (m.type === 'assistant' && typeof m.delta === 'string') {
+          setMessages((cur) => {
+            const copy = [...cur];
+            copy[idx] = { role: 'assistant', content: (copy[idx]?.content || '') + m.delta };
+            return copy;
+          });
+        }
+
+        if (m.type === 'toolEvent') {
+          const ev = m.event;
+          if (ev.type === 'response.tool_call.created') {
+            toolBufRef.current[ev.id] = { name: ev.name, args: '' };
+          }
+          if (ev.type === 'response.tool_call.delta') {
+            const buf = toolBufRef.current[ev.id] || { args: '' };
+            buf.args += ev.delta ?? '';
+            toolBufRef.current[ev.id] = buf;
+          }
+          if (ev.type === 'response.tool_call.completed') {
+            const buf = toolBufRef.current[ev.id];
+            delete toolBufRef.current[ev.id];
+            try {
+              const args = buf?.args ? JSON.parse(buf.args) : {};
+              switch (buf?.name) {
+                case 'patchSection':
+                  patchSection(args.section, args.content);
+                  break;
+                case 'addSection':
+                  addSection(args.section, args.payload ?? {});
+                  break;
+                case 'setTheme':
+                  setTheme(args);
+                  break;
+              }
+              setMessages((cur) => {
+                const copy = [...cur];
+                copy[idx] = { role: 'assistant', content: (copy[idx]?.content || '') + `\n\n🛠 ${buf?.name} applied.` };
+                return copy;
+              });
+            } catch {
+              setMessages((cur) => {
+                const copy = [...cur];
+                copy[idx] = { role: 'assistant', content: (copy[idx]?.content || '') + `\n\n⚠️ Tool args parse failed.` };
+                return copy;
+              });
+=======
     let reader: ReadableStreamDefaultReader<Uint8Array> | null = null
     try {
       const res = await fetch('/api/chat', {
@@ -274,6 +369,7 @@ export default function ChatWidget() {
                 setData(args) // replace entire object
                 confirm = `\n\n🧩 Applied full site structure.`
                 break
+>>>>>>> bca90faad890ea65b9a7059caf10c0e171881ae6
             }
 
             if (confirm) {
@@ -305,7 +401,17 @@ export default function ChatWidget() {
             })
           }
         }
+
+        if (m.type === 'error') {
+          setMessages((cur) => {
+            const copy = [...cur];
+            copy[idx] = { role: 'assistant', content: (copy[idx]?.content || '') + `\n\n⚠️ ${m.message}` };
+            return copy;
+          });
+        }
       }
+<<<<<<< HEAD
+=======
     } catch (err: any) {
       setMessages((cur) => {
         const copy = [...cur]
@@ -318,6 +424,7 @@ export default function ChatWidget() {
       })
     } finally {
       setIsTyping(false)
+>>>>>>> bca90faad890ea65b9a7059caf10c0e171881ae6
     }
   }
 
@@ -325,6 +432,12 @@ export default function ChatWidget() {
     <div className="h-full flex flex-col bg-card border border-border rounded-2xl overflow-hidden">
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {messages.map((m, i) => (
+<<<<<<< HEAD
+          <div key={i} className={m.role === 'user' ? 'text-right' : ''}>
+            <div className={'inline-block max-w-[85%] whitespace-pre-wrap rounded-xl border px-3 py-2 text-sm ' + (m.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted')}>
+              {m.content}
+            </div>
+=======
           <div key={i} className={m.role === 'user' ? 'text-right' : ''}>
             <div
               className={
@@ -336,32 +449,44 @@ export default function ChatWidget() {
             >
               {m.content}
             </div>
+>>>>>>> bca90faad890ea65b9a7059caf10c0e171881ae6
           </div>
         ))}
         {isTyping && <div className="mt-1 text-xs text-muted-foreground">Assistant is typing…</div>}
       </div>
+<<<<<<< HEAD
+      <div className="p-2 border-t flex gap-2">
+=======
 
       <div className="p-2 border-t flex gap-2">
+>>>>>>> bca90faad890ea65b9a7059caf10c0e171881ae6
         <input
           className="flex-1 rounded-xl border px-3 py-2 bg-background"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Describe your website, colors, sections…"
+<<<<<<< HEAD
+=======
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault()
               send()
             }
           }}
+>>>>>>> bca90faad890ea65b9a7059caf10c0e171881ae6
         />
+<<<<<<< HEAD
+        <button onClick={send} className="rounded-xl px-4 py-2 bg-primary text-primary-foreground disabled:opacity-50" disabled={!input.trim()}>
+=======
         <button
           onClick={send}
           className="rounded-xl px-4 py-2 bg-primary text-primary-foreground disabled:opacity-50"
           disabled={!input.trim()}
         >
+>>>>>>> bca90faad890ea65b9a7059caf10c0e171881ae6
           Send
         </button>
       </div>
     </div>
-  )
+  );
 }

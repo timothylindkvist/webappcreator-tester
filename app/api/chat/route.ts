@@ -5,16 +5,47 @@ export const maxDuration = 60;
 import { NextRequest } from 'next/server';
 import OpenAI from 'openai';
 
+<<<<<<< HEAD
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
+const MODEL = process.env.NEXT_PUBLIC_AI_MODEL || 'gpt-4.1-mini';
+=======
+const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
+>>>>>>> bca90faad890ea65b9a7059caf10c0e171881ae6
 
+<<<<<<< HEAD
+function sendJSON(controller: ReadableStreamDefaultController<Uint8Array>, obj: any) {
+  const enc = new TextEncoder();
+  controller.enqueue(enc.encode(JSON.stringify(obj) + '\n'));
+=======
 function sendJSON(
   controller: ReadableStreamDefaultController<Uint8Array>,
   obj: any
 ) {
   const enc = new TextEncoder();
   controller.enqueue(enc.encode(JSON.stringify(obj) + '\n'));
+>>>>>>> bca90faad890ea65b9a7059caf10c0e171881ae6
 }
 
+<<<<<<< HEAD
+const tools: OpenAI.Responses.Tool[] = [
+  // Keep tools very permissive so the model uses them.
+  {
+    type: 'function',
+    name: 'patchSection',
+    description: 'Create or update a section by shallow merging content',
+    strict: false,
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        section: {
+          type: 'string',
+          enum: ['hero','about','features','gallery','testimonials','pricing','faq','cta','theme'],
+        },
+        content: { type: 'object', additionalProperties: true },
+      },
+      required: ['section', 'content'],
+=======
 const MODEL = process.env.NEXT_PUBLIC_AI_MODEL || 'gpt-5';
 
 // ---- Tools (strict schemas; required includes every key in properties) ----
@@ -180,7 +211,27 @@ const tools: OpenAI.Responses.Tool[] = [
         },
       },
       required: ['section','payload'],
+>>>>>>> bca90faad890ea65b9a7059caf10c0e171881ae6
     },
+<<<<<<< HEAD
+  },
+  {
+    type: 'function',
+    name: 'addSection',
+    description: 'Ensure a section exists; payload is any shape',
+    strict: false,
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        section: {
+          type: 'string',
+          enum: ['hero','about','features','gallery','testimonials','pricing','faq','cta'],
+        },
+        payload: { type: 'object', additionalProperties: true },
+      },
+      required: ['section'], // payload optional
+=======
   },
   {
     type: 'function',
@@ -198,7 +249,27 @@ const tools: OpenAI.Responses.Tool[] = [
         content: { type: 'object', additionalProperties: true },
       },
       required: ['section','content'],
+>>>>>>> bca90faad890ea65b9a7059caf10c0e171881ae6
     },
+<<<<<<< HEAD
+  },
+  {
+    type: 'function',
+    name: 'setTheme',
+    description: 'Set basic colors and vibe',
+    strict: false,
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        brand: { type: 'string' },
+        accent: { type: 'string' },
+        background: { type: 'string' },
+        foreground: { type: 'string' },
+        vibe: { type: 'string' },
+      },
+      required: [],
+=======
   },
   {
     type: 'function',
@@ -210,7 +281,12 @@ const tools: OpenAI.Responses.Tool[] = [
       additionalProperties: false,
       properties: { font: { type: 'string' } },
       required: ['font'],
+>>>>>>> bca90faad890ea65b9a7059caf10c0e171881ae6
     },
+<<<<<<< HEAD
+  },
+];
+=======
   },
   {
     type: 'function',
@@ -263,7 +339,19 @@ const tools: OpenAI.Responses.Tool[] = [
     },
   },
 ];
+>>>>>>> bca90faad890ea65b9a7059caf10c0e171881ae6
 
+<<<<<<< HEAD
+const systemMsg = {
+  role: 'system' as const,
+  content: [
+    'You are SiteCraft AI. You build a simple one-page site live.',
+    'Prefer calling tools over free text when adding/updating content.',
+    'Start by creating hero/about/features/faq/cta with sensible defaults if user is vague.',
+    'Use `patchSection` for incremental updates; use `addSection` only when missing.',
+  ].join('\n'),
+};
+=======
 // ---- System guidance (vague + detailed users, action-first) ----
 const systemMsg = {
   role: 'system' as const,
@@ -272,13 +360,22 @@ const systemMsg = {
     'You are “SiteCraft AI”, a senior product designer + copywriter + front-end engineer focused on small/medium business websites.',
     'Your job: turn any brief (even extremely vague) into a crisp site plan and polished, production-ready UI content.',
     'You think in components/sections and use the provided tools to make concrete changes immediately.',
+>>>>>>> bca90faad890ea65b9a7059caf10c0e171881ae6
 
+<<<<<<< HEAD
+export async function POST(req: NextRequest) {
+  const { messages = [], state } = await req.json();
+=======
     // Non-negotiables
     'Accessibility: WCAG 2.2 AA (focus rings, labels, landmark roles, aria where needed).',
     'Performance: aim LCP < 2.5s; keep above-the-fold minimal; prefer next/image; avoid heavy JS.',
     'SEO basics: single H1 per page, descriptive titles/meta, semantic HTML, alt text, sensible copy length.',
     'Consistency: coherent color palette, typographic scale, spacing rhythm, and consistent CTA language.',
+>>>>>>> bca90faad890ea65b9a7059caf10c0e171881ae6
 
+<<<<<<< HEAD
+  const stream = new ReadableStream<Uint8Array>({
+=======
     // Behavior for different users
     'IF USER IS VAGUE: Ask up to 3 concise bullet questions only (brand/audience/primary CTA). If any remain unanswered, pick sensible defaults and proceed. Do not stall.',
     'IF USER IS DETAILED: Mirror their requirements precisely; highlight conflicts and propose 1 safe resolution. Proceed without extra questions.',
@@ -321,7 +418,15 @@ export async function POST(req: NextRequest) {
   const { messages = [], state } = await req.json();
 
   const stream = new ReadableStream<Uint8Array>({
+>>>>>>> bca90faad890ea65b9a7059caf10c0e171881ae6
     async start(controller) {
+<<<<<<< HEAD
+      const ping = setInterval(() => {
+        try {
+          controller.enqueue(new TextEncoder().encode(':ping\n'));
+        } catch { clearInterval(ping); }
+      }, 15000);
+=======
       const ping = setInterval(() => {
         try {
           controller.enqueue(new TextEncoder().encode(':ping\n'));
@@ -329,7 +434,18 @@ export async function POST(req: NextRequest) {
           clearInterval(ping);
         }
       }, 15000);
+>>>>>>> bca90faad890ea65b9a7059caf10c0e171881ae6
 
+<<<<<<< HEAD
+      try {
+        const s = await client.responses.stream({
+          model: MODEL,
+          input: [systemMsg as any, ...messages],
+          tools,
+          tool_choice: 'auto',
+          parallel_tool_calls: true,
+        });
+=======
       try {
 const s = await client.responses.stream({
   model: MODEL,
@@ -338,7 +454,28 @@ const s = await client.responses.stream({
   tool_choice: 'auto',
   parallel_tool_calls: true,
 });
+>>>>>>> bca90faad890ea65b9a7059caf10c0e171881ae6
 
+<<<<<<< HEAD
+        s.on('event', (event: any) => {
+          if (event.type === 'response.output_text.delta') {
+            sendJSON(controller, { type: 'assistant', delta: event.delta });
+            return;
+          }
+          if (
+            event.type === 'response.tool_call.created' ||
+            event.type === 'response.tool_call.delta' ||
+            event.type === 'response.tool_call.completed'
+          ) {
+            // Forward tool call events for the client to execute.
+            sendJSON(controller, { type: 'toolEvent', event });
+            return;
+          }
+          if (event.type === 'response.error') {
+            sendJSON(controller, { type: 'error', message: event.error?.message || 'response error' });
+          }
+        });
+=======
         // Generic "event" handler is future-proof with this SDK
         s.on('event', (event: any) => {
           if (event.type === 'response.output_text.delta') {
@@ -360,12 +497,32 @@ const s = await client.responses.stream({
             });
           }
         });
+>>>>>>> bca90faad890ea65b9a7059caf10c0e171881ae6
 
+<<<<<<< HEAD
+        s.on('end', () => { clearInterval(ping); controller.close(); });
+        s.on('error', (err) => {
+          clearInterval(ping);
+          sendJSON(controller, { type: 'error', message: (err as any)?.message || 'stream error' });
+          controller.close();
+        });
+      } catch (err: any) {
+        clearInterval(ping);
+        sendJSON(controller, { type: 'error', message: err?.message || 'stream failed' });
+        controller.close();
+      }
+    },
+  });
+=======
         s.on('end', () => {
           clearInterval(ping);
           controller.close();
         });
+>>>>>>> bca90faad890ea65b9a7059caf10c0e171881ae6
 
+<<<<<<< HEAD
+  return new Response(stream, {
+=======
         s.on('error', (err) => {
           clearInterval(ping);
           sendJSON(controller, {
@@ -386,6 +543,7 @@ const s = await client.responses.stream({
   });
 
   return new Response(stream, {
+>>>>>>> bca90faad890ea65b9a7059caf10c0e171881ae6
     headers: {
       'Content-Type': 'application/x-ndjson; charset=utf-8',
       'Cache-Control': 'no-cache, no-transform',

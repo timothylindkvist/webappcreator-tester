@@ -1,11 +1,28 @@
+import { clsx } from 'clsx';
+import { ComponentProps } from 'react';
 
-'use client'
-import { clsx } from 'clsx'
-
-export function Button({ className, ...props }: any) {
-  return <button className={clsx('px-4 py-2 rounded-xl bg-[var(--brand)] text-white disabled:opacity-50', className)} {...props} />
+export function Button({ className, ...props }: ComponentProps<'button'>) {
+  return (
+    <button
+      className={clsx(
+        'inline-flex items-center justify-center rounded-2xl px-5 py-2.5 text-sm font-semibold',
+        'bg-primary text-primary-foreground hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring',
+        'transition-all duration-200 shadow-[0_8px_30px_rgb(0,0,0,0.12)]',
+        className
+      )}
+      {...props}
+    />
+  );
 }
 
-export function Card({ className, ...props }: any) {
-  return <div className={clsx('rounded-2xl border border-white/10 bg-white/5 p-4', className)} {...props} />
+export function Card({ className, ...props }: ComponentProps<'div'>) {
+  return (
+    <div
+      className={clsx(
+        'rounded-2xl border border-border/60 bg-card text-card-foreground shadow-sm',
+        className
+      )}
+      {...props}
+    />
+  );
 }

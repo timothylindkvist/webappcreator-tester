@@ -388,14 +388,7 @@ export async function POST(req: NextRequest) {
       }, 15000);
 
       try {
-        const s = await client.responses.stream({
-          model: MODEL,
-          input: [systemMsg as any, ...messages], // Responses API uses `input` for streaming
-          tools,
-          tool_choice: 'auto',
-          parallel_tool_calls: true,
-          temperature: 0.7,
-        });
+
 
         // Generic "event" handler is future-proof with this SDK
         s.on('event', (event: any) => {

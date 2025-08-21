@@ -87,7 +87,7 @@ const tools: OpenAI.Responses.Tool[] = [
       required: ['section'],
     },
   },
-  {
+ {
   type: 'function',
   name: 'addSection',
   description: 'Add a section with strictly typed payloads',
@@ -104,15 +104,13 @@ const tools: OpenAI.Responses.Tool[] = [
         type: 'object',
         additionalProperties: false,
         properties: {
-          // common fields (not all required at top level)
+          // common fields
           title: { type: 'string' },
           subtitle: { type: 'string' },
           eyebrow: { type: 'string' },
           body: { type: 'string' },
           kicker: { type: 'string' },
-             },
-          required: ['title','subtitle','eyebrow','body','kicker'],
- },
+
           // CTAs
           ctaLabel: { type: 'string' },
           ctaHref: { type: 'string' },
@@ -210,9 +208,31 @@ const tools: OpenAI.Responses.Tool[] = [
           layout: { type: 'string' },
           themeHint: { type: 'string' },
         },
+        // >>> This is the key addition:
+        required: [
+          'title',
+          'subtitle',
+          'eyebrow',
+          'body',
+          'kicker',
+          'ctaLabel',
+          'ctaHref',
+          'secondaryCtaLabel',
+          'secondaryCtaHref',
+          'bullets',
+          'items',
+          'images',
+          'testimonials',
+          'plans',
+          'faqs',
+          'layout',
+          'themeHint'
+        ],
+      },
+    },
     required: ['section','payload'],
   },
-}, // <-- keep this comma so the next tool parses!
+}, // keep the comma to separate from the next tool
 
 // next tool...
 {

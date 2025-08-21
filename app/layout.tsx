@@ -1,16 +1,17 @@
-
-import './globals.css'
-import type { Metadata } from 'next'
+import './globals.css';
+import type { Metadata } from 'next';
+import { clsx } from 'clsx';
 
 export const metadata: Metadata = {
-  title: 'SiteCraft — AI website builder',
-  description: 'Design and edit a site via chat, live.',
-}
+  title: 'Influencer Site Builder',
+  description: 'Generate stunning influencer websites with AI.',
+  metadataBase: new URL('https://example.com'),
+};
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body>{children}</body>
+    <html lang="en" suppressHydrationWarning>
+      <body className={clsx('min-h-dvh bg-background text-foreground')}>{children}</body>
     </html>
-  )
+  );
 }

@@ -98,12 +98,12 @@ export async function POST(req: NextRequest) {
         sendJSON(controller, { type: 'assistant', delta: evt.delta })
       })
       stream.on('response.completed', () => controller.close())
-      stream.on('event', (event) => {
-      if (event.type === 'response.error') {
-       sendJSON(controller, {
+stream.on('event', (event: any) => {
+  if (event.type === 'response.error') {
+    sendJSON(controller, {
       type: 'error',
-      message: String((event as any)?.error?.message || 'error'),
-     })
+      message: String(event?.error?.message || 'error'),
+    })
     controller.close()
   }
 })

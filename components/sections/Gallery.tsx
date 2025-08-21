@@ -1,17 +1,19 @@
-export default function Gallery({ items }: { items: { title: string; image: string }[] }) {
+
+'use client'
+export default function Gallery({ images = [] as { url: string; caption?: string }[] }: { images?: { url: string; caption?: string }[] }) {
   return (
-    <section className="px-6 py-16">
-      <div className="mx-auto max-w-6xl">
-        <h2 className="text-2xl font-bold sm:text-3xl">Featured Work</h2>
-        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
-          {items?.map((it, i) => (
-            <figure key={i} className="group overflow-hidden rounded-2xl border border-border/60">
-              <img src={it.image} alt="" className="aspect-[4/3] w-full object-cover transition-transform duration-500 group-hover:scale-105"/>
-              <figcaption className="p-3 text-sm text-muted-foreground">{it.title}</figcaption>
+    <section className="px-6 py-12">
+      <div className="mx-auto max-w-5xl">
+        <h2 className="text-2xl font-bold sm:text-3xl">Gallery</h2>
+        <div className="mt-6 grid grid-cols-2 md:grid-cols-3 gap-3">
+          {images.map((im, i) => (
+            <figure key={i} className="overflow-hidden rounded-xl border border-white/10">
+              <img src={im.url} alt={im.caption || ''} className="w-full h-40 object-cover" />
+              {im.caption && <figcaption className="text-xs text-muted-foreground p-2">{im.caption}</figcaption>}
             </figure>
           ))}
         </div>
       </div>
     </section>
-  );
+  )
 }

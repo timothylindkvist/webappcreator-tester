@@ -110,7 +110,8 @@ const tools: OpenAI.Responses.Tool[] = [
           eyebrow: { type: 'string' },
           body: { type: 'string' },
           kicker: { type: 'string' },
-
+          required: ['title','subtitle','eyebrow','body','kicker'],
+          
           // CTAs
           ctaLabel: { type: 'string' },
           ctaHref: { type: 'string' },

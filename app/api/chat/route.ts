@@ -63,33 +63,6 @@ const tools: OpenAI.Responses.Tool[] = [
   },
   {
     type: 'function',
-    name: 'addSection',
-    description: 'Add a section with strictly typed payloads',
-    strict: true,
-    parameters: {
-      type: 'object',
-      additionalProperties: false,
-      properties: {
-        section: {
-          type: 'string',
-          enum: [
-            'hero',
-            'about',
-            'features',
-            'gallery',
-            'testimonials',
-            'pricing',
-            'faq',
-            'cta',
-          ],
-        },
-        payload: { type: 'object', additionalProperties: true },
-      },
-      required: ['section', 'payload'],
-    },
-  },
-  {
-    type: 'function',
     name: 'removeSection',
     description: 'Remove a section by key',
     strict: true,
@@ -115,7 +88,6 @@ const tools: OpenAI.Responses.Tool[] = [
     },
   },
   {
-   {
     type: 'function',
     name: 'addSection',
     description: 'Add a section with strictly typed payloads',

@@ -239,7 +239,7 @@ const tools: OpenAI.Responses.Tool[] = [
   type: 'function',
   name: 'patchSection',
   description: 'Patch a section with a shallow object merge',
-  strict: true,
+  strict: false, // <-- allow open-ended content
   parameters: {
     type: 'object',
     additionalProperties: false,
@@ -248,9 +248,12 @@ const tools: OpenAI.Responses.Tool[] = [
         type: 'string',
         enum: ['hero','about','features','gallery','testimonials','pricing','faq','cta','theme'],
       },
-      content: { type: 'object', additionalProperties: true },
+      content: {
+        type: 'object',
+        additionalProperties: true, // <-- arbitrary keys allowed
+      },
     },
-    required: ['section','content'],
+    required: ['section', 'content'],
   },
 },
     

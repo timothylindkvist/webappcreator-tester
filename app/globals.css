@@ -1,0 +1,18 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --brand: #6D28D9;
+  --accent: #0EA5E9;
+  --background: #0b0b0d;
+  --foreground: #f6f7fb;
+}
+
+html, body { height: 100%; }
+body { background: var(--background); color: var(--foreground); }
+
+.text-muted-foreground { color: rgba(255,255,255,0.7); }
+.bg-white\/5 { background: rgba(255,255,255,0.05); }
+.border-white\/10 { border-color: rgba(255,255,255,0.1); }

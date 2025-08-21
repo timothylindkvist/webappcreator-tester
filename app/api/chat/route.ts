@@ -7,20 +7,19 @@ import OpenAI from 'openai';
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
-const MODEL = process.env.NEXT_PUBLIC_AI_MODEL || 'gpt-5';
-
-// NDJSON/SSE line helper (client trims optional "data:" already)
 function sendJSON(
   controller: ReadableStreamDefaultController<Uint8Array>,
-  obj: unknown
+  obj: any
 ) {
   const enc = new TextEncoder();
-  controller.enqueue(enc.encode(`data: ${JSON.stringify(obj)}\n`));
+  controller.enqueue(enc.encode(JSON.stringify(obj) + '\n'));
 }
 
-// -------- Tools (FLATTENED shape for your SDK) --------
+const MODEL = process.env.NEXT_PUBLIC_AI_MODEL || 'gpt-5';
+
+// ---- Tools (strict schemas; required includes every key in properties) ----
 const tools: OpenAI.Responses.Tool[] = [
-  {
+{
     type: 'function',
     name: 'updateBrief',
     description: 'Replace the current creative brief',
@@ -73,16 +72,7 @@ const tools: OpenAI.Responses.Tool[] = [
       properties: {
         section: {
           type: 'string',
-          enum: [
-            'hero',
-            'about',
-            'features',
-            'gallery',
-            'testimonials',
-            'pricing',
-            'faq',
-            'cta',
-          ],
+          enum: ['hero','about','features','gallery','testimonials','pricing','faq','cta'],
         },
       },
       required: ['section'],
@@ -99,16 +89,7 @@ const tools: OpenAI.Responses.Tool[] = [
       properties: {
         section: {
           type: 'string',
-          enum: [
-            'hero',
-            'about',
-            'features',
-            'gallery',
-            'testimonials',
-            'pricing',
-            'faq',
-            'cta',
-          ],
+          enum: ['hero','about','features','gallery','testimonials','pricing','faq','cta'],
         },
         payload: {
           type: 'object',
@@ -198,7 +179,7 @@ const tools: OpenAI.Responses.Tool[] = [
           },
         },
       },
-      required: ['section', 'payload'],
+      required: ['section','payload'],
     },
   },
   {
@@ -212,21 +193,11 @@ const tools: OpenAI.Responses.Tool[] = [
       properties: {
         section: {
           type: 'string',
-          enum: [
-            'hero',
-            'about',
-            'features',
-            'gallery',
-            'testimonials',
-            'pricing',
-            'faq',
-            'cta',
-            'theme',
-          ],
+          enum: ['hero','about','features','gallery','testimonials','pricing','faq','cta','theme'],
         },
         content: { type: 'object', additionalProperties: true },
       },
-      required: ['section', 'content'],
+      required: ['section','content'],
     },
   },
   {
@@ -293,38 +264,58 @@ const tools: OpenAI.Responses.Tool[] = [
   },
 ];
 
-// ---- System message (unchanged) ----
+// ---- System guidance (vague + detailed users, action-first) ----
 const systemMsg = {
   role: 'system' as const,
   content: [
+    // Identity & mission
     'You are “SiteCraft AI”, a senior product designer + copywriter + front-end engineer focused on small/medium business websites.',
     'Your job: turn any brief (even extremely vague) into a crisp site plan and polished, production-ready UI content.',
     'You think in components/sections and use the provided tools to make concrete changes immediately.',
+
+    // Non-negotiables
     'Accessibility: WCAG 2.2 AA (focus rings, labels, landmark roles, aria where needed).',
     'Performance: aim LCP < 2.5s; keep above-the-fold minimal; prefer next/image; avoid heavy JS.',
     'SEO basics: single H1 per page, descriptive titles/meta, semantic HTML, alt text, sensible copy length.',
     'Consistency: coherent color palette, typographic scale, spacing rhythm, and consistent CTA language.',
+
+    // Behavior for different users
     'IF USER IS VAGUE: Ask up to 3 concise bullet questions only (brand/audience/primary CTA). If any remain unanswered, pick sensible defaults and proceed. Do not stall.',
     'IF USER IS DETAILED: Mirror their requirements precisely; highlight conflicts and propose 1 safe resolution. Proceed without extra questions.',
     'Always show progress: when you can improve the canvas, call tools immediately (addSection, patchSection, setTheme, etc.).',
+
+    // Output quality bar
     'Site structure defaults: hero, about, features, social-proof/testimonials, pricing (if relevant), FAQ, final CTA.',
     'Copy style: benefit-first, scannable, short sentences, active voice, concrete outcomes; 4–6 sections total unless asked otherwise.',
-    'Tone presets: clean, friendly, technical, luxury, playful, editorial.',
-    'Typography: one heading family + one body family. Use setTypography.',
+    'Tone presets: clean, friendly, technical, luxury, playful, editorial. Use “applyStylePreset” or setTheme + setTypography accordingly.',
+    'Typography: one heading family + one body family. Use setTypography. Keep line-length ~60–75 chars.',
     'Color: ensure contrast ≥ 4.5:1; provide dark and light variants.',
     'Layouts: clear hierarchy; generous white space; mobile-first; keep CTAs visible above the fold.',
+
+    // Tooling policy
     'Prefer tools over free-form text when you can make a concrete change.',
-    'Use patchSection to refine content iteratively.',
+    'Use patchSection to refine content iteratively (e.g., fix headings, bullets, CTAs).',
     'Use addSection/removeSection to restructure; setTheme/applyStylePreset/setTypography/setDensity for global look and feel.',
     'If images are missing or mismatched, call fixImages with a target section or pass "all".',
-    'Ask up to 3 bullets only if needed.',
-    'Defaults: goal="capture leads", audience="SMBs evaluating solutions", tone="clean/friendly", CTA="Get Started", palette brand:#3B82F6 accent:#22C55E neutral:#0B1220 on #FFFFFF, typography "Inter".',
-    'Keep content safe and truthful.',
+    'Do not invent external assets or credentials; do not assume write access beyond the provided tools.',
+
+    // Clarifying micro-questions (max 3, only if needed)
+    'Ask up to 3 bullets, exactly like:',
+    '1) Primary goal? (e.g., book demo / contact / purchase)',
+    '2) Audience? (1 sentence)',
+    '3) Brand direction? (e.g., clean tech blue / luxury serif / playful pastel)',
+
+    // Defaults (used only if unanswered)
+    'Defaults: goal="capture leads", audience="SMBs evaluating solutions", tone="clean/friendly", CTA="Get Started", palette brand:#3B82F6 accent:#22C55E neutral:#0B1220 on #FFFFFF, typography heading "Inter" body "Inter".',
+
+    // Safety
+    'Never output discriminatory or unsafe content. Keep claims truthful unless user provides specifics.',
+    'If instructions conflict with accessibility/perf basics, warn once, propose a compliant alternative, then proceed with the safest option.',
+
+    // Response format
     'For each user turn: (a) confirm intent/plan (1–2 sentences), (b) call tools to apply changes, (c) if needed, ask ≤3 bullets, then continue building.',
   ].join('\n'),
 };
-
-// ...keep your imports, env, tools array, systemMsg, etc. unchanged
 
 export async function POST(req: NextRequest) {
   const { messages = [], state } = await req.json();
@@ -332,142 +323,73 @@ export async function POST(req: NextRequest) {
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       const ping = setInterval(() => {
-        try { controller.enqueue(new TextEncoder().encode(':ping\n')); }
-        catch { clearInterval(ping); }
+        try {
+          controller.enqueue(new TextEncoder().encode(':ping\n'));
+        } catch {
+          clearInterval(ping);
+        }
       }, 15000);
 
       try {
-        // --- 1) Ask the model for a JSON Action Plan instead of tool-calls ---
-        const actionSchema = {
-          name: 'ActionPlan',
-          schema: {
-            type: 'object',
-            additionalProperties: false,
-            properties: {
-              // Optional short summary for chat UI
-              summary: { type: 'string' },
-              // Steps that correspond 1:1 to your client switch cases
-              steps: {
-                type: 'array',
-                items: {
-                  type: 'object',
-                  additionalProperties: false,
-                  properties: {
-                    name: {
-                      type: 'string',
-                      enum: [
-                        'updateBrief',
-                        'rebuild',
-                        'setTheme',
-                        'addSection',
-                        'removeSection',
-                        'fixImages',
-                        'applyStylePreset',
-                        'setTypography',
-                        'setDensity',
-                        'patchSection',
-                        'redesign',
-                        'setSiteData'
-                      ],
-                    },
-                    args: { type: 'object', additionalProperties: true }
-                  },
-                  required: ['name','args']
-                }
-              }
-            },
-            required: ['steps']
-          },
-          strict: true
-        } as const;
+const s = await client.responses.stream({
+  model: MODEL,
+  input: [systemMsg as any, ...messages],
+  tools,
+  tool_choice: 'auto',
+  parallel_tool_calls: true,
+});
 
-        const planBuffer: string[] = [];
-
-        const s = await client.responses.stream({
-          model: process.env.NEXT_PUBLIC_AI_MODEL || 'gpt-5',
-          // Give clear instructions to output JSON plan ONLY
-          input: [
-            systemMsg as any,
-            {
-              role: 'system',
-              content:
-                [
-                  'TOOLS ARE UNAVAILABLE. Do not call any tools.',
-                  'Instead, output ONLY JSON matching the ActionPlan schema.',
-                  'Populate steps that directly implement the user request using these actions: setTheme, addSection, patchSection, setTypography, setDensity, applyStylePreset, removeSection, fixImages, rebuild, updateBrief, redesign, setSiteData.',
-                  'Be concrete and minimal: 1–6 steps. No prose.'
-                ].join('\n')
-            } as any,
-            {
-              role: 'system',
-              content:
-                'Current site state (JSON):\n```json\n' +
-                JSON.stringify(state ?? {}, null, 2) +
-                '\n```'
-            } as any,
-            ...messages
-          ],
-          // force JSON output we can parse
-           text_format: { type: 'json_schema', json_schema: actionSchema },
-          // tools removed on purpose — gpt-5 won’t call them
-          parallel_tool_calls: false
-        });
-
+        // Generic "event" handler is future-proof with this SDK
         s.on('event', (event: any) => {
-          // For json_schema, the model streams text deltas that form a single JSON object.
           if (event.type === 'response.output_text.delta') {
-            planBuffer.push(event.delta ?? '');
-            // optional: let the user see a tiny “working” message
-            // sendJSON(controller, { type: 'assistant', delta: '' });
+            sendJSON(controller, { type: 'assistant', delta: event.delta });
+            return;
+          }
+          if (
+            event.type === 'response.tool_call.delta' ||
+            event.type === 'response.tool_call.created' ||
+            event.type === 'response.tool_call.completed'
+          ) {
+            sendJSON(controller, { type: 'toolEvent', event });
             return;
           }
           if (event.type === 'response.error') {
-            sendJSON(controller, { type: 'error', message: event.error?.message || 'response error' });
+            sendJSON(controller, {
+              type: 'error',
+              message: event.error?.message || 'response error',
+            });
           }
         });
 
         s.on('end', () => {
-          try {
-            const jsonText = planBuffer.join('').trim();
-            const plan = JSON.parse(jsonText || '{}') as { summary?: string; steps: Array<{name:string; args:any}> };
-
-            // 1) Show the optional summary in chat
-            if (plan?.summary) {
-              sendJSON(controller, { type: 'assistant', delta: plan.summary });
-            }
-
-            // 2) Re-emit each step as a synthetic client-side tool call
-            for (const step of plan?.steps ?? []) {
-              if (!step || typeof step.name !== 'string') continue;
-              sendJSON(controller, { type: 'tool', name: step.name, args: step.args || {} });
-            }
-          } catch (err: any) {
-            sendJSON(controller, { type: 'error', message: 'ActionPlan parse failed: ' + (err?.message || String(err)) });
-          } finally {
-            clearInterval(ping);
-            controller.close();
-          }
+          clearInterval(ping);
+          controller.close();
         });
 
         s.on('error', (err) => {
           clearInterval(ping);
-          sendJSON(controller, { type: 'error', message: (err as any)?.message || 'stream error' });
+          sendJSON(controller, {
+            type: 'error',
+            message: (err as any)?.message || 'stream error',
+          });
           controller.close();
         });
       } catch (err: any) {
         clearInterval(ping);
-        sendJSON(controller, { type: 'error', message: err?.message || 'stream failed' });
+        sendJSON(controller, {
+          type: 'error',
+          message: err?.message || 'stream failed',
+        });
         controller.close();
       }
-    }
+    },
   });
 
   return new Response(stream, {
     headers: {
-      'Content-Type': 'text/event-stream; charset=utf-8',
+      'Content-Type': 'application/x-ndjson; charset=utf-8',
       'Cache-Control': 'no-cache, no-transform',
-      Connection: 'keep-alive'
-    }
+      Connection: 'keep-alive',
+    },
   });
 }
-

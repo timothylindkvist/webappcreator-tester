@@ -115,28 +115,143 @@ const tools: OpenAI.Responses.Tool[] = [
     },
   },
   {
-    type: 'function',
-    name: 'patchSection',
-    description: 'Patch a section with a shallow object merge',
-    strict: true,
-    parameters: {
-      type: 'object',
-      additionalProperties: false,
-      properties: {
-        section: {
-          type: 'string',
-          enum: [
-            'hero',
-            'about',
-            'features',
-            'gallery',
-            'testimonials',
-            'pricing',
-            'faq',
-            'cta',
-            'theme',
-          ],
+   {
+  type: 'function',
+  name: 'addSection',
+  description: 'Add a section with strictly typed payloads',
+  strict: true,
+  parameters: {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      section: {
+        type: 'string',
+        enum: [
+          'hero',
+          'about',
+          'features',
+          'gallery',
+          'testimonials',
+          'pricing',
+          'faq',
+          'cta',
+        ],
+      },
+      // Shared, typed payload schema (no unknown keys allowed)
+      payload: {
+        type: 'object',
+        additionalProperties: false, // <-- required by the function-calling validator
+        properties: {
+          // Common fields (many sections)
+          title: { type: 'string' },
+          subtitle: { type: 'string' },
+          eyebrow: { type: 'string' },
+          body: { type: 'string' },
+          kicker: { type: 'string' },
+
+          // CTA(s)
+          ctaLabel: { type: 'string' },
+          ctaHref: { type: 'string' },
+          secondaryCtaLabel: { type: 'string' },
+          secondaryCtaHref: { type: 'string' },
+
+          // Lists / bullets
+          bullets: {
+            type: 'array',
+            items: { type: 'string' },
+          },
+
+          // Generic items collection (features, cards, gallery, etc.)
+          items: {
+            type: 'array',
+            items: {
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                title: { type: 'string' },
+                description: { type: 'string' },
+                body: { type: 'string' },
+                icon: { type: 'string' },        // e.g. "anchor", "sparkles"
+                image: { type: 'string' },       // URL or asset key
+                alt: { type: 'string' },         // alt text for images
+                href: { type: 'string' },        // optional link
+              },
+            },
+          },
+
+          // Images (gallery/simple)
+          images: {
+            type: 'array',
+            items: {
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                src: { type: 'string' },
+                alt: { type: 'string' },
+                caption: { type: 'string' },
+              },
+            },
+          },
+
+          // Testimonials
+          testimonials: {
+            type: 'array',
+            items: {
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                name: { type: 'string' },
+                role: { type: 'string' },
+                quote: { type: 'string' },
+                avatar: { type: 'string' },
+                rating: { type: 'number' },
+              },
+            },
+          },
+
+          // Pricing plans
+          plans: {
+            type: 'array',
+            items: {
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                name: { type: 'string' },
+                price: { type: 'string' },
+                period: { type: 'string' }, // e.g. "/mo"
+                features: {
+                  type: 'array',
+                  items: { type: 'string' },
+                },
+                ctaLabel: { type: 'string' },
+                ctaHref: { type: 'string' },
+                highlighted: { type: 'boolean' },
+              },
+            },
+          },
+
+          // FAQ
+          faqs: {
+            type: 'array',
+            items: {
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                q: { type: 'string' },
+                a: { type: 'string' },
+              },
+            },
+          },
+
+          // Layout/style hints (optional)
+          layout: { type: 'string' },     // e.g., "split", "grid", "cards-3"
+          themeHint: { type: 'string' },  // e.g., "ocean", "luxury"
         },
+      },
+    },
+    required: ['section', 'payload'],
+  },
+}
         content: { type: 'object', additionalProperties: true },
       },
       required: ['section', 'content'],

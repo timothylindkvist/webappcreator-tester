@@ -1,7 +1,7 @@
 'use client';
-import { BuilderProvider } from '@/components/builder-context';
-import Builder from '@/components/Builder';
-import ChatWidget from '@/components/ChatWidget';
+import { BuilderProvider } from '../components/builder-context';
+import Builder from '../components/Builder';
+import ChatWidget from '../components/ChatWidget';
 
 export default function Page() {
   return (

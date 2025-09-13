@@ -5,7 +5,6 @@ import { useBuilder } from './builder-context';
 export default function Builder() {
   const { data } = useBuilder();
 
-  // push theme colors to CSS variables
   useEffect(() => {
     const r = document.documentElement;
     r.style.setProperty('--brand', data.theme.palette.brand);

@@ -113,7 +113,7 @@ export const BuilderProvider: React.FC<React.PropsWithChildren> = ({ children })
   };
 
   const redesign: CtxShape['redesign'] = () => {
-    // no-op placeholder: UI could call /api/chat tool calls here later
+    // placeholder
   };
 
   const rebuild: CtxShape['rebuild'] = async () => {

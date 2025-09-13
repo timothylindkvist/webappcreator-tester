@@ -1,41 +1,33 @@
-// lib/tools.ts
-import { tool } from "ai";
-import { z } from "zod";
+import { z } from 'zod';
 
-/**
- * Tool definitions that the assistant can call.
- * These map 1:1 to actions inside <BuilderProvider/> (components/builder-context.tsx)
- * We don't actually mutate server state here; the client listens to tool events
- * and applies changes locally. Returning small JSON payloads keeps the stream happy.
- */
-export const toolDefs = {
+// Minimal tool type + helper that happily accepts an `execute` function.
+export type ToolDef = {
+  description: string;
+  parameters?: z.ZodTypeAny;
+  execute: (args: any) => Promise<any> | any;
+};
+
+export const tool = <T extends ToolDef>(t: T) => t;
+
+// A tiny set of no-op tools that just echo what would be applied in UI.
+// These are intentionally framework-agnostic so they compile on Vercel.
+export const tools = {
   setSiteData: tool({
     description: "Replace the entire site data object (all sections, theme, etc.).",
     parameters: z.any(),
-    execute: async (args) => ({ ok: true, applied: "setSiteData", size: typeof args === "object" ? Object.keys(args || {}).length : 0 }),
+    async execute(args: any) {
+      return { ok: true, applied: "setSiteData", size: typeof args === "object" ? Object.keys(args || {}).length : 0 };
+    },
   }),
   updateBrief: tool({
     description: "Update the creative brief the user provided.",
-    parameters: z.object({ brief: z.string().min(1) }),
-    execute: async (args) => ({ ok: true, applied: "updateBrief", briefLen: args.brief.length }),
-  }),
-  addSection: tool({
-    description: "Add a new section by key with optional payload.",
-    parameters: z.object({ section: z.string(), payload: z.any().optional() }),
-    execute: async (args) => ({ ok: true, applied: "addSection", section: args.section }),
-  }),
-  removeSection: tool({
-    description: "Remove a section by key.",
-    parameters: z.object({ section: z.string() }),
-    execute: async (args) => ({ ok: true, applied: "removeSection", section: args.section }),
-  }),
-  patchSection: tool({
-    description: "Patch a section by key with a JSON patch (shallow-merge).",
-    parameters: z.object({ section: z.string(), patch: z.any() }),
-    execute: async (args) => ({ ok: true, applied: "patchSection", section: args.section }),
+    parameters: z.object({ brief: z.string() }).partial(),
+    async execute(args: any) {
+      return { ok: true, applied: "updateBrief", brief: args?.brief ?? "" };
+    },
   }),
   applyTheme: tool({
-    description: "Apply a full theme or just a palette update.",
+    description: "Merge a theme patch into the current theme.",
     parameters: z.object({
       vibe: z.string().optional(),
       palette: z.object({
@@ -44,35 +36,34 @@ export const toolDefs = {
         background: z.string().optional(),
         foreground: z.string().optional(),
       }).partial().optional(),
-      typography: z.object({
-        body: z.string().optional(),
-        headings: z.string().optional(),
-      }).partial().optional(),
-      density: z.enum(["compact","cozy","comfortable"]).optional(),
+      typography: z.object({ body: z.string().optional(), headings: z.string().optional() }).partial().optional(),
+      density: z.enum(["compact", "cozy", "comfortable"]).optional(),
     }).partial(),
-    execute: async () => ({ ok: true, applied: "applyTheme" }),
+    async execute(args: any) {
+      return { ok: true, applied: "applyTheme", patchKeys: Object.keys(args || {}) };
+    },
   }),
-  setTypography: tool({
-    description: "Set body and heading fonts.",
-    parameters: z.object({
-      body: z.string().optional(),
-      headings: z.string().optional(),
-    }).partial(),
-    execute: async () => ({ ok: true, applied: "setTypography" }),
+  addSection: tool({
+    description: "Add a section by key with payload.",
+    parameters: z.object({ section: z.string(), payload: z.any().optional() }),
+    async execute(args: any) {
+      return { ok: true, applied: "addSection", section: args?.section };
+    },
   }),
-  setDensity: tool({
-    description: "Set the density scale for spacing.",
-    parameters: z.object({ density: z.enum(["compact","cozy","comfortable"]) }),
-    execute: async (args) => ({ ok: true, applied: "setDensity", density: args.density }),
+  removeSection: tool({
+    description: "Remove a section by key.",
+    parameters: z.object({ section: z.string() }),
+    async execute(args: any) {
+      return { ok: true, applied: "removeSection", section: args?.section };
+    },
   }),
-  fixImages: tool({
-    description: "Ensure all gallery/section images have a valid src and caption.",
-    parameters: z.object({ section: z.string().optional() }).partial(),
-    execute: async () => ({ ok: true, applied: "fixImages" }),
+  patchSection: tool({
+    description: "Patch a section by key.",
+    parameters: z.object({ section: z.string(), patch: z.any() }),
+    async execute(args: any) {
+      return { ok: true, applied: "patchSection", section: args?.section, patchKeys: Object.keys(args?.patch || {}) };
+    },
   }),
-  redesign: tool({
-    description: "High-level concept change (e.g., 'brutalist', 'editorial').",
-    parameters: z.object({ concept: z.string().optional() }).partial(),
-    execute: async () => ({ ok: true, applied: "redesign" }),
-  }),
-} as const;
+};
+
+export type ToolName = keyof typeof tools;

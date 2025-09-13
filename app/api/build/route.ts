@@ -1,7 +1,6 @@
-// app/api/build/route.ts
 import OpenAI from 'openai';
 
-export const runtime = 'nodejs'; // IMPORTANT for Vercel
+export const runtime = 'nodejs';
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -36,7 +35,7 @@ export async function POST(req: Request) {
 
     const { brief = '' } = await req.json();
 
-    const model = process.env.OPENAI_MODEL || 'gpt-5'; // set OPENAI_MODEL on Vercel if you want
+    const model = process.env.OPENAI_MODEL || 'gpt-5';
     const rsp = await client.responses.create({
       model,
       instructions:
@@ -45,7 +44,6 @@ export async function POST(req: Request) {
       temperature: 0.3,
     });
 
-    // The SDK exposes plain text via `output_text`
     const text = (rsp as any).output_text?.trim() || '';
     const start = text.indexOf('{');
     const end = text.lastIndexOf('}');

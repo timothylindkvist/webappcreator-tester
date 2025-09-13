@@ -157,7 +157,7 @@ export default function ChatWidget() {
                   break
                 case 'setTheme': {
                   const { brand, accent, background, foreground, vibe } = args
-                  applyTheme({ brand, accent, background, foreground, vibe })
+                  applyTheme({ palette: { brand, accent, background, foreground }, vibe })
                   confirm = `\n\n🎨 Applied theme${vibe ? ` (${vibe})` : ''}.`
                   break
                 }
@@ -234,7 +234,7 @@ export default function ChatWidget() {
                 break
               case 'setTheme': {
                 const { brand, accent, background, foreground, vibe } = args
-                applyTheme({ brand, accent, background, foreground, vibe })
+                applyTheme({ palette: { brand, accent, background, foreground }, vibe })
                 confirm = `\n\n🎨 Applied theme${vibe ? ` (${vibe})` : ''}.`
                 break
               }

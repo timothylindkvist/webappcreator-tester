@@ -26,7 +26,7 @@ type Ctx = {
   setBrief: (b: string) => void;
   data: SiteData;
   setData: (d: SiteData) => void;
-  applyTheme: (themeLike: Partial<Theme> | { palette: Theme['palette'] }) => void;
+  applyTheme: (themeLike: Partial<Theme> | { palette: Theme['palette'] } | { brand?: string; accent?: string; background?: string; foreground?: string; vibe?: string }) => void;
   addSection: (section: keyof SiteData, payload?: any) => void;
   removeSection: (section: keyof SiteData) => void;
   patchSection: (section: keyof SiteData, patch: any) => void;
@@ -51,7 +51,27 @@ export const BuilderProvider: React.FC<React.PropsWithChildren> = ({ children })
   const mergeData = (patch: Partial<SiteData>) => setData(cur => ({ ...cur, ...patch }));
 
   const applyTheme: Ctx['applyTheme'] = (themeLike) => {
-    const palette = (themeLike as any)?.palette ?? {};
+  const flat = themeLike as any;
+  const incomingPalette = 'palette' in flat
+    ? flat.palette
+    : (flat.brand || flat.accent || flat.background || flat.foreground)
+      ? { brand: flat.brand, accent: flat.accent, background: flat.background, foreground: flat.foreground }
+      : {};
+  setData(cur => ({
+    ...cur,
+    theme: {
+      vibe: flat.vibe ?? cur.theme.vibe,
+      typography: flat.typography ?? cur.theme.typography,
+      density: flat.density ?? cur.theme.density,
+      palette: {
+        brand: (incomingPalette as any).brand ?? cur.theme.palette.brand,
+        accent: (incomingPalette as any).accent ?? cur.theme.palette.accent,
+        background: (incomingPalette as any).background ?? cur.theme.palette.background,
+        foreground: (incomingPalette as any).foreground ?? cur.theme.palette.foreground,
+      },
+    },
+  }));
+};
     setData(cur => ({
       ...cur,
       theme: {

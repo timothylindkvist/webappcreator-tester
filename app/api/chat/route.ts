@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
 
     // streamText handles SSE streaming automatically
     const result = await streamText({
-      model: openai(process.env.NEXT_PUBLIC_AI_MODEL || "gpt-5"),
+      model: openai(process.env.NEXT_PUBLIC_AI_MODEL || "gpt-5") as any,
       system: systemMsg.content,   // ✅ keep full system guidance
       messages,                    // user ↔ assistant history
       tools: toolDefs,             // hook into BuilderProvider

@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
       "Keep copy concise, friendly, professional. Include at least hero and about."
     ].join("\n");
 
-    const model = process.env.NEXT_PUBLIC_AI_MODEL || "gpt-4o-mini";
+    const model = process.env.NEXT_PUBLIC_AI_MODEL || "gpt-5";
 
     const resp = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",

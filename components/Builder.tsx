@@ -63,7 +63,7 @@ export default function Builder() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
             {(data.gallery.images || []).map((img, i) => (
               <div key={i} className="aspect-video rounded-xl bg-muted border flex items-center justify-center text-xs text-muted-foreground">
-                {img.alt || 'Image'}
+                {img.alt ?? img.caption ?? 'Image'}
               </div>
             ))}
           </div>

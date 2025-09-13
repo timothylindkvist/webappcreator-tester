@@ -14,7 +14,7 @@ export type SiteData = {
   hero: { title: string; subtitle: string; cta?: { label: string; href?: string } };
   about?: { heading?: string; body?: string };
   features?: { title?: string; items?: { title: string; body: string }[] };
-  gallery?: { title?: string; images?: { src: string; caption?: string }[] };
+  gallery?: { title?: string; images?: { src: string; caption?: string; alt?: string }[] };
   testimonials?: { title?: string; items?: { quote: string; author?: string }[] };
   pricing?: { title?: string; plans?: { name: string; price?: string; features?: string[]; includes?: string[] }[] };
   faq?: { title?: string; items?: { q: string; a: string }[] };
@@ -84,13 +84,14 @@ export const BuilderProvider: React.FC<React.PropsWithChildren> = ({ children })
       sections.forEach((secKey: any) => {
         const sec: any = copy[secKey];
         if (!sec) return;
-        if (sec.images && Array.isArray(sec.images)) {
-          sec.images = sec.images.map((im: any, idx: number) => ({
-            src: im?.src || `https://picsum.photos/seed/${secKey}-${idx}/800/600`,
-            caption: im?.caption || '',
-          }));
-        }
-      });
+if (sec.images && Array.isArray(sec.images)) {
+  sec.images = sec.images.map((im: any, idx: number) => ({
+    src: im?.src || `https://picsum.photos/seed/${secKey}-${idx}/800/600`,
+    caption: im?.caption || '',
+    alt: im?.alt || im?.caption || `${String(secKey)} image ${idx + 1}`,
+  }));
+}      
+});
       return copy;
     });
   };

@@ -71,21 +71,6 @@ export const BuilderProvider: React.FC<React.PropsWithChildren> = ({ children })
       },
     },
   }));
-};
-    setData(cur => ({
-      ...cur,
-      theme: {
-        vibe: (themeLike as any).vibe ?? cur.theme.vibe,
-        typography: (themeLike as any).typography ?? cur.theme.typography,
-        density: (themeLike as any).density ?? cur.theme.density,
-        palette: {
-          brand: (palette as any).brand ?? cur.theme.palette.brand,
-          accent: (palette as any).accent ?? cur.theme.palette.accent,
-          background: (palette as any).background ?? cur.theme.palette.background,
-          foreground: (palette as any).foreground ?? cur.theme.palette.foreground,
-        },
-      },
-    }));
   };
 
   const addSection: Ctx['addSection'] = (section, payload) => setData(cur => ({ ...cur, [section]: payload as any }));

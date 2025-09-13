@@ -155,12 +155,15 @@ export default function ChatWidget() {
                   await rebuild()
                   confirm = `\n\n🔄 Rebuilt the site.`
                   break
-                case 'setTheme': {
-                  const { brand, accent, background, foreground, vibe } = args
-                  applyTheme({ brand, accent, background, foreground, vibe })
-                  confirm = `\n\n🎨 Applied theme${vibe ? ` (${vibe})` : ''}.`
-                  break
-                }
+case 'setTheme': {
+  const { brand, accent, background, foreground, vibe } = args;
+  applyTheme({
+    palette: { brand, accent, background, foreground },
+    vibe,
+  });
+  confirm = `\n\n🎨 Applied theme${vibe ? ` (${vibe})` : ''}.`;
+  break;
+}
                 case 'addSection':
                   addSection(args.section, args.payload)
                   confirm = `\n\n➕ Added section “${args.section}”.`

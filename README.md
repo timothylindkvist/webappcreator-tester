@@ -7,8 +7,8 @@ Styling via Tailwind with fixed keyframes and dark theme variable scopes (resolv
 
 Set these in Vercel → Project Settings → Environment Variables:
 
-- `OPENAI_API_KEY` — API key with access to GPT‑5 (Server)
-- `NEXT_PUBLIC_AI_MODEL` — optional; default is `gpt-5`
+- `AI_GATEWAY_API_KEY` — your AI Gateway key (Server)
+- `NEXT_PUBLIC_AI_MODEL` — optional; default is `openai/gpt-5`
 
 ## Develop
 

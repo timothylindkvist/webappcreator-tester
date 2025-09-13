@@ -56,30 +56,20 @@ export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   try {
-        if (!process.env.OPENAI_API_KEY) {
-      return new Response(
-        JSON.stringify({ error: "OPENAI_API_KEY missing" }),
-        { status: 401, headers: { "Content-Type": "application/json" } }
-      );
-    }
-
     const { messages, state } = await req.json();
-    const modelName = process.env.NEXT_PUBLIC_AI_MODEL || "gpt-5";
+
     // streamText handles SSE streaming automatically
     const result = await streamText({
-      model: openai(modelName, { apiKey: process.env.OPENAI_API_KEY }) as any,
+      model: openai(process.env.NEXT_PUBLIC_AI_MODEL || "gpt-5") as any,
       system: systemMsg.content,   // ✅ keep full system guidance
       messages,                    // user ↔ assistant history
       tools: toolDefs,             // hook into BuilderProvider
       temperature: 0.2,
     });
 
-    return result.toTextStreamResponse();
-  } catch (err: any) {
+  return result.toTextStreamResponse();
+  } catch (err) {
     console.error("Chat API error:", err);
-    return new Response(
-      JSON.stringify({ error: "Chat API error", detail: String(err) }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
-    );
+    return new Response("Error", { status: 500 });
   }
 }

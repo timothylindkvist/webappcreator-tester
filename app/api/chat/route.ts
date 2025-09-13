@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
       temperature: 0.2,
     });
 
-    return result.toDataStreamResponse(); // send back as SSE
+  return result.toTextStreamResponse();
   } catch (err) {
     console.error("Chat API error:", err);
     return new Response("Error", { status: 500 });

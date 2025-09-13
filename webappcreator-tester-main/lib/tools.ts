@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+// Minimal tool type + helper that happily accepts an `execute` function.
 export type ToolDef = {
   description: string;
   parameters?: z.ZodTypeAny;
@@ -8,6 +9,8 @@ export type ToolDef = {
 
 export const tool = <T extends ToolDef>(t: T) => t;
 
+// A tiny set of no-op tools that just echo what would be applied in UI.
+// These are intentionally framework-agnostic so they compile on Vercel.
 export const tools = {
   setSiteData: tool({
     description: "Replace the entire site data object (all sections, theme, etc.).",

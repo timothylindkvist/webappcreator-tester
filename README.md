@@ -1,25 +1,18 @@
-# Influencer Site Builder
+# Sidesmith – Website Creator
 
-A Next.js App Router project that uses **Vercel AI SDK v5** with **AI Gateway** to generate influencer websites.
-Styling via Tailwind with fixed keyframes and dark theme variable scopes (resolves common CSS errors).
+A minimal Next.js app that generates site JSON via OpenAI and renders it.
 
-## Environment
+## Quick start
 
-Set these in Vercel → Project Settings → Environment Variables:
+1. Set env vars in Vercel (Project → Settings → Environment Variables):
+   - `OPENAI_API_KEY` — required
+   - `OPENAI_MODEL` — optional (defaults to `gpt-5`)
 
-- `AI_GATEWAY_API_KEY` — your AI Gateway key (Server)
-- `NEXT_PUBLIC_AI_MODEL` — optional; default is `openai/gpt-5`
-
-## Develop
+2. Deploy or run locally:
 
 ```bash
-pnpm i
-pnpm dev
+npm i
+npm run dev
 ```
 
-Open http://localhost:3000
-
-## Deploy to Vercel
-
-- Push to GitHub and import the repo in Vercel
-- Ensure env vars above are set for **Production** and **Preview**
+Open http://localhost:3000 and generate a site.

@@ -21,18 +21,22 @@ export default function ChatWidget() {
   };
 
   return (
-    <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <label style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Website brief</label>
+    <form onSubmit={onSubmit} className="h-full flex flex-col rounded-2xl border p-4">
+      <label className="text-sm font-medium mb-2">Website brief</label>
       <textarea
         value={brief}
         onChange={(e) => setBrief(e.target.value)}
         placeholder="e.g., 'Landing page for a yoga studio in Stockholm...'"
-        style={{ flex: 1, resize: 'none', borderRadius: 8, border: '1px solid #e5e7eb', padding: 8 }}
+        className="flex-1 resize-none border rounded p-2"
       />
-      <button type="submit" disabled={loading} style={{ marginTop: 8, borderRadius: 8, background: '#0b0f19', color: 'white', padding: '10px 12px', opacity: loading ? 0.6 : 1 }}>
+      <button
+        type="submit"
+        disabled={loading}
+        className="mt-3 rounded bg-black text-white py-2 disabled:opacity-60"
+      >
         {loading ? 'Generating…' : 'Generate site'}
       </button>
-      {err && <p style={{ marginTop: 8, fontSize: 12, color: '#dc2626' }}>{err}</p>}
+      {err && <p className="mt-2 text-sm text-red-600">{err}</p>}
     </form>
   );
 }

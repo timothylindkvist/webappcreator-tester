@@ -113,7 +113,7 @@ export const BuilderProvider: React.FC<React.PropsWithChildren> = ({ children })
   };
 
   const redesign: CtxShape['redesign'] = () => {
-    // placeholder for future AI actions
+    // placeholder
   };
 
   const rebuild: CtxShape['rebuild'] = async () => {

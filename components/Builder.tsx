@@ -1,26 +1,11 @@
 'use client';
 import { useEffect } from 'react';
-import { useBuilder } from '@/components/builder-context';
-
-// Accept items that may have either `description` or `body`
-function featureText(it: { title: string; body?: string } & Record<string, unknown>) {
-  const desc = (it as any)?.description;
-  if (typeof desc === 'string' && desc.length) return desc;
-  return it.body ?? '';
-}
-
-// Some plans use `includes`, others `features`
-function planFeatures(
-  p: { features?: string[] } & Record<string, unknown>
-): string[] {
-  const inc = (p as any)?.includes;
-  if (Array.isArray(inc)) return inc as string[];
-  return p.features ?? [];
-}
+import { useBuilder } from './builder-context';
 
 export default function Builder() {
   const { data } = useBuilder();
-  // apply CSS vars for theme palette
+
+  // push theme colors to CSS variables
   useEffect(() => {
     const r = document.documentElement;
     r.style.setProperty('--brand', data.theme.palette.brand);
@@ -31,74 +16,48 @@ export default function Builder() {
 
   return (
     <div className="space-y-8">
-      <section className="p-8 rounded-2xl bg-card border border-border">
+      <section className="p-8 rounded-2xl border" style={{ background: 'var(--background)', color: 'var(--foreground)' }}>
         <h1 className="text-3xl font-bold" style={{ color: 'var(--brand)' }}>{data.hero?.title}</h1>
-        <p className="mt-2 text-muted-foreground">{data.hero?.subtitle}</p>
+        <p className="mt-2 opacity-80">{data.hero?.subtitle}</p>
       </section>
 
       {data.about && (
-        <section className="p-6 rounded-2xl bg-card border border-border">
+        <section className="p-6 rounded-2xl border">
           <h2 className="text-xl font-semibold">{data.about.heading}</h2>
-          <p className="mt-2 text-muted-foreground">{data.about.body}</p>
+          <p className="mt-2 opacity-80">{data.about.body}</p>
         </section>
       )}
 
-      {data.features && (
-        <section className="p-6 rounded-2xl bg-card border border-border">
+      {data.features?.items?.length ? (
+        <section className="p-6 rounded-2xl border">
           <h2 className="text-xl font-semibold">{data.features.title || 'Features'}</h2>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
-            {(data.features.items || []).map((it, i) => (
-              <div key={i} className="rounded-xl border p-4 bg-muted">
+          <ul className="mt-4 grid gap-4 md:grid-cols-2">
+            {data.features.items.map((it, i) => (
+              <li key={i} className="p-4 rounded-xl border">
                 <div className="font-medium">{it.title}</div>
-                <div className="text-sm text-muted-foreground">{featureText(it)}</div>
-              </div>
+                <div className="opacity-80">{it.body}</div>
+              </li>
             ))}
-          </div>
+          </ul>
         </section>
-      )}
+      ) : null}
 
-      {data.gallery && (
-        <section className="p-6 rounded-2xl bg-card border border-border">
-          <h2 className="text-xl font-semibold">{data.gallery.title || 'Gallery'}</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
-            {(data.gallery.images || []).map((img, i) => (
-              <div key={i} className="aspect-video rounded-xl bg-muted border flex items-center justify-center text-xs text-muted-foreground">
-                {img.alt ?? img.caption ?? 'Image'}
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {data.testimonials && (
-        <section className="p-6 rounded-2xl bg-card border border-border">
-          <h2 className="text-xl font-semibold">{data.testimonials.title || 'Testimonials'}</h2>
-          <div className="grid sm:grid-cols-2 gap-4 mt-4">
-            {(data.testimonials.items || []).map((t, i) => (
-              <div key={i} className="rounded-xl border p-4 bg-muted">
-                <div className="italic">“{t.quote}”</div>
-                <div className="text-sm text-muted-foreground mt-2">— {t.author || 'Anonymous'}</div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {data.pricing && (
-        <section className="p-6 rounded-2xl bg-card border border-border">
+      {data.pricing?.plans?.length ? (
+        <section className="p-6 rounded-2xl border">
           <h2 className="text-xl font-semibold">{data.pricing.title || 'Pricing'}</h2>
-          <div className="grid md:grid-cols-3 gap-4 mt-4">
-            {(data.pricing.plans || []).map((p, i) => (
-              <div key={i} className="rounded-xl border p-4 bg-muted">
-                <div className="font-semibold">{p.name}</div>
-                <ul className="text-sm text-muted-foreground list-disc ml-5 space-y-1">
-                    {planFeatures(p).map((f, j) => <li key={j}>{f}</li>)}
-</ul>
+          <div className="mt-4 grid gap-4 md:grid-cols-3">
+            {data.pricing.plans.map((p, i) => (
+              <div key={i} className="p-4 rounded-xl border">
+                <div className="text-lg font-semibold">{p.name}</div>
+                <div className="opacity-80">{p.price}</div>
+                <ul className="mt-3 list-disc list-inside opacity-80">
+                  {(p.features || []).map((f, j) => <li key={j}>{f}</li>)}
+                </ul>
               </div>
             ))}
           </div>
         </section>
-      )}
+      ) : null}
     </div>
   );
 }

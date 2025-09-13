@@ -1,81 +1,63 @@
-
 // app/api/build/route.ts
-import { NextRequest } from "next/server";
+import OpenAI from 'openai';
 
-// HARD REQUIREMENT: must have OPENAI_API_KEY. No fallbacks.
-export async function POST(req: NextRequest) {
+export const runtime = 'nodejs'; // IMPORTANT for Vercel
+
+const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+const SCHEMA_HINT = `
+Return ONE JSON object matching this TypeScript shape (no markdown, no backticks):
+
+type Theme = {
+  vibe?: string;
+  palette: { brand: string; accent: string; background: string; foreground: string };
+  typography?: { body?: string; headings?: string };
+  density?: 'compact' | 'cozy' | 'comfortable';
+};
+type SiteData = {
+  theme: Theme;
+  brand: { name: string; tagline: string; industry?: string };
+  hero: { title: string; subtitle: string; cta?: { label: string; href?: string } };
+  about?: { heading?: string; body?: string };
+  features?: { title?: string; items?: { title: string; body: string }[] };
+  gallery?: { title?: string; images?: { src: string; caption?: string; alt?: string }[] };
+  testimonials?: { title?: string; items?: { quote: string; author?: string }[] };
+  pricing?: { title?: string; plans?: { name: string; price?: string; features?: string[] }[] };
+  faq?: { title?: string; items?: { q: string; a: string }[] };
+  cta?: { title?: string; subtitle?: string; button?: { label: string; href?: string } };
+};
+`;
+
+export async function POST(req: Request) {
   try {
     if (!process.env.OPENAI_API_KEY) {
-      return new Response(JSON.stringify({ error: "OPENAI_API_KEY is required" }), {
-        status: 401,
-        headers: { "Content-Type": "application/json" },
-      });
+      return Response.json({ error: 'Missing OPENAI_API_KEY' }, { status: 401 });
     }
 
-    const { brief = "" } = await req.json();
+    const { brief = '' } = await req.json();
 
-    const system = [
-      "You are SiteCraft AI. Output ONLY valid JSON for a marketing site structure.",
-      "JSON keys: theme, brand, hero, about, features, gallery, testimonials, pricing, faq, cta.",
-      "Keep copy concise, friendly, professional. Include at least hero and about."
-    ].join("\n");
-
-    const model = process.env.NEXT_PUBLIC_AI_MODEL || "gpt-5";
-
-    const resp = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model,
-        temperature: 0.2,
-        messages: [
-          { role: "system", content: system },
-          { role: "user", content: `Brief: ${brief}\nReturn ONLY a single JSON object (no backticks, no preface).` },
-        ],
-        response_format: { type: "text" },
-      }),
+    const model = process.env.OPENAI_MODEL || 'gpt-5'; // set OPENAI_MODEL on Vercel if you want
+    const rsp = await client.responses.create({
+      model,
+      instructions:
+        'You are a website generator. Given a short business brief, output a complete SiteData JSON with tasteful, production-ready copy. Keep it concise.',
+      input: `Brief:\n${brief}\n\n${SCHEMA_HINT}`,
+      temperature: 0.3,
     });
 
-    if (!resp.ok) {
-      const text = await resp.text();
-      console.error("OpenAI error:", text);
-      return new Response(JSON.stringify({ error: "OpenAI error", detail: text }), {
-        status: 502,
-        headers: { "Content-Type": "application/json" },
-      });
+    // The SDK exposes plain text via `output_text`
+    const text = (rsp as any).output_text?.trim() || '';
+    const start = text.indexOf('{');
+    const end = text.lastIndexOf('}');
+    if (start === -1 || end === -1) {
+      return Response.json({ error: 'Model did not return JSON', raw: text }, { status: 502 });
     }
+    const jsonStr = text.slice(start, end + 1);
+    const data = JSON.parse(jsonStr);
 
-    const data = await resp.json();
-    const out = (data?.choices?.[0]?.message?.content || "").trim();
-
-    // Strict JSON extraction
-    const start = out.indexOf("{");
-    const end = out.lastIndexOf("}");
-    if (start < 0 || end < 0) {
-      return new Response(JSON.stringify({ error: "Model did not return JSON" }), {
-        status: 422,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-    const json = out.slice(start, end + 1);
-
-    // Validate JSON before returning
-    try { JSON.parse(json); } catch {
-      return new Response(JSON.stringify({ error: "Invalid JSON from model" }), {
-        status: 422,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-
-    return new Response(json, { headers: { "Content-Type": "application/json" } });
+    return Response.json({ ok: true, data }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (err: any) {
-    console.error("Build API error:", err);
-    return new Response(JSON.stringify({ error: "Internal error" }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    console.error('Build route error:', err);
+    return Response.json({ ok: false, error: err?.message ?? String(err) }, { status: 500 });
   }
 }

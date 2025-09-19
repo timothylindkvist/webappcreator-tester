@@ -1,18 +1,15 @@
-# Sidesmith – Website Creator
+# Sidesmith
 
-A minimal Next.js app that generates site JSON via OpenAI and renders it.
+Chat-first website creator. The **first message** builds the initial site from your brief. Every **next message** applies edits via OpenAI tool calls.
 
-## Quick start
+## Env
+- OPENAI_API_KEY
+- OPENAI_MODEL (optional, defaults to gpt-5)
 
-1. Set env vars in Vercel (Project → Settings → Environment Variables):
-   - `OPENAI_API_KEY` — required
-   - `OPENAI_MODEL` — optional (defaults to `gpt-5`)
+## Dev
+- The chat calls `/api/chat` (Responses API with tool-calls). 
+- No fallbacks: if the API errors, the UI shows the error.
 
-2. Deploy or run locally:
 
-```bash
-npm i
-npm run dev
-```
-
-Open http://localhost:3000 and generate a site.
+### Flexible Sections
+This update introduces an ordered `blocks` array with tools: setSections, insertSection, updateSection, moveSection, deleteSection. The renderer prefers `blocks` if present, otherwise falls back to the legacy fixed sections.

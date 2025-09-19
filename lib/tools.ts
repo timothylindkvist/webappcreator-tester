@@ -47,6 +47,31 @@ export const tools = {
       return { ok: true, applied: "addSection", section: args?.section };
     },
   }),
+  setSections: tool({
+    description: "Replace all sections with an ordered blocks array.",
+    parameters: z.object({ blocks: z.array(z.object({ id: z.string().optional(), type: z.string(), data: z.any().optional() })) }),
+    async execute(args: any) { return { ok: true, applied: "setSections", count: (args?.blocks||[]).length }; },
+  }),
+  insertSection: tool({
+    description: "Insert a section at index (ordered blocks).",
+    parameters: z.object({ index: z.number().optional(), type: z.string(), data: z.any().optional(), id: z.string().optional() }),
+    async execute(args: any) { return { ok: true, applied: "insertSection", type: args?.type }; },
+  }),
+  updateSection: tool({
+    description: "Patch a block's data by id.",
+    parameters: z.object({ id: z.string(), patch: z.any() }),
+    async execute(args: any) { return { ok: true, applied: "updateSection", id: args?.id, patchKeys: Object.keys(args?.patch||{}) }; },
+  }),
+  moveSection: tool({
+    description: "Move a block by id to a new index.",
+    parameters: z.object({ id: z.string(), toIndex: z.number() }),
+    async execute(args: any) { return { ok: true, applied: "moveSection", id: args?.id, toIndex: args?.toIndex }; },
+  }),
+  deleteSection: tool({
+    description: "Delete a block by id.",
+    parameters: z.object({ id: z.string() }),
+    async execute(args: any) { return { ok: true, applied: "deleteSection", id: args?.id }; },
+  }),
   removeSection: tool({
     description: "Remove a section by key.",
     parameters: z.object({ section: z.string() }),

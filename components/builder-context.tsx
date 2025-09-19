@@ -8,6 +8,8 @@ export type Theme = {
   density?: 'compact' | 'cozy' | 'comfortable';
 };
 
+
+export type Block = { id: string; type: string; data?: any };
 export type SiteData = {
   theme: Theme;
   brand: { name: string; tagline: string; industry?: string };
@@ -35,7 +37,7 @@ type CtxShape = {
   applyStylePreset: (preset: string) => void;
   fixImages: (section?: keyof SiteData | 'all') => void;
   redesign: (concept?: string) => void;
-  rebuild: () => Promise<void>;
+  rebuild: (briefOverride?: string) => Promise<void>;
 };
 
 const BuilderCtx = createContext<CtxShape | null>(null);
@@ -111,6 +113,19 @@ export const BuilderProvider: React.FC<React.PropsWithChildren> = ({ children })
       return copy;
     });
   };
+
+
+  // Expose handlers for chat tool calls
+  if (typeof window !== 'undefined') {
+    (window as any).__sidesmithTools = {
+      setSiteData: (args: any) => setData(args),
+      updateBrief: (args: any) => setBrief(args?.brief ?? ''),
+      applyTheme: (args: any) => applyTheme(args),
+      addSection: (args: any) => addSection(args?.section as any, args?.payload),
+      removeSection: (args: any) => removeSection(args?.section as any),
+      patchSection: (args: any) => patchSection(args?.section as any, args?.patch),
+    };
+  }
 
   const redesign: CtxShape['redesign'] = () => {
     // placeholder for future AI actions

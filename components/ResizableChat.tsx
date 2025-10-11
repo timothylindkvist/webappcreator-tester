@@ -95,7 +95,7 @@ export default function ResizableChat() {
             'w-full border-t',
             'border-slate-300/70 dark:border-white/20',
             // Give the drag zone a practical hit area without rendering a bar
-            'h-3 cursor-ns-resize'
+            'h-6 -mt-3 cursor-ns-resize relative', 'before:absolute before:inset-x-0 before:top-0 before:h-6 before:bg-transparent'
           ].join(' ')}
           onMouseDown={onMouseDown}
           onTouchStart={onTouchStart}

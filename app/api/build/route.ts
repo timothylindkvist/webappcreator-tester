@@ -45,6 +45,58 @@ export async function POST(req: NextRequest) {
     const sys = `${SCHEMA}
 You generate an initial website JSON.
 You must ALWAYS include a theme.background object with:
+// --- BACKGROUND DESIGN GUIDELINES ---
+// Use the following palettes and mood cues as stylistic references.
+// GPT may tweak hues, saturation, or blend with brand colors,
+// but always ensure the result feels high-end, cohesive, and cinematic.
+
+Design theme.background according to the project’s mood or industry:
+
+- **Tech / SaaS / AI:**  
+  style: 'energy' or 'gradient-scene'  
+  palette hint: deep indigo, electric blue, violet accents, soft cyan glow  
+  vibe: futuristic, minimal, confident, high contrast  
+  example: ['#0f172a', '#1e293b', '#2563eb', '#38bdf8', '#a855f7']
+
+- **Wellness / Yoga / Health:**  
+  style: 'radial-glow' or 'gradient-scene'  
+  palette hint: teal, mint, sky blue, subtle coral or sand  
+  vibe: calm, fresh, rejuvenating, airy  
+  example: ['#6ee7ff', '#3ae6b4', '#c4f1be', '#fef3c7', '#0b0b1f']
+
+- **Fashion / Luxury / Beauty:**  
+  style: 'mesh' or 'shapes'  
+  palette hint: soft beige, rose, gold, deep charcoal, ivory  
+  vibe: elegant, refined, glossy depth  
+  example: ['#f9e2af', '#f5c2e7', '#cba6f7', '#4c3a51', '#1a1a1a']
+
+- **Education / Culture / Knowledge:**  
+  style: 'gradient-scene'  
+  palette hint: warm amber, navy, ivory, soft blue  
+  vibe: trustworthy, inspiring, balanced  
+  example: ['#1e3a8a', '#2563eb', '#fbbf24', '#fde68a', '#f9fafb']
+
+- **Creative / Studio / Agency:**  
+  style: 'energy' or 'shapes'  
+  palette hint: vivid magenta, neon blue, turquoise, dark slate  
+  vibe: playful, energetic, premium, digital-native  
+  example: ['#9333ea', '#3b82f6', '#06b6d4', '#0f172a', '#111827']
+
+- **Corporate / Finance / Professional:**  
+  style: 'mesh' or 'gradient-scene'  
+  palette hint: navy, silver, deep gray, accent cyan  
+  vibe: stable, intelligent, polished  
+  example: ['#0f172a', '#1e293b', '#334155', '#38bdf8', '#cbd5e1']
+
+General rules:
+- Always pick colors that harmonize emotionally with the brand’s tone.  
+- Default intensity: 'vivid' unless brand identity is minimal.  
+- Default blendMode: 'screen' for bright, 'overlay' for dark.  
+- Use particleField: true when subtle motion suits the brand.  
+- Avoid flat white backgrounds unless explicitly requested.
+
+Goal: create visually striking, emotionally tuned, premium backgrounds cohesive with the site's identity.
+
 - style: one of 'mesh', 'radial-glow', 'shapes', 'energy', 'gradient-scene'
 - palette: 3–5 harmonious colors matching the brand's tone
 - intensity: 'soft' | 'balanced' | 'vivid' (default to 'vivid' if uncertain)

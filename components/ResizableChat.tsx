@@ -87,33 +87,19 @@ export default function ResizableChat() {
         ].join(' ')}
         style={{ height }}
       >
-        {/* Drag zone at the very top: invisible but interactive.
-            We keep a thin border line to hint the drag affordance.
-        */}
+        {{/* Drag zone (visible and easy to grab) */}
         <div
           className={[
-            'w-full border-t',
-            'border-slate-300/70 dark:border-white/20',
-            // Give the drag zone a practical hit area without rendering a bar
-            'h-6 -mt-3 cursor-ns-resize relative', 'before:absolute before:inset-x-0 before:top-0 before:h-6 before:bg-transparent'
+            'w-full border-t border-slate-300/70 dark:border-white/20',
+            'h-4 cursor-ns-resize transition-colors',
+            'bg-slate-200/40 hover:bg-slate-300/60 dark:bg-white/10',
+            'rounded-t-md'
           ].join(' ')}
           onMouseDown={onMouseDown}
           onTouchStart={onTouchStart}
-          // aria-label helps accessibility
           aria-label="Resize chat"
           role="separator"
         />
-
-        {/* Content area: hidden when collapsed */}
-        {!collapsed && (
-          <div className="bg-[var(--background)] text-[var(--foreground)] h-[calc(100%-12px)] rounded-t-2xl overflow-hidden">
-            {/* Ensure the inner chat stretches and scrolls nicely */}
-            <div className="h-full flex flex-col">
-              <div className="flex-1 min-h-0 overflow-auto p-3 sm:p-4">
-                {/* The existing chat widget lives here */}
-                <div className="card bg-[var(--background)]">
-                  <ChatWidget />
-                </div>
               </div>
             </div>
           </div>

@@ -85,7 +85,17 @@ export default function ResizableChat() {
             </div>
           </div>
         )}
-      </div>
+      
+      {/* Always-present bottom grab zone for easy pulling up when collapsed */}
+      {collapsed && (
+        <div
+          className="fixed bottom-0 left-0 right-0 h-6 cursor-ns-resize bg-transparent z-[60]"
+          onMouseDown={(e) => beginDrag(e.clientY)}
+          onTouchStart={(e) => beginDrag(e.touches[0].clientY)}
+          aria-label="Resize chat (collapsed grab area)"
+        />
+      )}
+</div>
     </div>
   );
 }

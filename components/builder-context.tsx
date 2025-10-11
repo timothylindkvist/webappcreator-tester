@@ -6,6 +6,7 @@ export type Theme = {
   palette: { brand: string; accent: string; background: string; foreground: string };
   typography?: { body?: string; headings?: string };
   density?: 'compact' | 'cozy' | 'comfortable';
+  background?: { style: 'mesh' | 'radial-glow' | 'shapes' | 'energy' | 'gradient-scene'; palette: string[]; intensity: 'soft' | 'balanced' | 'vivid'; blendMode?: 'screen' | 'overlay' | 'lighten' | 'normal'; particleField?: boolean };
 };
 
 export type Block = { id: string; type: string; data?: any };

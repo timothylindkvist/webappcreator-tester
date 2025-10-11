@@ -9,7 +9,8 @@ const SCHEMA = String.raw`
 Return ONE JSON object only (no markdown) with this TypeScript shape:
 type Theme = {
   vibe?: string;
-  palette: { brand: string; accent: string; background: string; foreground: string };
+  palette: { brand: string; accent: string; background: string; foreground: string
+  background: { style: 'mesh' | 'radial-glow' | 'shapes' | 'energy' | 'gradient-scene'; palette: string[]; intensity: 'soft' | 'balanced' | 'vivid'; blendMode?: 'screen' | 'overlay' | 'lighten' | 'normal'; particleField?: boolean };};
   typography?: { body?: string; headings?: string };
   density?: 'compact' | 'cozy' | 'comfortable';
 };
@@ -43,10 +44,12 @@ export async function POST(req: NextRequest) {
 
     const sys = `${SCHEMA}
 You generate an initial website JSON.
-You must ALWAYS include theme.background with:
-- style: one of 'mesh', 'radial-glow', 'shapes'
-- colors: 2-4 hex colors that harmonize with theme.palette.
-Do not omit theme.background, even if not asked.
+You must ALWAYS include a theme.background object with:
+- style: one of 'mesh', 'radial-glow', 'shapes', 'energy', 'gradient-scene'
+- palette: 3–5 harmonious colors matching the brand's tone
+- intensity: 'soft' | 'balanced' | 'vivid' (default to 'vivid' if uncertain)
+- optional: blendMode ('screen' | 'overlay' | 'lighten' | 'normal') and particleField (true if subtle motion fits)
+Design the background to align emotionally with the brand and industry.
 You generate an initial website JSON from a plain-English site brief. If the brief implies custom sections (not in the core schema), invent new section keys (lowercase, no spaces) and structure them with { title, body, items?[], images?[] }. Be faithful to the subject/domain and echo it in brand, hero, and copy. Keep copy concise. Output valid JSON only.`;
 const user = `Site brief:
 ${brief}

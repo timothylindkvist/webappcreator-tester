@@ -17,6 +17,7 @@ export default function Page() {
           </div>
         </header>
 
+        <Background />
         <div className="card"><Builder /></div>
 
         <footer className="text-center mt-8 text-sm muted">

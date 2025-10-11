@@ -42,6 +42,11 @@ export async function POST(req: NextRequest) {
     const { brief = '' } = await req.json();
 
     const sys = `${SCHEMA}
+You generate an initial website JSON.
+You must ALWAYS include theme.background with:
+- style: one of 'mesh', 'radial-glow', 'shapes'
+- colors: 2-4 hex colors that harmonize with theme.palette.
+Do not omit theme.background, even if not asked.
 You generate an initial website JSON from a plain-English site brief. If the brief implies custom sections (not in the core schema), invent new section keys (lowercase, no spaces) and structure them with { title, body, items?[], images?[] }. Be faithful to the subject/domain and echo it in brand, hero, and copy. Keep copy concise. Output valid JSON only.`;
 const user = `Site brief:
 ${brief}

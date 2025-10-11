@@ -89,18 +89,12 @@ export default function ResizableChat() {
       >
         {/* Drag zone (visible and easy to grab) */}
         <div
-          className={[
-            'w-full border-t border-slate-300/70 dark:border-white/20',
-            'h-4 cursor-ns-resize transition-colors',
-            'bg-slate-200/40 hover:bg-slate-300/60 dark:bg-white/10',
-            'rounded-t-md'
-          ].join(' ')}
+          className="w-full border-t border-slate-300/70 dark:border-white/20 h-4 cursor-ns-resize transition-colors bg-slate-200/40 hover:bg-slate-300/60 dark:bg-white/10 rounded-t-md"
           onMouseDown={onMouseDown}
           onTouchStart={onTouchStart}
           aria-label="Resize chat"
           role="separator"
         />
-              </div>
             </div>
           </div>
         )}

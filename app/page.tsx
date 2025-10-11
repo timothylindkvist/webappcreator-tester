@@ -2,6 +2,7 @@
 import { BuilderProvider } from '../components/builder-context';
 import Builder from '../components/Builder';
 import ResizableChat from '../components/ResizableChat';
+import Background from '../components/Background';
 
 export default function Page() {
   return (

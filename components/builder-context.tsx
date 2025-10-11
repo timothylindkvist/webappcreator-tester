@@ -11,8 +11,10 @@ export type Theme = {
 
 export type Block = { id: string; type: string; data?: any };
 export type SiteData = {
+  media?: { hero?: { url: string } };
   theme: Theme;
-  brand: { name: string; tagline: string; industry?: string 
+  brand: { name: string; tagline: string; industry?: string
+  heroImage?: { prompt: string; style?: 'photo' | 'illustration' | '3d' | 'cinematic'; mood?: string; overlay?: boolean } 
   [key: string]: any;
 };
   hero: { title: string; subtitle: string; cta?: { label: string; href?: string } };

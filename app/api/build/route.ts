@@ -15,7 +15,8 @@ type Theme = {
   density?: 'compact' | 'cozy' | 'comfortable';
 };
 type SiteData = {
-  theme: Theme;
+  media?: { hero?: { url: string } };
+theme: Theme;
   brand: { name: string; tagline: string; industry?: string };
   hero: { title: string; subtitle: string; cta?: { label: string; href?: string } };
   about?: { heading?: string; body?: string };
@@ -97,6 +98,12 @@ General rules:
 
 Goal: create visually striking, emotionally tuned, premium backgrounds cohesive with the site's identity.
 
+You may include a heroImage object to visually express the theme.
+- Provide a vivid but concise prompt describing what should appear.
+- Style can be 'photo', 'illustration', '3d', or 'cinematic'.
+- Match the palette and emotion of the background.
+- Set overlay true if the image should be softly blended behind content.
+
 - style: one of 'mesh', 'radial-glow', 'shapes', 'energy', 'gradient-scene'
 - palette: 3–5 harmonious colors matching the brand's tone
 - intensity: 'soft' | 'balanced' | 'vivid' (default to 'vivid' if uncertain)
@@ -141,6 +148,36 @@ Return the full SiteData JSON only.`;
         return Response.json({ ok: true, data: data2 }, { headers: { 'Cache-Control': 'no-store' } });
       }
     }
+    
+    // Auto-generate hero image if heroImage.prompt is provided
+    const heroPrompt = (data as any)?.heroImage?.prompt;
+    if (heroPrompt) {
+      // Optional moderation for safety
+      try {
+        const mod = await client.moderations.create({ model: "omni-moderation-latest", input: heroPrompt });
+        const result = (mod as any)?.results?.[0];
+        if (result && (result.flagged === true)) {
+          throw new Error("Hero image prompt flagged by moderation");
+        }
+      } catch (e) {
+        throw new Error("Moderation error: " + (e as any)?.message);
+      }
+
+      // Generate the image (no fallback). Use cinematic wide size for hero.
+      const img = await client.images.generate({
+        model: "gpt-image-1",
+        prompt: heroPrompt,
+        size: "1792x1024",
+        // background default is transparent/none; we want rich colors from prompt
+      });
+      const url = (img as any)?.data?.[0]?.url;
+      if (!url) {
+        throw new Error("Image generation failed: missing URL");
+      }
+      (data as any).media = (data as any).media || {};
+      (data as any).media.hero = { url };
+    }
+
     return Response.json({ ok: true, data }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (err: any) {
     console.error('build route error', err);

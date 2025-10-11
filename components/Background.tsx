@@ -93,6 +93,13 @@ export default function Background() {
 
   return (
     <>
+      {/* Hero image layer (behind gradients) */}
+      { (data as any)?.media?.hero?.url ? (
+        <div className="fixed inset-0 -z-20">
+          <img src={(data as any).media.hero.url} alt="hero" className="w-full h-full object-cover opacity-60"/>
+          <div className="absolute inset-0 bg-black/20"/>
+        </div>
+      ) : null }
       <style jsx global>{`
         @keyframes floatY { from { transform: translateY(-6px); } to { transform: translateY(6px); } }
       `}</style>

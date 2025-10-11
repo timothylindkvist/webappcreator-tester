@@ -167,7 +167,7 @@ Return the full SiteData JSON only.`;
       const img = await client.images.generate({
         model: "gpt-image-1",
         prompt: heroPrompt,
-        size: "1792x1024",
+        size: "1536x1024",
         // background default is transparent/none; we want rich colors from prompt
       });
       const url = (img as any)?.data?.[0]?.url;

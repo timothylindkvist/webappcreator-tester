@@ -1,7 +1,7 @@
 'use client';
 import { BuilderProvider } from '../components/builder-context';
 import Builder from '../components/Builder';
-import ChatWidget from '../components/ChatWidget';
+import ResizableChat from '../components/ResizableChat';
 
 export default function Page() {
   return (
@@ -17,14 +17,12 @@ export default function Page() {
           </div>
         </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-6 mt-6">
-          <div className="card"><Builder /></div>
-          <div className="card lg:sticky lg:top-6 h-fit"><ChatWidget /></div>
-        </div>
+        <div className="card"><Builder /></div>
 
         <footer className="text-center mt-8 text-sm muted">
           Built with Next.js + OpenAI.
         </footer>
+            <ResizableChat />
       </div>
     </BuilderProvider>
   );

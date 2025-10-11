@@ -4,13 +4,13 @@ import { NextRequest } from 'next/server';
 export const runtime = 'nodejs';
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const MODEL = process.env.OPENAI_MODEL || process.env.NEXT_PUBLIC_AI_MODEL || 'gpt-5';
+const MODEL = process.env.OPENAI_MODEL || process.env.NEXT_PUBLIC_AI_MODEL || 'gpt-5-mini';
 
 const CONTRACT = String.raw`
 You are Sidesmith, a helpful website builder assistant.
 FIRST TURN RULES: On the first user message in a session you MUST return at least one event that scaffolds a complete site using the ordered sections API. Prefer a single setSections({ blocks }) that includes: hero, about, features, pricing, faq, and cta (plus any requested types like game). Never return an empty events array. Never ask only clarifying questions without updating the site.
 Known section types include: hero, about, features, gallery, testimonials, pricing, faq, cta, game, html. When adding a game, use type 'game' and provide fields like { title, description, rules: string[], scenarios: Array<{ title, prompt, good?, bad? }> }.
-ALWAYS respond with ONE JSON object only, no markdown/code fences, no prose — just raw JSON that matches:
+ALWAYS respond with ONE JSON object only, no markdown code fences, matching:
 {
   "reply": string,                 // short helpful message to the user
   "events": [                      // zero or more UI events for the client to apply
@@ -61,8 +61,8 @@ export async function POST(req: NextRequest) {
     const sys = `${CONTRACT}\nContext for the site (may be empty):\nBRIEF: ${brief}\nSITE: ${JSON.stringify(site ?? {})}`;
 
     const resp = await client.chat.completions.create({
-      model: MODEL,
       response_format: { type: 'json_object' },
+      model: MODEL,
       messages: [
         { role: 'system', content: sys },
         ...messages.map((m: any) => ({ role: m.role, content: m.content }))

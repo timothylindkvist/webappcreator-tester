@@ -1,17 +1,26 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useBuilder } from './builder-context';
 import { streamChat } from '@/lib/aiStream';
 
 type Msg = { role: 'user' | 'assistant'; content: string };
 
 export default function ChatWidget() {
-  const { data, brief, setBrief, rebuild } = useBuilder();
+  const { data, brief, setBrief, rebuild, reset } = useBuilder();
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasBuilt, setHasBuilt] = useState(false);
+
+  // Start a fresh session on mount
+  useEffect(() => {
+    setMessages([]);
+    setHasBuilt(false);
+    setError(null);
+    reset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const send = async () => {
     const text = input.trim();

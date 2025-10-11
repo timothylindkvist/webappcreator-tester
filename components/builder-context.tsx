@@ -8,11 +8,12 @@ export type Theme = {
   density?: 'compact' | 'cozy' | 'comfortable';
 };
 
-
 export type Block = { id: string; type: string; data?: any };
 export type SiteData = {
   theme: Theme;
-  brand: { name: string; tagline: string; industry?: string };
+  brand: { name: string; tagline: string; industry?: string 
+  [key: string]: any;
+};
   hero: { title: string; subtitle: string; cta?: { label: string; href?: string } };
   about?: { heading?: string; body?: string };
   features?: { title?: string; items?: { title: string; body: string }[] };
@@ -21,9 +22,13 @@ export type SiteData = {
   pricing?: { title?: string; plans?: { name: string; price?: string; features?: string[] }[] };
   faq?: { title?: string; items?: { q: string; a: string }[] };
   cta?: { title?: string; subtitle?: string; button?: { label: string; href?: string } };
+
+  game?: any;
+  history?: { title?: string; body?: string };
+  html?: { content?: string } | string;
 };
 
-type CtxShape = {
+export type CtxShape = {
   brief: string;
   setBrief: (b: string) => void;
   data: SiteData;
@@ -38,17 +43,58 @@ type CtxShape = {
   fixImages: (section?: keyof SiteData | 'all') => void;
   redesign: (concept?: string) => void;
   rebuild: (briefOverride?: string) => Promise<void>;
+  reset: () => void;
 };
 
 const BuilderCtx = createContext<CtxShape | null>(null);
 
+const initialData: SiteData = {
+  theme: {
+    palette: { brand: '#7C3AED', accent: '#06B6D4', background: '#ffffff', foreground: '#0b0f19' },
+    density: 'cozy',
+  },
+  brand: { name: 'Your Brand', tagline: 'Let’s build something great.' },
+  hero: { title: 'Describe your site in the chat →', subtitle: 'The assistant will design & edit live.' },
+};
+
 export const BuilderProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
   const [brief, setBrief] = useState('');
-  const [data, setData] = useState<SiteData>({
-    theme: { palette: { brand: '#7C3AED', accent: '#06B6D4', background: '#ffffff', foreground: '#0b0f19' }, density: 'cozy' },
-    brand: { name: 'Your Brand', tagline: 'Let’s build something great.' },
-    hero: { title: 'Describe your site in the chat →', subtitle: 'The assistant will design & edit live.' },
-  });
+  const [data, setData] = useState<SiteData>(initialData);
+
+  // Merge helper: shallow merge with special-cased theme.palette
+  function safeMerge(cur: SiteData, incoming: Partial<SiteData>): SiteData {
+    const out: any = { ...cur };
+    for (const [k, v] of Object.entries(incoming || {})) {
+      if (k === 'theme' && v && typeof v === 'object') {
+        const curTheme: any = cur.theme || {};
+        const vTheme: any = v;
+        out.theme = {
+          ...curTheme,
+          ...vTheme,
+          palette: { ...(curTheme.palette || {}), ...((vTheme || {}).palette || {}) },
+        };
+      } else if (v === null) {
+        delete out[k as keyof SiteData];
+  const SINGLETON_KEYS = new Set(['theme','brand','hero','pricing','faq','cta']);
+      } else {
+        out[k as keyof SiteData] = v as any;
+      }
+    }
+    return out as SiteData;
+  }
+
+  const KNOWN_KEYS = new Set(['theme','brand','hero','about','features','gallery','testimonials','pricing','faq','cta','game','history','html']);
+// Keys that should be singletons (overwritten rather than duplicated)
+const SINGLETON_KEYS = new Set(['theme','brand','hero','pricing','faq','cta']);
+  function ensureUnique(baseKey: string, obj: Record<string, any>) {
+    let key = baseKey;
+    let i = 2;
+    while (Object.prototype.hasOwnProperty.call(obj, key)) {
+      key = `${baseKey}${i++}`;
+    }
+    return key;
+  }
+
 
   const applyTheme: CtxShape['applyTheme'] = (themeLike) => {
     const flat: any = themeLike || {};
@@ -56,8 +102,8 @@ export const BuilderProvider: React.FC<React.PropsWithChildren> = ({ children })
       'palette' in flat
         ? flat.palette
         : (flat.brand || flat.accent || flat.background || flat.foreground)
-          ? { brand: flat.brand, accent: flat.accent, background: flat.background, foreground: flat.foreground }
-          : undefined;
+        ? { brand: flat.brand, accent: flat.accent, background: flat.background, foreground: flat.foreground }
+        : undefined;
 
     setData((cur) => ({
       ...cur,
@@ -75,8 +121,17 @@ export const BuilderProvider: React.FC<React.PropsWithChildren> = ({ children })
     }));
   };
 
-  const addSection: CtxShape['addSection'] = (section, payload) =>
-    setData((cur) => ({ ...cur, [section]: payload as any }));
+  const addSection: CtxShape['addSection'] = (section, payload) => setData((cur) => {
+    const next: any = { ...cur };
+    const key = String(section);
+    if (next[key] && !SINGLETON_KEYS.has(key)) {
+      const unique = ensureUnique(key, next);
+      next[unique] = payload as any;
+    } else {
+      next[key] = payload as any;
+    }
+    return next;
+  });
 
   const removeSection: CtxShape['removeSection'] = (section) =>
     setData((cur) => {
@@ -97,7 +152,6 @@ export const BuilderProvider: React.FC<React.PropsWithChildren> = ({ children })
       const copy: any = structuredClone(cur);
       const keys: (keyof SiteData)[] =
         which === 'all' ? (['gallery', 'hero', 'features', 'testimonials'] as any) : [which];
-
       keys.forEach((k) => {
         const sec: any = copy[k];
         if (!sec) return;
@@ -109,21 +163,65 @@ export const BuilderProvider: React.FC<React.PropsWithChildren> = ({ children })
           }));
         }
       });
-
       return copy;
     });
   };
 
+  const reset: CtxShape['reset'] = () => {
+    setBrief('');
+    setData(initialData);
+  };
+
+  // Ordered-sections API handlers
+  const setSections = ({ blocks = [] as Array<{ id?: string; type: string; data?: any }> } = {}) => {
+    setData((cur) => {
+      const next: any = { ...cur };
+      for (const b of blocks) {
+        if (!b?.type) continue;
+        next[b.type] = b.data ?? {};
+      }
+      return next;
+    });
+  };
+  const insertSection = ({ type, data }: { type: string; data?: any }) => {
+    setData((cur) => ({ ...(cur as any), [type]: data ?? {} }));
+  };
+  const updateSection = ({ id, patch }: { id: string; patch?: any }) => {
+    setData((cur) => ({ ...(cur as any), [id]: { ...(cur as any)[id], ...(patch ?? {}) } }));
+  };
+  const moveSection = (_: { id: string; toIndex: number }) => {};
+  const deleteSection = ({ id }: { id: string }) => {
+    setData((cur) => {
+      const next: any = { ...cur };
+      if (next[id]) {
+        delete next[id];
+        return next;
+      }
+      const target = Object.keys(next).find((k) => {
+        const v: any = (next as any)[k];
+        const t = (v?.title || v?.heading || '').toLowerCase();
+        return t.includes(id.toLowerCase());
+      });
+      if (target) delete next[target];
+      return next;
+    });
+  };
 
   // Expose handlers for chat tool calls
   if (typeof window !== 'undefined') {
     (window as any).__sidesmithTools = {
-      setSiteData: (args: any) => setData(args),
+      setSiteData: (args: any) => setData((cur) => safeMerge(cur, args)),
       updateBrief: (args: any) => setBrief(args?.brief ?? ''),
       applyTheme: (args: any) => applyTheme(args),
       addSection: (args: any) => addSection(args?.section as any, args?.payload),
       removeSection: (args: any) => removeSection(args?.section as any),
       patchSection: (args: any) => patchSection(args?.section as any, args?.patch),
+      setSections,
+      insertSection,
+      updateSection,
+      moveSection,
+      deleteSection,
+      reset,
     };
   }
 
@@ -131,11 +229,12 @@ export const BuilderProvider: React.FC<React.PropsWithChildren> = ({ children })
     // placeholder for future AI actions
   };
 
-  const rebuild: CtxShape['rebuild'] = async () => {
+  const rebuild: CtxShape['rebuild'] = async (briefOverride?: string) => {
+    const _brief = typeof briefOverride === 'string' ? briefOverride : brief;
     const res = await fetch('/api/build', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ brief }),
+      body: JSON.stringify({ brief: _brief }),
     });
     if (!res.ok) {
       const errText = await res.text();
@@ -162,6 +261,7 @@ export const BuilderProvider: React.FC<React.PropsWithChildren> = ({ children })
         fixImages,
         redesign,
         rebuild,
+        reset, // ✅ now exposed in the context value
       }}
     >
       {children}

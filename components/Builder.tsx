@@ -1,5 +1,7 @@
 'use client';
 import { useEffect } from 'react';
+import Game from './sections/Game';
+import Html from './sections/Html';
 import { useBuilder } from './builder-context';
 
 export default function Builder() {
@@ -84,6 +86,56 @@ export default function Builder() {
           </div>
         </section>
       ) : null}
+      {(data as any).game ? <Game {...(data as any).game} /> : null}
+      {(data as any).html ? <Html html={(data as any).html?.content || (data as any).html || ''} /> : null}
+      {(data as any).history ? (
+        <section className="card">
+          <h2 className="section-title">{(data as any).history?.title || 'Our History'}</h2>
+          <div className="prose muted">{(data as any).history?.body}</div>
+        </section>
+      ) : null}
+
+      {data.faq ? (
+        <section className="card">
+          <h2 className="section-title">{data.faq.title || 'FAQ'}</h2>
+          <div className="space-y-3">
+            {(data.faq.items || []).map((it, i) => (
+              <details key={i} className="rounded-xl border p-3">
+                <summary className="font-medium cursor-pointer">{it.q || `Question ${i + 1}`}</summary>
+                {it.a ? <p className="mt-2 prose muted">{it.a}</p> : null}
+              </details>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {/* catch-all: render any unknown sections the model created */}
+      {Object.entries(data as any).map(([key, val]) => {
+        const KNOWN = new Set([
+          'theme','brand','hero','about','features','gallery','testimonials','pricing','faq','cta','game','history','html'
+        ]);
+        if (KNOWN.has(key)) return null;
+        if (!val || typeof val !== 'object') return null;
+        const title = (val as any).title || (val as any).heading || key.charAt(0).toUpperCase() + key.slice(1);
+        const body = (val as any).body || (val as any).description || (val as any).text;
+        const items = Array.isArray((val as any).items) ? (val as any).items : null;
+        return (
+          <section key={key} className="card">
+            <h2 className="section-title">{title}</h2>
+            {body ? <div className="prose muted">{body}</div> : null}
+            {items ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {items.map((it: any, i: number) => (
+                  <div key={i} className="rounded-xl border p-4">
+                    <div className="font-medium">{it.title || it.name || `Item ${i + 1}`}</div>
+                    {it.body || it.description ? <p className="muted">{it.body || it.description}</p> : null}
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </section>
+        );
+      })}
     </div>
   );
 }

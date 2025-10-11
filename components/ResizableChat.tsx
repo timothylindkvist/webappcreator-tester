@@ -87,7 +87,7 @@ export default function ResizableChat() {
         ].join(' ')}
         style={{ height }}
       >
-        {{/* Drag zone (visible and easy to grab) */}
+        {/* Drag zone (visible and easy to grab) */}
         <div
           className={[
             'w-full border-t border-slate-300/70 dark:border-white/20',

@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
 
     // --- Step 2: Generate a DALL·E background image automatically ---
     const image = await client.images.generate({
-      model: "gpt-5",
+      model: "dall-e-3",
       prompt: `High-quality background image for a website about: ${brief}`,
       size: "1792x1024",
     });

@@ -188,10 +188,10 @@ Return the full SiteData JSON only.`;
 
 // === HERO IMAGE GENERATION PIPELINE ===
 const heroPrompt = `
-Cinematic hero image for a ${site.type || "modern"} website.
+Cinematic hero image for a ${data.brand?.industry || "modern"} website.
 Mood: ${theme.mood || "modern and vivid"}.
 Palette: ${theme.palette?.primary || "rich blue"}, ${theme.palette?.secondary || "soft green"}.
-Description: ${heroImage?.description || site.description || "visual identity of the brand"}.
+Description: ${heroImage?.description || data.hero?.title || "visual identity of the brand"}.
 Lighting: ${heroImage?.lighting || "soft, professional"}.
 Camera: ${heroImage?.camera || "wide angle, shallow depth of field"}.
 `;

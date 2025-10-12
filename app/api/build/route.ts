@@ -187,6 +187,8 @@ Return the full SiteData JSON only.`;
 
 
 // === HERO IMAGE GENERATION PIPELINE ===
+// ensure data is declared for type-checking
+let data: any = (typeof data !== 'undefined') ? data : (result && result.data ? result.data : {});
 const dataObj = typeof data !== 'undefined' ? data : (result && result.data) ? result.data : {};
 const theme = dataObj.theme || {};
 const heroImage = dataObj.heroImage || {};

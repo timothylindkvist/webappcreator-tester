@@ -1,6 +1,8 @@
 import OpenAI from 'openai';
 import { NextRequest } from 'next/server';
 
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
+
 export const runtime = 'nodejs';
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const MODEL = process.env.OPENAI_MODEL || process.env.NEXT_PUBLIC_AI_MODEL || 'gpt-5-mini';

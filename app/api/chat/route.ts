@@ -78,3 +78,12 @@ export async function POST(req: NextRequest) {
     return Response.json({ ok: false, error: err?.message ?? String(err) }, { status: 500 });
   }
 }
+
+
+const imageUrl =
+  image.data?.[0]?.url ||
+  (image.data?.[0]?.b64_json ? `data:image/png;base64,${image.data[0].b64_json}` : null);
+
+if (!imageUrl) {
+  throw new Error("Image generation failed: no URL or b64_json returned");
+}

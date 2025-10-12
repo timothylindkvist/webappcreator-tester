@@ -219,7 +219,6 @@ const image = await openai.images.generate({
   model: "gpt-image-1",
   prompt: refinedPrompt,
   size: "1536x1024",
-  response_format: "url",
 });
 
 if (!image?.data?.[0]?.url) {

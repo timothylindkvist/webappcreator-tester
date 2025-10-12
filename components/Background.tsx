@@ -11,14 +11,20 @@ export default function Background() {
     async function run() {
       if (!brief) return;
       try {
+        // ✅ Safely check for nested values to prevent 'undefined' errors
+        const paletteArray = data?.theme?.palette
+          ? Object.values(data.theme.palette)
+          : [];
+
         const res = await fetch("/api/images/background", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             brief,
-            palette: data?.theme?.palette ? Object.values(data.theme.palette) : [],
+            palette: paletteArray,
           }),
         });
+
         const json = await res.json();
         if (!cancelled && json.ok && json.url) {
           setImgUrl(json.url);
@@ -30,7 +36,6 @@ export default function Background() {
 
     run();
 
-    // ✅ Proper cleanup to satisfy React types
     return () => {
       cancelled = true;
     };

@@ -1,3 +1,4 @@
+// sidesmith hero image pipeline v1.0-clean
 import { NextRequest } from 'next/server';
 
 export const runtime = 'nodejs';

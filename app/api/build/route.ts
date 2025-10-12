@@ -98,9 +98,6 @@ General rules:
 
 Goal: create visually striking, emotionally tuned, premium backgrounds cohesive with the site's identity.
 
-Always include a "heroImage" object that visually represents the website theme.
-If unsure, imagine a cinematic hero image that captures the mood, palette, and style of the brand.
-
 You may include a heroImage object to visually express the theme.
 - Provide a vivid but concise prompt describing what should appear.
 - Style can be 'photo', 'illustration', '3d', or 'cinematic'.
@@ -187,3 +184,38 @@ Return the full SiteData JSON only.`;
     return Response.json({ ok: false, error: err?.message ?? String(err) }, { status: 500 });
   }
 }
+
+
+// === HERO IMAGE GENERATION PIPELINE ===
+const heroPrompt = `
+Cinematic hero image for a ${site.type || "modern"} website.
+Mood: ${theme.mood || "modern and vivid"}.
+Palette: ${theme.palette?.primary || "rich blue"}, ${theme.palette?.secondary || "soft green"}.
+Description: ${heroImage?.description || site.description || "visual identity of the brand"}.
+Lighting: ${heroImage?.lighting || "soft, professional"}.
+Camera: ${heroImage?.camera || "wide angle, shallow depth of field"}.
+`;
+
+const refined = await openai.chat.completions.create({
+  model: "gpt-5",
+  messages: [
+    { role: "system", content: "Rewrite the following for image generation clarity and cinematic flair:" },
+    { role: "user", content: heroPrompt },
+  ],
+});
+
+const refinedPrompt = refined.choices[0].message.content;
+console.log("🎬 Refined hero image prompt:", refinedPrompt);
+
+const image = await openai.images.generate({
+  model: "gpt-image-1",
+  prompt: refinedPrompt,
+  size: "1536x1024",
+  response_format: "url",
+});
+
+if (!image?.data?.[0]?.url) {
+  throw new Error("Image generation failed: no URL returned");
+}
+
+const imageUrl = image.data[0].url;

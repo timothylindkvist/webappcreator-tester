@@ -24,12 +24,13 @@ const BuilderContext = createContext<BuilderContextType>({
 export function useBuilder(): BuilderContextType {
   const ctx = useContext(BuilderContext);
 
-  // Ensure full safety on every render
+  // Spread first, then override theme safely
   const safeData: BuilderData = {
+    ...ctx?.data,
     theme: {
+      ...ctx?.data?.theme,
       palette: ctx?.data?.theme?.palette || {},
     },
-    ...ctx?.data,
   };
 
   return {

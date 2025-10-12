@@ -4,6 +4,8 @@ import { useContext, createContext } from "react";
 
 export interface BuilderTheme {
   palette: Record<string, string>;
+  brand: Record<string, string>;
+  typography?: Record<string, string>;
 }
 
 export interface BuilderData {
@@ -17,19 +19,26 @@ export interface BuilderContextType {
 }
 
 const BuilderContext = createContext<BuilderContextType>({
-  data: { theme: { palette: {} } },
+  data: {
+    theme: {
+      palette: {},
+      brand: {},
+      typography: {},
+    },
+  },
   brief: "",
 });
 
 export function useBuilder(): BuilderContextType {
   const ctx = useContext(BuilderContext);
 
-  // Spread first, then override theme safely
+  // Deep normalization for safety
   const safeData: BuilderData = {
     ...ctx?.data,
     theme: {
-      ...ctx?.data?.theme,
       palette: ctx?.data?.theme?.palette || {},
+      brand: ctx?.data?.theme?.brand || {},
+      typography: ctx?.data?.theme?.typography || {},
     },
   };
 

@@ -65,6 +65,19 @@ Do not include markdown or code fences. Only return valid JSON.`,
 
     if (!parsed.hero) throw new Error("Missing hero section in JSON");
     parsed.hero.backgroundImage = imageUrl;
+    if (Array.isArray((parsed as any).blocks)) {
+      (parsed as any).blocks = (parsed as any).blocks.map((block: any) => {
+        if (block?.type !== "hero") return block;
+        const data = typeof block?.data === "object" && block.data !== null ? block.data : {};
+        return {
+          ...block,
+          data: {
+            ...data,
+            backgroundImage: imageUrl,
+          },
+        };
+      });
+    }
 
     // === 3️⃣ Final sanity checks ===
     if (!parsed.theme?.palette?.brand) throw new Error("Incomplete theme palette from GPT-5");

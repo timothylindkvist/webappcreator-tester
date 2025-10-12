@@ -98,6 +98,9 @@ General rules:
 
 Goal: create visually striking, emotionally tuned, premium backgrounds cohesive with the site's identity.
 
+Always include a "heroImage" object that visually represents the website theme.
+If unsure, imagine a cinematic hero image that captures the mood, palette, and style of the brand.
+
 You may include a heroImage object to visually express the theme.
 - Provide a vivid but concise prompt describing what should appear.
 - Style can be 'photo', 'illustration', '3d', or 'cinematic'.

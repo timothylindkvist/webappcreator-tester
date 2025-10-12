@@ -166,19 +166,21 @@ Return the full SiteData JSON only.`;
       }
 
       // Generate the image (no fallback). Use cinematic wide size for hero.
-      const img = await client.images.generate({
-        model: "gpt-image-1",
-        prompt: heroPrompt,
-        size: "1536x1024",
-        // background default is transparent/none; we want rich colors from prompt
-      });
-      const url = (img as any)?.data?.[0]?.url;
-      if (!url) {
-        throw new Error("Image generation failed: missing URL");
-      }
-      (data as any).media = (data as any).media || {};
-      (data as any).media.hero = { url };
-    }
+  const image = await client.images.generate({
+  model: "gpt-image-1",
+  prompt: refinedPrompt || "cinematic vivid brand hero image",
+  size: "1536x1024",
+});
+
+const imageUrl =
+  image.data?.[0]?.url ||
+  (image.data?.[0]?.b64_json
+    ? `data:image/png;base64,${image.data[0].b64_json}`
+    : null);
+
+if (!imageUrl) {
+  throw new Error("Image generation failed: no URL or b64_json returned");
+}
 
     return Response.json({ ok: true, data }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (err: any) {

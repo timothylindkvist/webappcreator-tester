@@ -212,7 +212,7 @@ const refined = await openai.chat.completions.create({
   ],
 });
 
-const refinedPrompt = refined.choices[0].message.content;
+const refinedPrompt = refined.choices?.[0]?.message?.content ?? "Cinematic vivid background for a modern web app.";
 console.log("🎬 Refined hero image prompt:", refinedPrompt);
 
 const image = await openai.images.generate({

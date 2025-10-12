@@ -13,3 +13,10 @@ Chat-first website creator. The **first message** builds the initial site from y
 
 ### Flexible Sections
 This update introduces an ordered `blocks` array with tools: setSections, insertSection, updateSection, moveSection, deleteSection. The renderer prefers `blocks` if present, otherwise falls back to the legacy fixed sections.
+
+
+## Background Image Generation
+- Endpoint: `POST /api/images/background` expects `{ brief, palette? }`.
+- Uses OpenAI `gpt-image-1` to generate a cinematic background.
+- No temperature or fallbacks are used.
+- Requires `OPENAI_API_KEY` in the environment.

@@ -1,5 +1,5 @@
 'use client';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useBuilder } from './builder-context';
 
 type BGConf = {
@@ -16,6 +16,40 @@ function alphaHex(opacity: number) {
 }
 
 export default function Background() {
+  const { data, brief } = useBuilder();
+  const [imgUrl, setImgUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function run() {
+      if (!brief) return;
+      try {
+        const res = await fetch('/api/images/background', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ brief, palette: data?.theme?.palette ? Object.values(data.theme.palette) : [] })
+        });
+        if (!res.ok) throw new Error(await res.text());
+        const json = await res.json();
+        if (!cancelled) setImgUrl(json?.url || null);
+      } catch (e) {
+        console.error('bg fetch failed', e);
+      }
+    }
+    run();
+    return (
+    {/* __IMG_LAYER__ */}
+    {imgUrl && (
+      <div className="fixed inset-0 -z-20" style={{
+        backgroundImage: `url(${imgUrl})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        filter: 'saturate(1.05) contrast(1.02) brightness(0.9)'
+      }} />
+    )}
+) => { cancelled = true; };
+  }, [brief]);
+ {
   const { data } = useBuilder();
   const bg: BGConf | undefined = (data as any)?.theme?.background;
   if (!bg || !bg.style || !Array.isArray(bg.palette) || bg.palette.length === 0) return null;
@@ -51,6 +85,16 @@ export default function Background() {
         const top = [20,25,75,70,50,35][i%6];
         const opacity = Math.max(0.05, alphaBase * (0.9 - i*0.1));
         return (
+    {/* __IMG_LAYER__ */}
+    {imgUrl && (
+      <div className="fixed inset-0 -z-20" style={{
+        backgroundImage: `url(${imgUrl})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        filter: 'saturate(1.05) contrast(1.02) brightness(0.9)'
+      }} />
+    )}
+
           <div key={i} className="absolute rounded-full blur-3xl pointer-events-none"
             style={{ width:size, height:size, left:`${left}%`, top:`${top}%`, transform:'translate(-50%,-50%)', background:c, opacity, mixBlendMode:blend }}
           />
@@ -83,6 +127,16 @@ export default function Background() {
       const top = (i*53) % 100;
       const opacity = 0.08 + (i % 5)*0.02;
       return (
+    {/* __IMG_LAYER__ */}
+    {imgUrl && (
+      <div className="fixed inset-0 -z-20" style={{
+        backgroundImage: `url(${imgUrl})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        filter: 'saturate(1.05) contrast(1.02) brightness(0.9)'
+      }} />
+    )}
+
         <div key={i} className="absolute rounded-full bg-white"
           style={{ width:size, height:size, left:`${left}%`, top:`${top}%`, opacity,
             filter:'blur(0.5px)', animation:`floatY ${dur}s ease-in-out ${delay}s infinite alternate` }}/>
@@ -92,6 +146,16 @@ export default function Background() {
   };
 
   return (
+    {/* __IMG_LAYER__ */}
+    {imgUrl && (
+      <div className="fixed inset-0 -z-20" style={{
+        backgroundImage: `url(${imgUrl})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        filter: 'saturate(1.05) contrast(1.02) brightness(0.9)'
+      }} />
+    )}
+
     <>
       {/* Hero image layer (behind gradients) */}
       { (data as any)?.media?.hero?.url ? (

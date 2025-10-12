@@ -63,31 +63,76 @@ Do not include markdown or code fences. Only return valid JSON.`,
     const imageUrl = image.data?.[0]?.url;
     if (!imageUrl) throw new Error("Image generation failed");
 
-    if (!parsed.hero) throw new Error("Missing hero section in JSON");
-    parsed.hero.backgroundImage = imageUrl;
-    if (Array.isArray((parsed as any).blocks)) {
-      (parsed as any).blocks = (parsed as any).blocks.map((block: any) => {
-        if (block?.type !== "hero") return block;
-        const data = typeof block?.data === "object" && block.data !== null ? block.data : {};
-        return {
-          ...block,
-          data: {
-            ...data,
-            backgroundImage: imageUrl,
-          },
-        };
-      });
-    }
+     const applyHeroBackground = (site: any, url: string) => {
+      if (!site || typeof site !== "object") return;
 
-    // === 3️⃣ Final sanity checks ===
-    if (!parsed.theme?.palette?.brand) throw new Error("Incomplete theme palette from GPT-5");
+      if (typeof site.hero === "object" && site.hero !== null) {
+        site.hero = { ...site.hero, backgroundImage: url };
+      } else if (site.hero === undefined) {
+        site.hero = { backgroundImage: url };
+      }
 
-    return Response.json({ ok: true, data: parsed });
-  } catch (err: any) {
-    console.error("Build error:", err);
-    return Response.json(
-      { ok: false, error: err?.message ?? String(err) },
-      { status: 500 }
-    );
-  }
-}
+      if (typeof site.heroImage === "object" && site.heroImage !== null) {
+        site.heroImage = { ...site.heroImage, url };
+      } else if (site.heroImage === undefined) {
+        site.heroImage = { url };
+      }
+
+      if (typeof site.media === "object" && site.media !== null) {
+        const heroMedia = typeof site.media.hero === "object" && site.media.hero !== null ? site.media.hero : {};
+        site.media = { ...site.media, hero: { ...heroMedia, url } };
+      }
+
+      const normaliseHeroBlock = (block: any) => {
+        if (!block || typeof block !== "object") return block;
+        if (block.type === "hero") {
+          const data = typeof block.data === "object" && block.data !== null ? block.data : {};
+          return {
+            ...block,
+            data: { ...data, backgroundImage: url },
+          };
+        }
+
+        if (typeof block.id === "string" && block.id.toLowerCase().includes("hero")) {
+          const data = typeof block.data === "object" && block.data !== null ? block.data : undefined;
+          if (data) {
+            return {
+              ...block,
+              data: { ...data, backgroundImage: url },
+            };
+          }
+        }
+
+        return block;
+      };
+
+      if (Array.isArray(site.blocks)) {
+        site.blocks = site.blocks.map((block: any) => normaliseHeroBlock(block));
+      } else if (typeof site.blocks === "object" && site.blocks !== null) {
+        const nextBlocks: Record<string, any> = {};
+        for (const [key, value] of Object.entries(site.blocks)) {
+          if (key === "hero" && value && typeof value === "object" && !Array.isArray(value)) {
+            nextBlocks[key] = { ...value, backgroundImage: url };
+          } else {
+            nextBlocks[key] = value;
+          }
+        }
+        site.blocks = nextBlocks;
+      }
+
+      if (Array.isArray(site.sections)) {
+        site.sections = site.sections.map((section: any) => normaliseHeroBlock(section));
+      } else if (typeof site.sections === "object" && site.sections !== null) {
+        const nextSections: Record<string, any> = {};
+        for (const [key, value] of Object.entries(site.sections)) {
+          if (key === "hero" && value && typeof value === "object" && !Array.isArray(value)) {
+            nextSections[key] = { ...value, backgroundImage: url };
+          } else {
+            nextSections[key] = value;
+          }
+        }
+        site.sections = nextSections;
+      }
+    };
+
+    applyHeroBackground(parsed, imageUrl)

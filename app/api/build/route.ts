@@ -187,11 +187,15 @@ Return the full SiteData JSON only.`;
 
 
 // === HERO IMAGE GENERATION PIPELINE ===
+const dataObj = typeof data !== 'undefined' ? data : (result && result.data) ? result.data : {};
+const theme = dataObj.theme || {};
+const heroImage = dataObj.heroImage || {};
+
 const heroPrompt = `
-Cinematic hero image for a ${data.brand?.industry || "modern"} website.
+Cinematic hero image for a ${dataObj.brand?.industry || "modern"} website.
 Mood: ${theme.mood || "modern and vivid"}.
 Palette: ${theme.palette?.primary || "rich blue"}, ${theme.palette?.secondary || "soft green"}.
-Description: ${heroImage?.description || data.hero?.title || "visual identity of the brand"}.
+Description: ${heroImage?.description || dataObj.hero?.title || "visual identity of the brand"}.
 Lighting: ${heroImage?.lighting || "soft, professional"}.
 Camera: ${heroImage?.camera || "wide angle, shallow depth of field"}.
 `;

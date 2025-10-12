@@ -1,6 +1,4 @@
 import React from "react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 
 interface HeroProps {
   title?: string;
@@ -24,8 +22,8 @@ export default function Hero({
         backgroundPosition: "center",
       }}
     >
-      {/* Gradient overlay for readability */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/40 to-black/60 -z-10"></div>
+      {/* Dark overlay for readability */}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/40 to-black/60 -z-10" />
 
       <div className="mx-auto max-w-3xl text-center text-white">
         {title && (
@@ -40,25 +38,29 @@ export default function Hero({
         )}
         {cta?.label && (
           <div className="mt-8 flex items-center justify-center gap-3">
-            <Button>{cta.label}</Button>
+            <button className="rounded-2xl bg-[var(--brand)] text-white px-5 py-2.5 font-semibold shadow-md hover:opacity-90 transition-all">
+              {cta.label}
+            </button>
           </div>
         )}
-        <Card className="mx-auto mt-10 max-w-3xl p-3 sm:p-4">
-          <div className="grid grid-cols-3 gap-3 text-center text-sm text-muted-foreground">
+
+        {/* Small metrics card */}
+        <div className="mx-auto mt-10 max-w-3xl rounded-2xl border border-white/20 bg-white/10 backdrop-blur-sm p-3 sm:p-4 text-sm text-white/80">
+          <div className="grid grid-cols-3 gap-3 text-center">
             <div>
-              <span className="text-2xl font-bold text-foreground">1.2M</span>
+              <span className="text-2xl font-bold text-white">1.2M</span>
               <div>Followers</div>
             </div>
             <div>
-              <span className="text-2xl font-bold text-foreground">320</span>
+              <span className="text-2xl font-bold text-white">320</span>
               <div>Campaigns</div>
             </div>
             <div>
-              <span className="text-2xl font-bold text-foreground">98%</span>
+              <span className="text-2xl font-bold text-white">98%</span>
               <div>Satisfaction</div>
             </div>
           </div>
-        </Card>
+        </div>
       </div>
     </section>
   );

@@ -5,6 +5,7 @@ interface HeroProps {
   subtitle?: string;
   cta?: { label: string };
   backgroundImage?: string;
+  image?: { src?: string };
 }
 
 export default function Hero({
@@ -12,12 +13,18 @@ export default function Hero({
   subtitle,
   cta,
   backgroundImage,
+  image,
 }: HeroProps) {
   return (
     <section
       className="relative isolate overflow-hidden px-6 py-20 sm:py-28 md:py-32 text-center"
       style={{
-        backgroundImage: backgroundImage ? `url(${backgroundImage})` : undefined,
+        backgroundImage:
+          backgroundImage
+            ? `url(${backgroundImage})`
+            : image?.src
+            ? `url(${image.src})`
+            : undefined,
         backgroundSize: "cover",
         backgroundPosition: "center",
       }}

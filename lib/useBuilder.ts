@@ -2,10 +2,12 @@
 
 import { useContext, createContext } from "react";
 
+export interface BuilderTheme {
+  palette: Record<string, string>;
+}
+
 export interface BuilderData {
-  theme?: {
-    palette?: Record<string, string>;
-  };
+  theme: BuilderTheme;
   [key: string]: any;
 }
 
@@ -14,11 +16,16 @@ export interface BuilderContextType {
   brief: string;
 }
 
-const BuilderContext = createContext<BuilderContextType>({
-  data: {},
+const defaultContext: BuilderContextType = {
+  data: {
+    theme: { palette: {} },
+  },
   brief: "",
-});
+};
+
+const BuilderContext = createContext<BuilderContextType>(defaultContext);
 
 export function useBuilder(): BuilderContextType {
-  return useContext(BuilderContext);
+  const ctx = useContext(BuilderContext);
+  return ctx || defaultContext;
 }

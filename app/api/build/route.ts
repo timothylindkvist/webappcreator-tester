@@ -202,7 +202,7 @@ Lighting: ${heroImage?.lighting || "soft, professional"}.
 Camera: ${heroImage?.camera || "wide angle, shallow depth of field"}.
 `;
 
-const refined = await openai.chat.completions.create({
+const refined = await OpenAI.chat.completions.create({
   model: "gpt-5",
   messages: [
     { role: "system", content: "Rewrite the following for image generation clarity and cinematic flair:" },
@@ -213,7 +213,7 @@ const refined = await openai.chat.completions.create({
 const refinedPrompt = refined.choices[0].message.content;
 console.log("🎬 Refined hero image prompt:", refinedPrompt);
 
-const image = await openai.images.generate({
+const image = await OpenAI.images.generate({
   model: "gpt-image-1",
   prompt: refinedPrompt,
   size: "1536x1024",

@@ -222,12 +222,12 @@ const image = await openai.images.generate({
 });
 
 // Support both URL and Base64 formats
-base64,${image.data[0].b64_json}` : null);
+const imageUrl =
+  image.data?.[0]?.url ||
+  (image.data?.[0]?.b64_json ? `data:image/png;base64,${image.data[0].b64_json}` : null);
 
 if (!imageUrl) {
-  throw new Error('Image generation failed: no URL or b64_json returned');
-}
-if (!image?.data?.[0]?.url) {
-  throw new Error("Image generation failed: no URL returned");
+  throw new Error("Image generation failed: no URL or b64_json returned");
 }
 
+console.log("✅ Final hero image URL:", imageUrl);

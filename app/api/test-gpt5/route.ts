@@ -49,9 +49,7 @@ export async function GET(_req: NextRequest) {
   }
 }
 
-const imageUrl =
-  image.data?.[0]?.url ||
-  (image.data?.[0]?.b64_json ? `data:image/png;base64,${image.data[0].b64_json}` : null);
+
 
 if (!imageUrl) {
   throw new Error("Image generation failed: no URL or b64_json returned");

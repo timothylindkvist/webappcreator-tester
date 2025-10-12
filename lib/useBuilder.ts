@@ -16,16 +16,24 @@ export interface BuilderContextType {
   brief: string;
 }
 
-const defaultContext: BuilderContextType = {
-  data: {
-    theme: { palette: {} },
-  },
+const BuilderContext = createContext<BuilderContextType>({
+  data: { theme: { palette: {} } },
   brief: "",
-};
-
-const BuilderContext = createContext<BuilderContextType>(defaultContext);
+});
 
 export function useBuilder(): BuilderContextType {
   const ctx = useContext(BuilderContext);
-  return ctx || defaultContext;
+
+  // Ensure full safety on every render
+  const safeData: BuilderData = {
+    theme: {
+      palette: ctx?.data?.theme?.palette || {},
+    },
+    ...ctx?.data,
+  };
+
+  return {
+    data: safeData,
+    brief: ctx?.brief || "",
+  };
 }

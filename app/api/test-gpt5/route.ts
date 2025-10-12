@@ -1,58 +1,56 @@
-// sidesmith hero image pipeline v1.0-clean
-import { NextRequest } from 'next/server';
+import OpenAI from "openai";
+import { NextRequest } from "next/server";
 
-export const runtime = 'nodejs';
+export const runtime = "nodejs";
 
-export async function GET(_req: NextRequest) {
-  const model = process.env.OPENAI_MODEL || process.env.NEXT_PUBLIC_AI_MODEL || 'gpt-5';
+const client = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY!,
+});
+
+export async function POST(req: NextRequest) {
   if (!process.env.OPENAI_API_KEY) {
-    return new Response(JSON.stringify({ ok: false, reason: 'OPENAI_API_KEY missing' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return Response.json(
+      { ok: false, error: "Missing OPENAI_API_KEY" },
+      { status: 401 }
+    );
   }
 
   try {
-    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: 'system', content: 'You are a quick status probe. Reply with one short sentence.' },
-          { role: 'user', content: 'Say hello from the test endpoint.' },
-        ],
-      }),
-    });
+    const body = await req.json();
+    const { prompt } = body;
 
-    if (!resp.ok) {
-      const t = await resp.text();
-      return new Response(JSON.stringify({ ok: false, reason: 'openai_error', detail: t }), {
-        status: 502,
-        headers: { 'Content-Type': 'application/json' },
-      });
+    if (!prompt || typeof prompt !== "string") {
+      return Response.json(
+        { ok: false, error: "Missing or invalid prompt" },
+        { status: 400 }
+      );
     }
-    const json = await resp.json();
-    const content = json.choices?.[0]?.message?.content ?? '';
 
-    return new Response(JSON.stringify({ ok: true, model, reply: String(content).trim() }), {
-      headers: { 'Content-Type': 'application/json' },
+    const result = await client.images.generate({
+      model: "gpt-image-1",
+      prompt: prompt,
+      size: "1024x1024",
     });
+
+    const imageUrl =
+      result.data?.[0]?.url ||
+      (result.data?.[0]?.b64_json
+        ? `data:image/png;base64,${result.data[0].b64_json}`
+        : null);
+
+    if (!imageUrl) {
+      return Response.json(
+        { ok: false, error: "No image URL returned" },
+        { status: 502 }
+      );
+    }
+
+    return Response.json({ ok: true, url: imageUrl });
   } catch (err: any) {
-    return new Response(JSON.stringify({ ok: false, reason: 'network_or_runtime_error', detail: String(err) }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    console.error("test-gpt5 route error", err);
+    return Response.json(
+      { ok: false, error: err?.message ?? String(err) },
+      { status: 500 }
+    );
   }
-}
-
-const imageUrl =
-  image.data?.[0]?.url ||
-  (image.data?.[0]?.b64_json ? `data:image/png;base64,${image.data[0].b64_json}` : null);
-
-if (!imageUrl) {
-  throw new Error("Image generation failed: no URL or b64_json returned");
 }

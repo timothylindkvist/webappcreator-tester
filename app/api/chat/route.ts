@@ -50,7 +50,44 @@ function safeExtractJSON(text: string) {
 export async function POST(req: NextRequest) {
   try {
     if (!process.env.OPENAI_API_KEY) {
-      return Response.json({ ok: false, error: 'Missing OPENAI_API_KEY' }, { status: 401 });
+      
+    // === Hero Image Generation (Scoped and Safe) ===
+    const heroPrompt = data?.heroImage?.prompt || refinedPrompt || "cinematic vivid brand hero image";
+
+    const refined = await client.chat.completions.create({
+      model: "gpt-5",
+      messages: [
+        { role: "system", content: "Rewrite the following for image generation clarity and cinematic flair:" },
+        { role: "user", content: heroPrompt },
+      ],
+    });
+
+    const refinedPromptText =
+      refined.choices?.[0]?.message?.content ||
+      "Cinematic vivid background for a modern web app.";
+
+    console.log("🎬 Refined hero image prompt:", refinedPromptText);
+
+    const image = await client.images.generate({
+      model: "gpt-image-1",
+      prompt: refinedPromptText,
+      size: "1536x1024",
+    });
+
+    const imageUrl =
+      image.data?.[0]?.url ||
+      (image.data?.[0]?.b64_json
+        ? `data:image/png;base64,${image.data[0].b64_json}`
+        : null);
+
+    if (!imageUrl) {
+      throw new Error("Image generation failed: no URL or b64_json returned");
+    }
+
+    data.media = data.media || {};
+    data.media.hero = { url: imageUrl };
+
+    return Response.json({ ok: false, error: 'Missing OPENAI_API_KEY' }, { status: 401 });
     }
 
     const body = await req.json();

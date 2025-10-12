@@ -178,16 +178,22 @@ const imageUrl =
     ? `data:image/png;base64,${image.data[0].b64_json}`
     : null);
 
-   if (!imageUrl) {
-     throw new Error("Image generation failed: no URL or b64_json returned");
-   }
+if (!imageUrl) {
+  throw new Error("Image generation failed: no URL or b64_json returned");
+}
 
-   (data as any).media = (data as any).media || {};
-   (data as any).media.hero = { url: imageUrl };
- }
+// Store hero image URL into the data structure
+(data as any).media = (data as any).media || {};
+(data as any).media.hero = { url: imageUrl };
+}
 
- return Response.json({ ok: true, data }, { headers: { 'Cache-Control': 'no-store' } });
-
+// ✅ properly close the try/catch and function
+return Response.json({ ok: true, data }, { headers: { 'Cache-Control': 'no-store' } });
+} catch (err: any) {
+  console.error('build route error', err);
+  return Response.json({ ok: false, error: err?.message ?? String(err) }, { status: 500 });
+}
+}
 
 // === HERO IMAGE GENERATION PIPELINE ===
 // ensure data is declared for type-checking

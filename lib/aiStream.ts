@@ -14,5 +14,5 @@ export async function streamChat(messages: ChatMessage[], ctx?: { site?: any; br
   }
   const json = await res.json();
   if (Array.isArray(json?.events)) { console.debug('sidesmith:events', json.events); handleToolEvents(json.events); }
-  return { ok: true, text: json?.reply || '' };
+  return { ok: true, reply: json?.reply || '', events: json?.events || [] };
 }

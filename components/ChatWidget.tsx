@@ -43,6 +43,21 @@ export default function ChatWidget() {
         setMessages(next);
         setInput('');
         const res = await streamChat(next, { site: data, brief });
+        // apply events from AI
+        if (res?.events && Array.isArray(res.events)) {
+          for (const ev of res.events) {
+            const id = ev.id || 'custom_section';
+            if (ev.action === 'add_section') {
+              const payload = ev.payload || { title: ev.title, content: ev.content, html: ev.html };
+              (window as any).__sidesmithTools?.setSiteData({ [id]: payload });
+            } else if (ev.action === 'update_section') {
+              const payload = ev.payload || { title: ev.title, content: ev.content, html: ev.html };
+              (window as any).__sidesmithTools?.setSiteData({ [id]: payload });
+            } else if (ev.action === 'remove_section') {
+              (window as any).__sidesmithTools?.setSiteData({ [id]: undefined });
+            }
+          }
+        }
         // Background command hooks
         const txt = input.toLowerCase();
         if (txt.includes('remove background') || txt.includes('remove bg')) {

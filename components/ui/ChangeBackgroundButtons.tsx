@@ -31,11 +31,11 @@ export default function ChangeBackgroundButtons() {
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-20 flex gap-2">
-      <button onClick={changeBg} disabled={loading || !brief} className="px-3 py-2 rounded-xl shadow border border-white/30 bg-transparent text-[var(--foreground)] hover:bg-white/10 disabled:opacity-60">
+    <div className="fixed bottom-4 right-4 z-[9999] flex gap-2">
+      <button onClick={changeBg} disabled={loading || !brief} className="px-3 py-2 rounded-xl border border-white/30 bg-transparent text-[var(--foreground)] hover:bg-white/10 disabled:opacity-60">
         {loading ? 'Generating…' : 'Change BG'}
       </button>
-      <button onClick={removeBg} className="px-3 py-2 rounded-xl shadow border border-white/30 bg-transparent text-[var(--foreground)] hover:bg-white/10">
+      <button onClick={removeBg} className="px-3 py-2 rounded-xl border border-white/30 bg-transparent text-[var(--foreground)] hover:bg-white/10">
         Remove BG
       </button>
     </div>

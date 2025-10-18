@@ -14,12 +14,13 @@ function isDescriptive(brief: string) {
 
 export async function POST(req: NextRequest) {
   try {
-    if (!process.env.OPENAI_API_KEY) {
-      return Response.json({ ok: false, error: "Missing OPENAI_API_KEY" }, { status: 401 });
-    }
     const body = await req.json();
     const brief: string = body?.brief || "";
     const palette: string[] = Array.isArray(body?.palette) ? body.palette : [];
+
+    if (!process.env.OPENAI_API_KEY) {
+      return Response.json({ ok: false, error: "Missing OPENAI_API_KEY" }, { status: 401 });
+    }
 
     if (!isDescriptive(brief)) {
       const brand = palette?.[0] || "#7C3AED";
@@ -27,12 +28,7 @@ export async function POST(req: NextRequest) {
       return Response.json({ ok: true, gradient: { from: brand, to: accent } });
     }
 
-    const prompt = [
-      "High-quality website background related to:",
-      JSON.stringify(brief),
-      "Wide composition, no text, aesthetic, subtle, professional.",
-      "Soft lighting, gentle contrast; looks great behind UI."
-    ].join(" ");
+    const prompt = `High-quality website background for: ${brief}. Wide composition, no text, aesthetic, subtle, professional. Soft lighting, gentle contrast; looks great behind UI.`;
 
     const image = await openai.images.generate({
       model: "dall-e-3",

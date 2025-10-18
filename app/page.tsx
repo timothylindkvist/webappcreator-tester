@@ -9,6 +9,8 @@ export default function Page() {
   return (
     <BuilderProvider>
       <div className="container py-6 md:py-10 relative z-10 min-h-screen">
+        <Background />
+        <ChangeBackgroundButtons />
         <Builder />
 
         <footer className="text-center mt-8 text-sm muted">

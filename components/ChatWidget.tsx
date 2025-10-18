@@ -43,10 +43,11 @@ export default function ChatWidget() {
         setMessages(next);
         setInput('');
         const res = await streamChat(next, { site: data, brief });
-        const t = input.toLowerCase();
-        if (t.includes('remove background') || t.includes('remove bg')) {
+        // Background command hooks
+        const txt = input.toLowerCase();
+        if (txt.includes('remove background') || txt.includes('remove bg')) {
           (window as any).__sidesmithTools?.setSiteData({ media: { hero: { url: '' } } });
-        } else if (t.includes('change background') || t.includes('change bg') || t.includes('update background')) {
+        } else if (txt.includes('change background') || txt.includes('change bg') || txt.includes('update background')) {
           const palette = Object.values((data as any)?.theme?.palette || {});
           try {
             const r = await fetch('/api/images/background', {
@@ -59,6 +60,13 @@ export default function ChatWidget() {
               (window as any).__sidesmithTools?.setSiteData({ media: { hero: { url: j.url } } });
             }
           } catch {}
+        }
+        // Simple heuristic: 'add section about ...'
+        const m = txt.match(/add (?:a )?section (?:about|on)\s+(.+)/);
+        if (m && m[1]) {
+          const topic = m[1].trim();
+          const id = 'section_' + topic.toLowerCase().replace(/[^a-z0-9]+/g,'_').slice(0,24);
+          (window as any).__sidesmithTools?.addSection({ section: id, payload: { title: topic.replace(/\b\w/g, c => c.toUpperCase()) } });
         }
         setMessages((m) => [...m, { role: 'assistant', content: res.text || '✅ Done.' }]);
       }

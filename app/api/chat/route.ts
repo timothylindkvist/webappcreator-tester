@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
     });
 
     const message = chatCompletion.choices?.[0]?.message?.content || "";
-    return Response.json({ ok: true, message, heroPrompt });
+    return Response.json({ ok: true, reply: message, events: [] });
   } catch (err: any) {
     console.error("chat route error", err);
     return Response.json(

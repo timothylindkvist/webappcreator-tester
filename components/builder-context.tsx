@@ -35,11 +35,8 @@ function deepMerge(target: any, source: any): any {
   if (typeof source !== 'object' || source === null) return source;
   const out = Array.isArray(target) ? [...target] : { ...target };
   for (const [k, v] of Object.entries(source)) {
-    if (v && typeof v === 'object' && !Array.isArray(v)) {
-      out[k] = deepMerge((target||{})[k] || {}, v);
-    } else {
-      out[k] = v;
-    }
+    if (v && typeof v === 'object' && !Array.isArray(v)) out[k] = deepMerge((target||{})[k] || {}, v);
+    else out[k] = v;
   }
   return out;
 }
@@ -226,7 +223,7 @@ const SINGLETON_KEYS = new Set(['theme','brand','hero','pricing','faq','cta']);
   // Expose handlers for chat tool calls
   if (typeof window !== 'undefined') {
     (window as any).__sidesmithTools = {
-      setSiteData: (args: any) => setData((cur) => deepMerge(cur, args)) ,
+      setSiteData: (args: any) => setData((cur) => safeMerge(cur, args)),
       updateBrief: (args: any) => setBrief(args?.brief ?? ''),
       applyTheme: (args: any) => applyTheme(args),
       addSection: (args: any) => addSection(args?.section as any, args?.payload),

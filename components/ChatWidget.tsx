@@ -42,36 +42,36 @@ export default function ChatWidget() {
         const next: Msg[] = [...messages, { role: 'user', content: text }];
         setMessages(next);
         setInput('');
-        const res = await streamChat(next, { site: data, brief });
-        // apply events from AI (FIX7 clean loop)
-        if (res?.events && Array.isArray(res.events)) {
-          for (const ev of res.events) {
-            const id = ev.id || 'custom_section';
+        
+const res = await streamChat(next, { site: data, brief });
+// apply events from AI (FIX8, inside async handler before JSX)
+if (res?.events && Array.isArray(res.events)) {
+  for (const ev of res.events) {
+    const id = ev.id || 'custom_section';
 
-            if (ev.action === 'add_section') {
-              const payload = ev.payload || { title: ev.title, content: ev.content, html: ev.html };
-              (window as any).__sidesmithTools?.setSiteData({ [id]: payload });
-            } else if (ev.action === 'update_section') {
-              const payload = ev.payload || { title: ev.title, content: ev.content, html: ev.html };
-              (window as any).__sidesmithTools?.setSiteData({ [id]: payload });
-            } else if (ev.action === 'remove_section') {
-              (window as any).__sidesmithTools?.setSiteData({ [id]: undefined });
-            }
-          }
+    if (ev.action === 'add_section') {
+      const payload = ev.payload || { title: ev.title, content: ev.content, html: ev.html };
+      (window as any).__sidesmithTools?.setSiteData({ [id]: payload });
+    } else if (ev.action === 'update_section') {
+      const payload = ev.payload || { title: ev.title, content: ev.content, html: ev.html };
+      (window as any).__sidesmithTools?.setSiteData({ [id]: payload });
+    } else if (ev.action === 'remove_section') {
+      (window as any).__sidesmithTools?.setSiteData({ [id]: undefined });
+    }
+  }
 
-          // persist builder state once after all events
-          try {
-            const latest = (window as any).__sidesmithTools?.getSiteData?.() || {};
-            await fetch('/api/builder', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ site: latest, brief }),
-            });
-          } catch (e) {
-            console.error('Failed to persist builder state:', e);
-          }
-        }
-        setMessages((m) => [...m, { role: 'assistant', content: res.text || '✅ Done.' }]);
+  try {
+    const latest = (window as any).__sidesmithTools?.getSiteData?.() || {};
+    await fetch('/api/builder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ site: latest, brief }),
+    });
+  } catch (e) {
+    console.error('Failed to persist builder state:', e);
+  }
+}
+setMessages((m) => [...m, { role: 'assistant', content: res.text || '✅ Done.' }]);
       }
     } catch (e: any) {
       setError(e?.message ?? String(e));

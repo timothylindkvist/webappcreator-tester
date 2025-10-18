@@ -83,7 +83,7 @@ export default function ChatWidget() {
           const id = 'section_' + topic.toLowerCase().replace(/[^a-z0-9]+/g,'_').slice(0,24);
           (window as any).__sidesmithTools?.addSection({ section: id, payload: { title: topic.replace(/\b\w/g, c => c.toUpperCase()) } });
         }
-        setMessages((m) => [...m, { role: 'assistant', content: res.text || '✅ Done.' }]);
+        setMessages((m) => [...m, { role: 'assistant', content: res.reply || '✅ Done.' }]);
       }
     } catch (e: any) {
       setError(e?.message ?? String(e));

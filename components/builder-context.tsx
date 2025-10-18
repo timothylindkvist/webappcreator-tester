@@ -51,15 +51,6 @@ export type CtxShape = {
 
 const BuilderCtx = createContext<CtxShape | null>(null);
 
-const initialData: SiteData = {
-  theme: {
-    palette: { brand: '#7C3AED', accent: '#06B6D4', background: '#ffffff', foreground: '#0b0f19' },
-    density: 'cozy',
-  },
-  brand: { name: 'Your Brand', tagline: 'Let’s build something great.' },
-  hero: { title: 'Describe your site in the chat →', subtitle: 'The assistant will design & edit live.' },
-};
-
 export const BuilderProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
   const [brief, setBrief] = useState('');
   const [data, setData] = useState<SiteData>(initialData);

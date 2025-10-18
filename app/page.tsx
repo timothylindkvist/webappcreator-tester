@@ -4,7 +4,6 @@ import Builder from '../components/Builder';
 import ResizableChat from '../components/ResizableChat';
 import Background from '../components/Background';
 import ChangeBackgroundButtons from '../components/ui/ChangeBackgroundButtons';
-import Background from '../components/Background';
 
 export default function Page() {
   return (

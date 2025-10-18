@@ -25,3 +25,9 @@
   .title { @apply text-3xl md:text-4xl font-bold; }
   .subtitle { color: color-mix(in oklab, var(--foreground) 70%, var(--background)); }
 }
+
+
+/* FIX6 base readability */
+:root { color-scheme: light dark; }
+body { @apply antialiased; }
+.main-shell { @apply space-y-12 sm:space-y-16; }

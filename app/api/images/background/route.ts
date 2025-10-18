@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
       return Response.json({ ok: true, gradient: { from: brand, to: accent } });
     }
 
-    const prompt = `High-quality website background for: ${brief}. Wide composition, no text, aesthetic, subtle, professional. Soft lighting, gentle contrast; looks great behind UI.`;
+    const prompt = `modern landing-page style background related to: ${brief}. Soft lighting, subtle depth, minimal UI layout cues, glassmorphism vibe, no readable text, wide composition, works behind UI.`;
 
     const image = await openai.images.generate({
       model: "dall-e-3",

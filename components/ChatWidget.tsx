@@ -43,6 +43,33 @@ export default function ChatWidget() {
         setMessages(next);
         setInput('');
         const res = await streamChat(next, { site: data, brief });
+        // apply events from AI (clean loop)
+        if (res?.events && Array.isArray(res.events)) {
+          for (const ev of res.events) {
+            const id = ev.id || 'custom_section';
+            if (ev.action === 'add_section') {
+              const payload = ev.payload || { title: ev.title, content: ev.content, html: ev.html };
+              (window as any).__sidesmithTools?.setSiteData({ [id]: payload });
+            } else if (ev.action === 'update_section') {
+              const payload = ev.payload || { title: ev.title, content: ev.content, html: ev.html };
+              (window as any).__sidesmithTools?.setSiteData({ [id]: payload });
+            } else if (ev.action === 'remove_section') {
+              (window as any).__sidesmithTools?.setSiteData({ [id]: undefined });
+            }
+          }
+          // persist builder state OUTSIDE the loop
+          try {
+            const latest = (window as any).__sidesmithTools?.getSiteData?.() || {};
+            await fetch('/api/builder', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ site: latest, brief }),
+            });
+          } catch (e) {
+            console.error('Failed to persist builder state:', e);
+          }
+        }
+
         // apply events from AI
         if (res?.events && Array.isArray(res.events)) {
           for (const ev of res.events) {

@@ -222,7 +222,7 @@ const SINGLETON_KEYS = new Set(['theme','brand','hero','pricing','faq','cta']);
 
   // Expose handlers for chat tool calls
   if (typeof window !== 'undefined') {
-    (window as any).__sidesmithTools = {
+    (window as any).__sidesmithTools = { getSiteData: () => data,
       setSiteData: (args: any) => setData((cur) => safeMerge(cur, args)),
       updateBrief: (args: any) => setBrief(args?.brief ?? ''),
       applyTheme: (args: any) => applyTheme(args),
@@ -250,7 +250,7 @@ const SINGLETON_KEYS = new Set(['theme','brand','hero','pricing','faq','cta']);
       body: JSON.stringify({ brief: _brief }),
     });
     if (!res.ok) {
-      const errText = await res.text();
+      const errText = await res.reply || ''();
       throw new Error(`Build failed: ${res.status} ${errText}`);
     }
     const json = await res.json();

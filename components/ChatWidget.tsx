@@ -50,18 +50,84 @@ export default function ChatWidget() {
             if (ev.action === 'add_section') {
               const payload = ev.payload || { title: ev.title, content: ev.content, html: ev.html };
               (window as any).__sidesmithTools?.setSiteData({ [id]: payload });
-            } else if (ev.action === 'update_section') {
+            }
+        // persist builder state
+        try {
+          const latest = (window as any).__sidesmithTools?.getSiteData?.() || {};
+          await fetch('/api/builder', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ site: latest, brief }),
+          });
+        } catch (e) {
+          console.error('Failed to persist builder state:', e);
+        } else if (ev.action === 'update_section') {
               const payload = ev.payload || { title: ev.title, content: ev.content, html: ev.html };
               (window as any).__sidesmithTools?.setSiteData({ [id]: payload });
-            } else if (ev.action === 'remove_section') {
+            }
+        // persist builder state
+        try {
+          const latest = (window as any).__sidesmithTools?.getSiteData?.() || {};
+          await fetch('/api/builder', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ site: latest, brief }),
+          });
+        } catch (e) {
+          console.error('Failed to persist builder state:', e);
+        } else if (ev.action === 'remove_section') {
               (window as any).__sidesmithTools?.setSiteData({ [id]: undefined });
             }
+        // persist builder state
+        try {
+          const latest = (window as any).__sidesmithTools?.getSiteData?.() || {};
+          await fetch('/api/builder', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ site: latest, brief }),
+          });
+        } catch (e) {
+          console.error('Failed to persist builder state:', e);
+        }
           }
+        // persist builder state
+        try {
+          const latest = (window as any).__sidesmithTools?.getSiteData?.() || {};
+          await fetch('/api/builder', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ site: latest, brief }),
+          });
+        } catch (e) {
+          console.error('Failed to persist builder state:', e);
+        }
+        }
+        // persist builder state
+        try {
+          const latest = (window as any).__sidesmithTools?.getSiteData?.() || {};
+          await fetch('/api/builder', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ site: latest, brief }),
+          });
+        } catch (e) {
+          console.error('Failed to persist builder state:', e);
         }
         // Background command hooks
         const txt = input.toLowerCase();
         if (txt.includes('remove background') || txt.includes('remove bg')) {
           (window as any).__sidesmithTools?.setSiteData({ media: { hero: { url: '' } } });
+        }
+        // persist builder state
+        try {
+          const latest = (window as any).__sidesmithTools?.getSiteData?.() || {};
+          await fetch('/api/builder', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ site: latest, brief }),
+          });
+        } catch (e) {
+          console.error('Failed to persist builder state:', e);
         } else if (txt.includes('change background') || txt.includes('change bg') || txt.includes('update background')) {
           const palette = Object.values((data as any)?.theme?.palette || {});
           try {
@@ -69,12 +135,56 @@ export default function ChatWidget() {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ brief: input, palette }),
-            });
+            }
+        // persist builder state
+        try {
+          const latest = (window as any).__sidesmithTools?.getSiteData?.() || {};
+          await fetch('/api/builder', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ site: latest, brief }),
+          });
+        } catch (e) {
+          console.error('Failed to persist builder state:', e);
+        });
             const j = await r.json();
             if (j?.ok && j?.url) {
               (window as any).__sidesmithTools?.setSiteData({ media: { hero: { url: j.url } } });
             }
-          } catch {}
+        // persist builder state
+        try {
+          const latest = (window as any).__sidesmithTools?.getSiteData?.() || {};
+          await fetch('/api/builder', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ site: latest, brief }),
+          });
+        } catch (e) {
+          console.error('Failed to persist builder state:', e);
+        }
+          }
+        // persist builder state
+        try {
+          const latest = (window as any).__sidesmithTools?.getSiteData?.() || {};
+          await fetch('/api/builder', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ site: latest, brief }),
+          });
+        } catch (e) {
+          console.error('Failed to persist builder state:', e);
+        } catch {}
+        }
+        // persist builder state
+        try {
+          const latest = (window as any).__sidesmithTools?.getSiteData?.() || {};
+          await fetch('/api/builder', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ site: latest, brief }),
+          });
+        } catch (e) {
+          console.error('Failed to persist builder state:', e);
         }
         // Simple heuristic: 'add section about ...'
         const m = txt.match(/add (?:a )?section (?:about|on)\s+(.+)/);
@@ -83,7 +193,18 @@ export default function ChatWidget() {
           const id = 'section_' + topic.toLowerCase().replace(/[^a-z0-9]+/g,'_').slice(0,24);
           (window as any).__sidesmithTools?.addSection({ section: id, payload: { title: topic.replace(/\b\w/g, c => c.toUpperCase()) } });
         }
-        setMessages((m) => [...m, { role: 'assistant', content: res.reply || '✅ Done.' }]);
+        // persist builder state
+        try {
+          const latest = (window as any).__sidesmithTools?.getSiteData?.() || {};
+          await fetch('/api/builder', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ site: latest, brief }),
+          });
+        } catch (e) {
+          console.error('Failed to persist builder state:', e);
+        }
+        setMessages((m) => [...m, { role: 'assistant', content: res.text || '✅ Done.' }]);
       }
     } catch (e: any) {
       setError(e?.message ?? String(e));
@@ -101,7 +222,18 @@ export default function ChatWidget() {
               m.role === 'user'
                 ? 'inline-block rounded-2xl bg-[var(--brand)] text-white px-3 py-1.5'
                 : 'inline-block rounded-2xl bg-transparent text-[var(--foreground)] border border-white/20 px-3 py-1.5'
-            }>
+            }
+        // persist builder state
+        try {
+          const latest = (window as any).__sidesmithTools?.getSiteData?.() || {};
+          await fetch('/api/builder', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ site: latest, brief }),
+          });
+        } catch (e) {
+          console.error('Failed to persist builder state:', e);
+        }>
               {m.content}
             </span>
           </div>

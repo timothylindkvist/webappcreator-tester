@@ -22,7 +22,7 @@ export default function Chat() {
     setInput('');
     try {
       const res = await streamChat(next, { site: data, brief });
-      const withAssistant: Msg[] = [...next, { role: 'assistant', content: res.reply || ''  }];
+      const withAssistant: Msg[] = [...next, { role: 'assistant', content: res.reply || '' }];
       setMessages(withAssistant);
     } catch (e: any) {
       setError(e?.message ?? String(e));

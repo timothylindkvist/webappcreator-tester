@@ -44,13 +44,10 @@ export default function Builder() {
 
   return (
     <div className="space-y-6">
-
-      {(data.hero?.title || data.hero?.subtitle) ? (
-        <section className="rounded-2xl border border-muted p-8 bg-[var(--background)] text-[var(--foreground)]">
-          <h1 className="text-3xl md:text-4xl font-bold text-[var(--brand)]">{data.hero?.title}</h1>
-          <p className="mt-2 subtitle">{data.hero?.subtitle}</p>
-        </section>
-      ) : null}
+      <section className="rounded-2xl border border-muted p-8 bg-[var(--background)] text-[var(--foreground)]">
+        <h1 className="text-3xl md:text-4xl font-bold text-[var(--brand)]">{data.hero?.title}</h1>
+        <p className="mt-2 subtitle">{data.hero?.subtitle}</p>
+      </section>
 
       {data.about && (
         <section className="card">

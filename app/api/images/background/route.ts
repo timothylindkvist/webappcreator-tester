@@ -1,0 +1,63 @@
+import OpenAI from "openai";
+import { NextRequest } from "next/server";
+
+export const runtime = "nodejs";
+
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
+
+function isDescriptive(brief: string) {
+  if (!brief) return false;
+  const keywords = [
+    "photo","photography","landscape","ocean","reef","diver","coffee","gym","yoga","studio","restaurant","cafe",
+    "shop","ecommerce","skate","mountain","forest","city","skyline","tech","circuit","office","saas","startup",
+    "fitness","nature","abstract","pattern","texture","background","hero","banner","art","illustration","3d",
+    "render","painting","architecture","interior","exterior","garden","beach","underwater","space","galaxy","stars"
+  ];
+  const b = brief.toLowerCase();
+  return keywords.some(k => b.includes(k));
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    if (!process.env.OPENAI_API_KEY) {
+      return Response.json({ ok: false, error: "Missing OPENAI_API_KEY" }, { status: 401 });
+    }
+    const body = await req.json();
+    const brief: string = body?.brief || "";
+    const palette: string[] = Array.isArray(body?.palette) ? body.palette : [];
+
+    // If not descriptive, suggest a gradient derived from theme palette (brand -> accent)
+    if (!isDescriptive(brief)) {
+      // Return gradient definition for the client to render (no image generation)
+      const brand = palette?.[0] || "#7C3AED";
+      const accent = palette?.[1] || "#06B6D4";
+      return Response.json({ ok: true, gradient: { from: brand, to: accent } });
+    }
+
+    // Build a strong, safe background prompt for DALL·E 3
+    const prompt = [
+      "High-quality website background related to:",
+      JSON.stringify(brief),
+      "Wide composition, no text, aesthetic, subtle, professional.",
+      "Soft lighting, gentle contrast; looks great behind UI.",
+    ].join(" ");
+
+    const image = await openai.images.generate({
+      model: "dall-e-3",
+      prompt,
+      size: "1792x1024",
+      quality: "standard",
+      // Do NOT pass temperature — DALL·E does not use it
+    });
+
+    const url = image?.data?.[0]?.url;
+    if (!url) {
+      return Response.json({ ok: false, error: "No image URL returned" }, { status: 502 });
+    }
+
+    return Response.json({ ok: true, url });
+  } catch (err: any) {
+    console.error("images/background error", err);
+    return Response.json({ ok: false, error: err?.message ?? "Unknown error" }, { status: 500 });
+  }
+}

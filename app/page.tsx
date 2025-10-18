@@ -7,10 +7,10 @@ import Background from '../components/Background';
 export default function Page() {
   return (
     <BuilderProvider>
-      <div className="container py-6">
+      <div className="container py-6 md:py-10">
         
 
-        <div className="card"><Builder /></div>
+        <Builder />
 
         <footer className="text-center mt-8 text-sm muted">
           Built with Next.js + OpenAI.

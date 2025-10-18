@@ -7,7 +7,8 @@ import Background from '../components/Background';
 export default function Page() {
   return (
     <BuilderProvider>
-      <div className="container py-6 md:py-10">
+      <div className="container py-6">
+        
 
         <div className="card"><Builder /></div>
 

@@ -8,20 +8,10 @@ import ChangeBackgroundButtons from '../components/ui/ChangeBackgroundButtons';
 export default function Page() {
   return (
     <BuilderProvider>
-      <div className="container py-6 md:py-10">
+      <div className="container py-6 md:py-10 relative z-10 min-h-screen">
         <Background />
         <ChangeBackgroundButtons />
-        <header className="card bg-[var(--background)] text-[var(--foreground)]">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <div className="pill">Sidesmith</div>
-              <h1 className="title text-[var(--brand)] mt-2">Website Creator</h1>
-              <p className="subtitle mt-1">Chat to build the first version, then keep editing with more messages.</p>
-            </div>
-          </div>
-        </header>
-
-        <div className="card"><Builder /></div>
+        <Builder />
 
         <footer className="text-center mt-8 text-sm muted">
           Built with Next.js + OpenAI.

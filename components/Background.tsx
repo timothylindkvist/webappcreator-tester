@@ -64,7 +64,7 @@ export default function Background() {
       {/* Static gradient layer */}
       {gradient && !imgUrl && (
         <div
-          className="fixed inset-0 -z-20"
+          className="fixed inset-0 -z-20 pointer-events-none"
           style={{
             backgroundImage: `linear-gradient(135deg, ${gradient.from}, ${gradient.to})`,
           }}
@@ -74,7 +74,7 @@ export default function Background() {
       {/* DALL·E image layer */}
       {imgUrl && (
         <div
-          className="fixed inset-0 -z-20"
+          className="fixed inset-0 -z-20 pointer-events-none"
           style={{
             backgroundImage: `url(${imgUrl})`,
             backgroundSize: 'cover',

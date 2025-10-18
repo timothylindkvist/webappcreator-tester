@@ -42,6 +42,29 @@ export default function ChatWidget() {
         const next: Msg[] = [...messages, { role: 'user', content: text }];
         setMessages(next);
         setInput('');
+        
+        // Heuristic: handle background change/remove commands directly
+        const lower = input.toLowerCase();
+        if (lower.includes('remove background') || lower.includes('remove bg')) {
+          (window as any).__sidesmithTools?.setSiteData({ media: { hero: { url: '' } } });
+        } else if (lower.includes('change background') || lower.includes('change bg') || lower.includes('update background')) {
+          try {
+            const palette = Object.values(data?.theme?.palette || {});
+            const r = await fetch('/api/images/background', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ brief: input, palette }),
+            });
+            const j = await r.json();
+            if (j?.ok && j?.url) {
+              (window as any).__sidesmithTools?.setSiteData({ media: { hero: { url: j.url } } });
+            } else if (j?.ok && j?.gradient) {
+              // gradient handled by Background component automatically from brief
+              (window as any).__sidesmithTools?.updateBrief({ brief: input });
+            }
+          } catch {}
+        }
+
         const res = await streamChat(next, { site: data, brief });
         setMessages((m) => [...m, { role: 'assistant', content: res.text || '✅ Done.' }]);
       }
@@ -54,13 +77,13 @@ export default function ChatWidget() {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="max-h-80 overflow-auto rounded-xl border border-slate-200 p-3 bg-white space-y-2">
+      <div className="max-h-80 overflow-auto rounded-xl border border-slate-200 p-3 bg-transparent space-y-2">
         {messages.map((m, i) => (
           <div key={i} className={m.role === 'user' ? 'text-right' : 'text-left'}>
             <span className={
               m.role === 'user'
-                ? 'inline-block rounded-2xl bg-brand text-white px-3 py-1.5'
-                : 'inline-block rounded-2xl bg-slate-100 text-slate-800 px-3 py-1.5'
+                ? 'inline-block rounded-2xl bg-[var(--brand)] text-white px-3 py-1.5'
+                : 'inline-block rounded-2xl bg-white/20 text-[var(--foreground)] border border-white/30 backdrop-blur px-3 py-1.5'
             }>
               {m.content}
             </span>

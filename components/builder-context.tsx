@@ -250,7 +250,7 @@ const SINGLETON_KEYS = new Set(['theme','brand','hero','pricing','faq','cta']);
       body: JSON.stringify({ brief: _brief }),
     });
     if (!res.ok) {
-      const errText = await res.text || ''();
+      const errText = (await res.text()) || '';
       throw new Error(`Build failed: ${res.status} ${errText}`);
     }
     const json = await res.json();

@@ -91,7 +91,7 @@ setMessages((m) => [...m, { role: 'assistant', content: res.text || '✅ Done.' 
                 : 'inline-block rounded-2xl bg-transparent text-[var(--foreground)] border border-white/20 px-3 py-1.5'
             }
         // persist builder state
-        try {
+      try {
           const latest = (window as any).__sidesmithTools?.getSiteData?.() || {};
           await fetch('/api/builder', {
             method: 'POST',
@@ -100,7 +100,7 @@ setMessages((m) => [...m, { role: 'assistant', content: res.text || '✅ Done.' 
           });
         } catch (e) {
           console.error('Failed to persist builder state:', e);
-        }>
+        }
               {m.content}
             </span>
           </div>

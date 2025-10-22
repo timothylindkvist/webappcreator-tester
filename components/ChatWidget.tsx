@@ -90,17 +90,7 @@ setMessages((m) => [...m, { role: 'assistant', content: res.text || '✅ Done.' 
                 ? 'inline-block rounded-2xl bg-[var(--brand)] text-white px-3 py-1.5'
                 : 'inline-block rounded-2xl bg-transparent text-[var(--foreground)] border border-white/20 px-3 py-1.5'
             }
-        // persist builder state
-      try {
-          const latest = (window as any).__sidesmithTools?.getSiteData?.() || {};
-          await fetch('/api/builder', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ site: latest, brief }),
-          });
-        } catch (e) {
-          console.error('Failed to persist builder state:', e);
-        }
+   >
               {m.content}
             </span>
           </div>

@@ -61,3 +61,6 @@ export async function POST(req: NextRequest) {
 }
 
 // NOTE: Consider refactoring any OpenAI SDK calls above to the Responses API via fetch for Edge compatibility.
+
+// Cache result by input hash
+try { BG_CACHE.set(key, result); } catch {}

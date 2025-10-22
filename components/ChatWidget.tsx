@@ -71,7 +71,7 @@ if (res?.events && Array.isArray(res.events)) {
     console.error('Failed to persist builder state:', e);
   }
 }
-setMessages((m) => [...m, { role: 'assistant', content: res.text || '✅ Done.' }]);
+setMessages((m) => [...m, { role: 'assistant', content: res.reply || '✅ Done.' }]);
       }
     } catch (e: any) {
       setError(e?.message ?? String(e));

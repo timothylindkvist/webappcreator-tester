@@ -300,8 +300,9 @@ export function BuilderProvider({ children }: PropsWithChildren) {
       for (const key of targets) {
         const sec = next[key];
         if (!sec || typeof sec !== 'object') continue;
-        if (Array.isArray((sec as { images?: SiteData['gallery']['images'] }).images)) {
-          (sec as { images?: SiteData['gallery']['images'] }).images = (sec as { images?: SiteData['gallery']['images'] }).images?.map((image, index) => ({
+        const imageSection = sec as { images?: NonNullable<SiteData['gallery']>['images'] };
+        if (Array.isArray(imageSection.images)) {
+          imageSection.images = imageSection.images.map((image, index) => ({
             src: image?.src || `https://picsum.photos/seed/${key}-${index}/1200/800`,
             caption: image?.caption || '',
             alt: image?.alt || image?.caption || `${key} image ${index + 1}`,

@@ -1,65 +1,75 @@
 'use client';
+
 import React, { useEffect, useMemo, useState } from 'react';
 import { useBuilder } from '../components/builder-context';
 
 export default function Background() {
-  const { data, brief, setData } = useBuilder();
-  const [imgUrl, setImgUrl] = useState<string | null>(data?.media?.hero?.url || null);
-  const [gradient, setGradient] = useState<{from:string; to:string} | null>(null);
+  const { data, brief } = useBuilder();
+  const [gradient, setGradient] = useState<{ from: string; to: string } | null>(null);
   const [fade, setFade] = useState(false);
+  const imageUrl = data?.media?.hero?.url || data?.hero?.backgroundImage || '';
 
-  const paletteArray = useMemo(() => {
-    const p = data?.theme?.palette || {};
-    return Object.values(p);
-  }, [data?.theme?.palette]);
+  const paletteArray = useMemo(() => Object.values(data?.theme?.palette || {}), [data?.theme?.palette]);
 
-  // Trigger generation whenever we have a brief, but lack bg
   useEffect(() => {
     let cancelled = false;
+
     async function run() {
-      if (!brief) return;
-      if (imgUrl || gradient) return;
+      if (!brief || imageUrl) return;
       try {
-        const res = await fetch('/api/images/background', {
+        const response = await fetch('/api/images/background', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ brief, palette: paletteArray }),
         });
-        const json = await res.json();
+        const json = await response.json();
         if (cancelled) return;
         if (json?.ok && json?.url) {
-          if (imgUrl && json.url !== imgUrl) { setFade(true); setTimeout(() => setFade(false), 400); }
-          setImgUrl(json.url);
+          (window as any).__sidesmithTools?.setSiteData({
+            media: { hero: { url: json.url } },
+            hero: { backgroundImage: json.url },
+          });
           setGradient(null);
-          setData({ ...data, media: { ...(data?.media || {}), hero: { url: json.url } } });
         } else if (json?.ok && json?.gradient) {
           setGradient(json.gradient);
         }
-      } catch {}
+      } catch {
+        // ignore background generation errors in UI
+      }
     }
-    run();
-    return () => { cancelled = true; };
-  }, [brief, imgUrl, gradient]);
 
-  // Respond to persisted bg url changes
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [brief, imageUrl, paletteArray]);
+
   useEffect(() => {
-    if (data?.media?.hero?.url !== undefined) {
-      if (imgUrl && data.media.hero.url && data.media.hero.url !== imgUrl) { setFade(true); setTimeout(() => setFade(false), 400); }
-      setImgUrl(data.media.hero.url || null);
-      if (data.media.hero.url) setGradient(null);
-    }
-  }, [data?.media?.hero?.url]);
+    if (!imageUrl) return;
+    setFade(true);
+    const timer = window.setTimeout(() => setFade(false), 350);
+    return () => window.clearTimeout(timer);
+  }, [imageUrl]);
 
   return (
     <>
-      {gradient && !imgUrl && (
-        <div className="fixed inset-0 -z-20 pointer-events-none" style={{ backgroundImage: `linear-gradient(135deg, ${gradient.from}, ${gradient.to})` }} />
-      )}
-      {imgUrl && (
-        <div className={fade ? 'fixed inset-0 -z-20 pointer-events-none opacity-0 transition-opacity duration-400' : 'fixed inset-0 -z-20 pointer-events-none opacity-100 transition-opacity duration-400'}
-          style={{ backgroundImage: `url(${imgUrl})`, backgroundSize: 'cover', backgroundPosition: 'center', filter: 'blur(2px) brightness(0.85)' }}
+      {gradient && !imageUrl ? (
+        <div
+          className="fixed inset-0 -z-20 pointer-events-none"
+          style={{ backgroundImage: `linear-gradient(135deg, ${gradient.from}, ${gradient.to})` }}
         />
-      )}
+      ) : null}
+      {imageUrl ? (
+        <div
+          className={`fixed inset-0 -z-20 pointer-events-none transition-opacity duration-300 ${fade ? 'opacity-90' : 'opacity-100'}`}
+          style={{
+            backgroundImage: `url(${imageUrl})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            filter: 'blur(2px) brightness(0.85)',
+          }}
+        />
+      ) : null}
     </>
   );
 }

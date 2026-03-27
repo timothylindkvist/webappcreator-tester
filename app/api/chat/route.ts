@@ -1,61 +1,71 @@
-import { log } from '@/lib/logger';
 import { rateLimit } from '@/lib/ratelimit';
+import { NextRequest } from 'next/server';
+import OpenAI from 'openai';
 import { z } from 'zod';
-import OpenAI from "openai";
-import { NextRequest } from "next/server";
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY!,
+const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
+
+const EventSchema = z.object({
+  name: z.enum(['setSiteData', 'updateBrief', 'applyTheme', 'addSection', 'removeSection', 'patchSection', 'setSections', 'insertSection', 'updateSection', 'moveSection', 'deleteSection']),
+  args: z.record(z.any()).default({}),
+});
+
+const ChatResponseSchema = z.object({
+  reply: z.string(),
+  events: z.array(EventSchema).default([]),
 });
 
 export async function POST(req: NextRequest) {
   const ip = (req.headers.get('x-forwarded-for') || 'anon').split(',')[0];
-  const rl = rateLimit(`post:${ip}`, 30, 60);
-  if (!rl.ok) return new Response(JSON.stringify({ error: 'rate_limited', reset: rl.reset }), { status: 429 });
+  const rl = rateLimit(`chat:${ip}`, 30, 60);
+  if (!rl.ok) {
+    return new Response(JSON.stringify({ error: 'rate_limited', reset: rl.reset }), { status: 429 });
+  }
 
   if (!process.env.OPENAI_API_KEY) {
-    return Response.json({ ok: false, error: "Missing OPENAI_API_KEY" }, { status: 401 });
+    return Response.json({ ok: false, error: 'Missing OPENAI_API_KEY' }, { status: 401 });
   }
 
   try {
-    // ✅ Must declare before using
-    const data = await req.json();
-    const { brief, theme, heroImage, messages } = data;
+    const body = await req.json();
+    const messages = Array.isArray(body?.messages) ? body.messages : [];
+    const site = body?.site || {};
+    const brief = typeof body?.brief === 'string' ? body.brief : '';
+    const lastUserMessage = [...messages].reverse().find((message) => message?.role === 'user')?.content || '';
 
-    const refinedPrompt =
-      brief && typeof brief === "string"
-        ? `Create chat response or structured web instructions for: ${brief}`
-        : "Create general chat output";
-
-    // === Hero Image Generation (Scoped and Safe) ===
-    const heroPrompt =
-      heroImage?.prompt || refinedPrompt || "cinematic vivid brand hero image";
-
-    const chatCompletion = await client.chat.completions.create({
-      model: "gpt-5",
+    const completion = await client.chat.completions.create({
+      model: process.env.OPENAI_MODEL || 'gpt-5-mini',
+      response_format: { type: 'json_object' },
       messages: [
         {
-          role: "system",
-          content:
-            "You are a professional webapp assistant helping users design and describe their websites. Provide structured, clear, and aesthetic outputs.",
+          role: 'system',
+          content: `You are an AI website editor.
+Return only JSON with this shape: {"reply":"...","events":[{"name":"...","args":{...}}]}.
+Use events to change the site. Prefer these events:
+- applyTheme for palette or density updates
+- updateSection for edits to an existing section by id
+- insertSection for adding a new section
+- deleteSection for removing a section
+- setSiteData only for global fields like media.hero.url
+Keep the reply short and clear.`,
         },
-        ...(Array.isArray(messages)
-          ? messages
-          : [{ role: "user", content: refinedPrompt }]),
+        {
+          role: 'user',
+          content: JSON.stringify({
+            brief,
+            currentSite: site,
+            requestedChange: lastUserMessage,
+          }),
+        },
       ],
     });
 
-    const message = chatCompletion.choices?.[0]?.message?.content || "";
-    return Response.json({ ok: true, reply: message, events: [] });
+    const raw = completion.choices?.[0]?.message?.content?.trim() || '{}';
+    const parsed = ChatResponseSchema.parse(JSON.parse(raw));
+    return Response.json({ ok: true, reply: parsed.reply, events: parsed.events });
   } catch (err: any) {
-    console.error("chat route error", err);
-    return Response.json(
-      { ok: false, error: err?.message ?? String(err) },
-      { status: 500 }
-    );
+    return Response.json({ ok: false, error: err?.message ?? String(err) }, { status: 500 });
   }
 }
-
-// NOTE: Consider refactoring any OpenAI SDK calls above to the Responses API via fetch for Edge compatibility.

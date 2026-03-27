@@ -1,59 +1,88 @@
 'use client';
-import React, { createContext, useContext, useState } from 'react';
+
+import { createContext, useContext, useEffect, useMemo, useState, type Dispatch, type PropsWithChildren, type SetStateAction } from 'react';
 
 export type Theme = {
   vibe?: string;
-  palette: { brand: string; accent: string; background: string; foreground: string };
+  palette: {
+    brand: string;
+    accent: string;
+    background: string;
+    foreground: string;
+  };
   typography?: { body?: string; headings?: string };
   density?: 'compact' | 'cozy' | 'comfortable';
-  background?: { style: 'mesh' | 'radial-glow' | 'shapes' | 'energy' | 'gradient-scene'; palette: string[]; intensity: 'soft' | 'balanced' | 'vivid'; blendMode?: 'screen' | 'overlay' | 'lighten' | 'normal'; particleField?: boolean };
+  background?: {
+    style: 'mesh' | 'radial-glow' | 'shapes' | 'energy' | 'gradient-scene';
+    palette: string[];
+    intensity: 'soft' | 'balanced' | 'vivid';
+    blendMode?: 'screen' | 'overlay' | 'lighten' | 'normal';
+    particleField?: boolean;
+  };
 };
 
-export type Block = { id: string; type: string; data?: any };
+export type Block = { id: string; type: string; data?: Record<string, unknown> };
+
 export type SiteData = {
-  media?: { hero?: { url: string } };
   theme: Theme;
-  brand: { name: string; tagline: string; industry?: string
-  heroImage?: { prompt: string; style?: 'photo' | 'illustration' | '3d' | 'cinematic'; mood?: string; overlay?: boolean } 
-  [key: string]: any;
-};
-  hero: { title: string; subtitle: string; cta?: { label: string; href?: string } };
-  about?: { heading?: string; body?: string };
-  features?: { title?: string; items?: { title: string; body: string }[] };
-  gallery?: { title?: string; images?: { src: string; caption?: string; alt?: string }[] };
-  testimonials?: { title?: string; items?: { quote: string; author?: string }[] };
-  pricing?: { title?: string; plans?: { name: string; price?: string; features?: string[] }[] };
+  brand: { name: string; tagline: string; industry?: string };
+  media?: { hero?: { url?: string } };
+  hero: {
+    title: string;
+    subtitle: string;
+    cta?: { label: string; href?: string };
+    backgroundImage?: string;
+    metrics?: { value: string; label: string }[];
+  };
+  about?: { heading?: string; body?: string; bullets?: string[] };
+  features?: {
+    title?: string;
+    items?: { title: string; body?: string; description?: string }[];
+  };
+  gallery?: {
+    title?: string;
+    items?: { title?: string; image?: string }[];
+    images?: { src: string; caption?: string; alt?: string }[];
+  };
+  testimonials?: {
+    title?: string;
+    items?: { quote: string; author?: string }[];
+    quotes?: { quote: string; author: string }[];
+  };
+  pricing?: {
+    title?: string;
+    heading?: string;
+    plans?: { name: string; price?: string; features?: string[]; includes?: string[] }[];
+  };
   faq?: { title?: string; items?: { q: string; a: string }[] };
-  cta?: { title?: string; subtitle?: string; button?: { label: string; href?: string } };
-
-  game?: any;
+  cta?: {
+    title?: string;
+    heading?: string;
+    subtitle?: string;
+    subheading?: string;
+    button?: { label: string; href?: string };
+    primary?: { label: string; href?: string };
+  };
+  game?: Record<string, unknown>;
   history?: { title?: string; body?: string };
   html?: { content?: string } | string;
+  blocks?: Block[];
+  [key: string]: unknown;
 };
 
-function deepMerge(target: any, source: any): any {
-  if (typeof source !== 'object' || source === null) return source;
-  const out = Array.isArray(target) ? [...target] : { ...target };
-  for (const [k, v] of Object.entries(source)) {
-    if (v && typeof v === 'object' && !Array.isArray(v)) out[k] = deepMerge((target||{})[k] || {}, v);
-    else out[k] = v;
-  }
-  return out;
-}
-
-export type CtxShape = {
+type CtxShape = {
   brief: string;
-  setBrief: (b: string) => void;
+  setBrief: (brief: string) => void;
   data: SiteData;
-  setData: (d: SiteData) => void;
-  applyTheme: (t: Partial<Theme> | { brand?: string; accent?: string; background?: string; foreground?: string }) => void;
-  addSection: (section: keyof SiteData, payload?: any) => void;
-  removeSection: (section: keyof SiteData) => void;
-  patchSection: (section: keyof SiteData, patch: any) => void;
+  setData: Dispatch<SetStateAction<SiteData>>;
+  applyTheme: (theme: Partial<Theme> | Record<string, unknown>) => void;
+  addSection: (section: string, payload?: unknown) => void;
+  removeSection: (section: string) => void;
+  patchSection: (section: string, patch: unknown) => void;
   setTypography: (fonts: { body?: string; headings?: string }) => void;
   setDensity: (density: 'compact' | 'cozy' | 'comfortable') => void;
   applyStylePreset: (preset: string) => void;
-  fixImages: (section?: keyof SiteData | 'all') => void;
+  fixImages: (section?: string | 'all') => void;
   redesign: (concept?: string) => void;
   rebuild: (briefOverride?: string) => Promise<void>;
   reset: () => void;
@@ -61,174 +90,290 @@ export type CtxShape = {
 
 const BuilderCtx = createContext<CtxShape | null>(null);
 
+const RESERVED_KEYS = new Set(['theme', 'brand', 'media', 'blocks']);
+const DEFAULT_BLOCK_ORDER = ['hero', 'about', 'features', 'gallery', 'testimonials', 'pricing', 'faq', 'cta', 'game', 'history', 'html'];
+
 const initialData: SiteData = {
   theme: {
-    palette: { brand: '#7C3AED', accent: '#06B6D4', background: '#ffffff', foreground: '#0b0f19' },
+    palette: {
+      brand: '#7C3AED',
+      accent: '#06B6D4',
+      background: '#ffffff',
+      foreground: '#0b0f19',
+    },
     density: 'cozy',
   },
   brand: { name: '', tagline: '' },
+  media: { hero: { url: '' } },
   hero: { title: '', subtitle: '' },
+  blocks: [{ id: 'hero', type: 'hero', data: { title: '', subtitle: '' } }],
 };
 
-export const BuilderProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
+function normalizeTheme(input?: Partial<Theme> | null, fallback?: Theme): Theme {
+  const base = fallback ?? initialData.theme;
+  const palette = {
+    brand: input?.palette?.brand ?? base.palette.brand,
+    accent: input?.palette?.accent ?? base.palette.accent,
+    background: input?.palette?.background ?? base.palette.background,
+    foreground: input?.palette?.foreground ?? base.palette.foreground,
+  };
+
+  return {
+    ...base,
+    ...input,
+    palette,
+    typography: { ...(base.typography ?? {}), ...(input?.typography ?? {}) },
+    density: input?.density ?? base.density,
+  };
+}
+
+function clone<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function makeBlock(type: string, data: unknown, id?: string): Block {
+  return {
+    id: id ?? type,
+    type,
+    data: (data && typeof data === 'object' ? clone(data) : {}) as Record<string, unknown>,
+  };
+}
+
+function inferBlocks(site: SiteData): Block[] {
+  const explicit = Array.isArray(site.blocks) ? site.blocks.filter(Boolean) : [];
+  const map = new Map<string, Block>();
+
+  for (const block of explicit) {
+    if (!block?.type) continue;
+    map.set(block.id || block.type, makeBlock(block.type, block.data ?? (site as Record<string, unknown>)[block.type], block.id || block.type));
+  }
+
+  for (const key of DEFAULT_BLOCK_ORDER) {
+    const value = (site as Record<string, unknown>)[key];
+    if (value == null) continue;
+    if (!map.has(key)) map.set(key, makeBlock(key, value, key));
+  }
+
+  for (const [key, value] of Object.entries(site)) {
+    if (RESERVED_KEYS.has(key) || DEFAULT_BLOCK_ORDER.includes(key)) continue;
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      if (!map.has(key)) map.set(key, makeBlock(key, value, key));
+    }
+  }
+
+  return Array.from(map.values());
+}
+
+function syncRootFromBlocks(site: SiteData): SiteData {
+  const next = { ...site } as SiteData;
+  const blocks = inferBlocks(next);
+
+  for (const key of Object.keys(next)) {
+    if (RESERVED_KEYS.has(key)) continue;
+    if (typeof next[key] === 'object') delete next[key];
+  }
+
+  for (const block of blocks) {
+    next[block.type] = clone(block.data ?? {});
+  }
+  next.blocks = blocks;
+  next.theme = normalizeTheme(next.theme, initialData.theme);
+  next.media = { hero: { url: next.media?.hero?.url || next.hero?.backgroundImage || '' } };
+  if (next.media.hero?.url) {
+    next.hero = { ...next.hero, backgroundImage: next.media.hero.url };
+  }
+  return next;
+}
+
+function mergeSite(cur: SiteData, incoming: Partial<SiteData>): SiteData {
+  const out = clone(cur);
+
+  for (const [key, value] of Object.entries(incoming || {})) {
+    if (value === undefined) continue;
+
+    if (key === 'theme' && value && typeof value === 'object') {
+      out.theme = normalizeTheme(value as Partial<Theme>, out.theme);
+      continue;
+    }
+
+    if (key === 'blocks' && Array.isArray(value)) {
+      out.blocks = value.map((block) => makeBlock(block.type, block.data, block.id));
+      continue;
+    }
+
+    if (value === null) {
+      delete out[key];
+      continue;
+    }
+
+    if (Array.isArray(value)) {
+      out[key] = clone(value);
+      continue;
+    }
+
+    if (typeof value === 'object') {
+      const currentValue = out[key];
+      if (currentValue && typeof currentValue === 'object' && !Array.isArray(currentValue)) {
+        out[key] = { ...(currentValue as Record<string, unknown>), ...clone(value) };
+      } else {
+        out[key] = clone(value);
+      }
+      continue;
+    }
+
+    out[key] = value;
+  }
+
+  if (incoming.media?.hero?.url !== undefined) {
+    out.hero = { ...out.hero, backgroundImage: incoming.media.hero.url || '' };
+  }
+  if ((incoming.hero as SiteData['hero'] | undefined)?.backgroundImage !== undefined) {
+    out.media = { hero: { url: incoming.hero?.backgroundImage || '' } };
+  }
+
+  return syncRootFromBlocks(out as SiteData);
+}
+
+export function BuilderProvider({ children }: PropsWithChildren) {
   const [brief, setBrief] = useState('');
   const [data, setData] = useState<SiteData>(initialData);
 
-  // Merge helper: shallow merge with special-cased theme.palette
-  function safeMerge(cur: SiteData, incoming: Partial<SiteData>): SiteData {
-    const out: any = { ...cur };
-    for (const [k, v] of Object.entries(incoming || {})) {
-      if (k === 'theme' && v && typeof v === 'object') {
-        const curTheme: any = cur.theme || {};
-        const vTheme: any = v;
-        out.theme = {
-          ...curTheme,
-          ...vTheme,
-          palette: { ...(curTheme.palette || {}), ...((vTheme || {}).palette || {}) },
-        };
-      } else if (v === null) {
-        delete out[k as keyof SiteData];
-  const SINGLETON_KEYS = new Set(['theme','brand','hero','pricing','faq','cta']);
-      } else {
-        out[k as keyof SiteData] = v as any;
-      }
-    }
-    return out as SiteData;
-  }
-
-  const KNOWN_KEYS = new Set(['theme','brand','hero','about','features','gallery','testimonials','pricing','faq','cta','game','history','html']);
-// Keys that should be singletons (overwritten rather than duplicated)
-const SINGLETON_KEYS = new Set(['theme','brand','hero','pricing','faq','cta']);
-  function ensureUnique(baseKey: string, obj: Record<string, any>) {
-    let key = baseKey;
-    let i = 2;
-    while (Object.prototype.hasOwnProperty.call(obj, key)) {
-      key = `${baseKey}${i++}`;
-    }
-    return key;
-  }
-
-
   const applyTheme: CtxShape['applyTheme'] = (themeLike) => {
-    const flat: any = themeLike || {};
-    const incomingPalette =
-      'palette' in flat
-        ? flat.palette
-        : (flat.brand || flat.accent || flat.background || flat.foreground)
-        ? { brand: flat.brand, accent: flat.accent, background: flat.background, foreground: flat.foreground }
-        : undefined;
+    const flat = themeLike || {};
+    const palette = 'palette' in flat
+      ? (flat.palette as Theme['palette'] | undefined)
+      : ({
+          brand: (flat as Record<string, string>).brand,
+          accent: (flat as Record<string, string>).accent,
+          background: (flat as Record<string, string>).background,
+          foreground: (flat as Record<string, string>).foreground,
+        } as Partial<Theme['palette']>);
 
-    setData((cur) => ({
-      ...cur,
+    setData((cur) => mergeSite(cur, {
       theme: {
-        vibe: flat.vibe ?? cur.theme.vibe,
-        typography: flat.typography ?? cur.theme.typography,
-        density: flat.density ?? cur.theme.density,
+        vibe: (flat as Theme).vibe,
+        density: (flat as Theme).density,
+        typography: (flat as Theme).typography,
         palette: {
-          brand: incomingPalette?.brand ?? cur.theme.palette.brand,
-          accent: incomingPalette?.accent ?? cur.theme.palette.accent,
-          background: incomingPalette?.background ?? cur.theme.palette.background,
-          foreground: incomingPalette?.foreground ?? cur.theme.palette.foreground,
+          brand: palette?.brand ?? cur.theme.palette.brand,
+          accent: palette?.accent ?? cur.theme.palette.accent,
+          background: palette?.background ?? cur.theme.palette.background,
+          foreground: palette?.foreground ?? cur.theme.palette.foreground,
         },
       },
     }));
   };
 
-  const addSection: CtxShape['addSection'] = (section, payload) => setData((cur) => {
-    const next: any = { ...cur };
-    const key = String(section);
-    if (next[key] && !SINGLETON_KEYS.has(key)) {
-      const unique = ensureUnique(key, next);
-      next[unique] = payload as any;
-    } else {
-      next[key] = payload as any;
-    }
-    return next;
-  });
+  const addSection = (section: string, payload?: unknown) => {
+    if (!section) return;
+    setData((cur) => mergeSite(cur, { [section]: (payload ?? {}) as never } as Partial<SiteData>));
+  };
 
-  const removeSection: CtxShape['removeSection'] = (section) =>
+  const removeSection = (section: string) => {
     setData((cur) => {
-      const next: any = { ...cur };
+      const next = clone(cur);
       delete next[section];
-      return next;
-    });
-
-  const patchSection: CtxShape['patchSection'] = (section, patch) =>
-    setData((cur) => ({ ...cur, [section]: { ...(cur as any)[section], ...(patch || {}) } as any }));
-
-  const setTypography: CtxShape['setTypography'] = (fonts) => applyTheme({ typography: fonts });
-  const setDensity: CtxShape['setDensity'] = (density) => applyTheme({ density });
-  const applyStylePreset: CtxShape['applyStylePreset'] = (preset) => applyTheme({ vibe: preset });
-
-  const fixImages: CtxShape['fixImages'] = (which = 'all') => {
-    setData((cur) => {
-      const copy: any = structuredClone(cur);
-      const keys: (keyof SiteData)[] =
-        which === 'all' ? (['gallery', 'hero', 'features', 'testimonials'] as any) : [which];
-      keys.forEach((k) => {
-        const sec: any = copy[k];
-        if (!sec) return;
-        if (Array.isArray(sec.images)) {
-          sec.images = sec.images.map((im: any, idx: number) => ({
-            src: im?.src || `https://picsum.photos/seed/${String(k)}-${idx}/800/600`,
-            caption: im?.caption || '',
-            alt: im?.alt || im?.caption || `${String(k)} image ${idx + 1}`,
-          }));
-        }
-      });
-      return copy;
+      next.blocks = inferBlocks(next).filter((block) => block.type !== section && block.id !== section);
+      return syncRootFromBlocks(next);
     });
   };
 
-  const reset: CtxShape['reset'] = () => {
+  const patchSection = (section: string, patch: unknown) => {
+    if (!section) return;
+    setData((cur) => {
+      const currentSection = (cur as Record<string, unknown>)[section];
+      const merged = currentSection && typeof currentSection === 'object'
+        ? { ...(currentSection as Record<string, unknown>), ...((patch as Record<string, unknown>) ?? {}) }
+        : ((patch as Record<string, unknown>) ?? {});
+      return mergeSite(cur, { [section]: merged as never } as Partial<SiteData>);
+    });
+  };
+
+  const setTypography = (fonts: { body?: string; headings?: string }) => applyTheme({ typography: fonts });
+  const setDensity = (density: 'compact' | 'cozy' | 'comfortable') => applyTheme({ density });
+  const applyStylePreset = (preset: string) => applyTheme({ vibe: preset });
+
+  const fixImages: CtxShape['fixImages'] = (section = 'all') => {
+    setData((cur) => {
+      const next = clone(cur);
+      const targets = section === 'all' ? ['gallery'] : [section];
+      for (const key of targets) {
+        const sec = next[key];
+        if (!sec || typeof sec !== 'object') continue;
+        if (Array.isArray((sec as { images?: SiteData['gallery']['images'] }).images)) {
+          (sec as { images?: SiteData['gallery']['images'] }).images = (sec as { images?: SiteData['gallery']['images'] }).images?.map((image, index) => ({
+            src: image?.src || `https://picsum.photos/seed/${key}-${index}/1200/800`,
+            caption: image?.caption || '',
+            alt: image?.alt || image?.caption || `${key} image ${index + 1}`,
+          }));
+        }
+      }
+      return syncRootFromBlocks(next);
+    });
+  };
+
+  const reset = () => {
     setBrief('');
     setData(initialData);
   };
 
-  // Ordered-sections API handlers
-  const setSections = ({ blocks = [] as Array<{ id?: string; type: string; data?: any }> } = {}) => {
+  const setSections = ({ blocks = [] as Array<{ id?: string; type: string; data?: unknown }> } = {}) => {
+    setData((cur) => mergeSite(cur, { blocks: blocks.map((b) => makeBlock(b.type, b.data, b.id)) }));
+  };
+
+  const insertSection = ({ index, type, data: blockData, id }: { index?: number; type: string; data?: unknown; id?: string }) => {
+    if (!type) return;
     setData((cur) => {
-      const next: any = { ...cur };
-      for (const b of blocks) {
-        if (!b?.type) continue;
-        next[b.type] = b.data ?? {};
-      }
-      return next;
-    });
-  };
-  const insertSection = ({ type, data }: { type: string; data?: any }) => {
-    setData((cur) => ({ ...(cur as any), [type]: data ?? {} }));
-  };
-  const updateSection = ({ id, patch }: { id: string; patch?: any }) => {
-    setData((cur) => ({ ...(cur as any), [id]: { ...(cur as any)[id], ...(patch ?? {}) } }));
-  };
-  const moveSection = (_: { id: string; toIndex: number }) => {};
-  const deleteSection = ({ id }: { id: string }) => {
-    setData((cur) => {
-      const next: any = { ...cur };
-      if (next[id]) {
-        delete next[id];
-        return next;
-      }
-      const target = Object.keys(next).find((k) => {
-        const v: any = (next as any)[k];
-        const t = (v?.title || v?.heading || '').toLowerCase();
-        return t.includes(id.toLowerCase());
-      });
-      if (target) delete next[target];
-      return next;
+      const blocks = [...inferBlocks(cur)];
+      const block = makeBlock(type, blockData, id ?? type);
+      const safeIndex = typeof index === 'number' ? Math.max(0, Math.min(index, blocks.length)) : blocks.length;
+      blocks.splice(safeIndex, 0, block);
+      return mergeSite(cur, { blocks });
     });
   };
 
-  // Expose handlers for chat tool calls
-  if (typeof window !== 'undefined') {
-    (window as any).__sidesmithTools = { getSiteData: () => data,
-      setSiteData: (args: any) => setData((cur) => safeMerge(cur, args)),
-      updateBrief: (args: any) => setBrief(args?.brief ?? ''),
-      applyTheme: (args: any) => applyTheme(args),
-      addSection: (args: any) => addSection(args?.section as any, args?.payload),
-      removeSection: (args: any) => removeSection(args?.section as any),
-      patchSection: (args: any) => patchSection(args?.section as any, args?.patch),
+  const updateSection = ({ id, patch }: { id: string; patch?: unknown }) => {
+    if (!id) return;
+    setData((cur) => {
+      const blocks = inferBlocks(cur).map((block) => {
+        if (block.id !== id && block.type !== id) return block;
+        const merged = block.data && typeof block.data === 'object'
+          ? { ...block.data, ...((patch as Record<string, unknown>) ?? {}) }
+          : ((patch as Record<string, unknown>) ?? {});
+        return { ...block, data: merged };
+      });
+      return mergeSite(cur, { blocks });
+    });
+  };
+
+  const moveSection = ({ id, toIndex }: { id: string; toIndex: number }) => {
+    if (!id) return;
+    setData((cur) => {
+      const blocks = [...inferBlocks(cur)];
+      const from = blocks.findIndex((block) => block.id === id || block.type === id);
+      if (from === -1) return cur;
+      const [block] = blocks.splice(from, 1);
+      const safeIndex = Math.max(0, Math.min(toIndex, blocks.length));
+      blocks.splice(safeIndex, 0, block);
+      return mergeSite(cur, { blocks });
+    });
+  };
+
+  const deleteSection = ({ id }: { id: string }) => {
+    if (!id) return;
+    removeSection(id);
+  };
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    (window as Window & { __sidesmithTools?: Record<string, unknown> }).__sidesmithTools = {
+      getSiteData: () => data,
+      setSiteData: (args: Partial<SiteData>) => setData((cur) => mergeSite(cur, args)),
+      updateBrief: (args: { brief?: string }) => setBrief(args?.brief ?? ''),
+      applyTheme,
+      addSection: (args: { section?: string; payload?: unknown }) => args.section && addSection(args.section, args.payload),
+      removeSection: (args: { section?: string }) => args.section && removeSection(args.section),
+      patchSection: (args: { section?: string; patch?: unknown }) => args.section && patchSection(args.section, args.patch),
       setSections,
       insertSection,
       updateSection,
@@ -236,54 +381,49 @@ const SINGLETON_KEYS = new Set(['theme','brand','hero','pricing','faq','cta']);
       deleteSection,
       reset,
     };
-  }
+  }, [data]);
 
-  const redesign: CtxShape['redesign'] = () => {
-    // placeholder for future AI actions
-  };
+  const redesign = () => {};
 
-  const rebuild: CtxShape['rebuild'] = async (briefOverride?: string) => {
-    const _brief = typeof briefOverride === 'string' ? briefOverride : brief;
-    const res = await fetch('/api/build', {
+  const rebuild = async (briefOverride?: string) => {
+    const nextBrief = typeof briefOverride === 'string' ? briefOverride : brief;
+    const response = await fetch('/api/build', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ brief: _brief }),
+      body: JSON.stringify({ brief: nextBrief }),
     });
-    if (!res.ok) {
-      const errText = (await res.text()) || '';
-      throw new Error(`Build failed: ${res.status} ${errText}`);
+
+    if (!response.ok) {
+      throw new Error(`Build failed: ${response.status} ${(await response.text()) || ''}`);
     }
-    const json = await res.json();
-    if (json?.data) setData(json.data as SiteData);
+
+    const json = await response.json();
+    if (json?.data) setData(syncRootFromBlocks(json.data as SiteData));
   };
 
-  return (
-    <BuilderCtx.Provider
-      value={{
-        brief,
-        setBrief,
-        data,
-        setData,
-        applyTheme,
-        addSection,
-        removeSection,
-        patchSection,
-        setTypography,
-        setDensity,
-        applyStylePreset,
-        fixImages,
-        redesign,
-        rebuild,
-        reset, // ✅ now exposed in the context value
-      }}
-    >
-      {children}
-    </BuilderCtx.Provider>
-  );
-};
+  const value = useMemo<CtxShape>(() => ({
+    brief,
+    setBrief,
+    data,
+    setData,
+    applyTheme,
+    addSection,
+    removeSection,
+    patchSection,
+    setTypography,
+    setDensity,
+    applyStylePreset,
+    fixImages,
+    redesign,
+    rebuild,
+    reset,
+  }), [brief, data]);
 
-export const useBuilder = () => {
+  return <BuilderCtx.Provider value={value}>{children}</BuilderCtx.Provider>;
+}
+
+export function useBuilder() {
   const ctx = useContext(BuilderCtx);
   if (!ctx) throw new Error('useBuilder must be used within BuilderProvider');
   return ctx;
-};
+}

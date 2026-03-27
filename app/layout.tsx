@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 export const metadata = {
   title: 'Sidesmith – Website Creator',
   description: 'Generate sites from a short brief.'
@@ -5,7 +6,7 @@ export const metadata = {
 
 import './globals.css';
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body className="min-h-screen antialiased">{children}</body>

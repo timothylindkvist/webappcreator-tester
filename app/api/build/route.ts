@@ -6,14 +6,16 @@ import { z } from 'zod';
 
 export const runtime = 'nodejs';
 
+const PaletteSchema = z.object({
+  brand: z.string(),
+  accent: z.string(),
+  background: z.string(),
+  foreground: z.string(),
+});
+
 const BuildSchema = z.object({
   theme: z.object({
-    palette: z.object({
-      brand: z.string(),
-      accent: z.string(),
-      background: z.string(),
-      foreground: z.string(),
-    }),
+    palette: PaletteSchema,
     density: z.enum(['compact', 'cozy', 'comfortable']).optional(),
     vibe: z.string().optional(),
   }),
@@ -53,6 +55,37 @@ const BuildSchema = z.object({
   }).optional(),
 }).passthrough();
 
+// Claude sometimes returns flat arrays or flattened theme — normalize before validating.
+function normalize(raw: Record<string, any>): Record<string, any> {
+  const out = { ...raw };
+
+  // theme: { brand, accent, ... } -> theme: { palette: { brand, accent, ... } }
+  if (out.theme && typeof out.theme === 'object' && !out.theme.palette) {
+    const { vibe, density, typography, background: bg, ...colors } = out.theme;
+    // if the theme has color keys at top level, wrap them in palette
+    if (colors.brand || colors.accent) {
+      out.theme = { palette: { brand: colors.brand, accent: colors.accent, background: colors.background ?? bg ?? '#09090b', foreground: colors.foreground ?? '#fafafa' }, vibe, density, typography };
+    }
+  }
+
+  // features: [...] -> features: { items: [...] }
+  if (Array.isArray(out.features)) out.features = { items: out.features };
+
+  // faq: [...] -> faq: { items: [...] }
+  if (Array.isArray(out.faq)) out.faq = { items: out.faq };
+
+  // testimonials: [...] -> testimonials: { items: [...] }
+  if (Array.isArray(out.testimonials)) out.testimonials = { items: out.testimonials };
+
+  // pricing: [...] -> pricing: { plans: [...] }
+  if (Array.isArray(out.pricing)) out.pricing = { plans: out.pricing };
+
+  // gallery: [...] -> gallery: { images: [...] }
+  if (Array.isArray(out.gallery)) out.gallery = { images: out.gallery };
+
+  return out;
+}
+
 function inferBlocks(site: z.infer<typeof BuildSchema> & Record<string, any>) {
   const order = ['hero', 'about', 'features', 'gallery', 'testimonials', 'pricing', 'faq', 'cta', 'game', 'history', 'html'];
   return order
@@ -82,10 +115,21 @@ export async function POST(req: NextRequest) {
     const message = await client.messages.create({
       model: MODEL,
       max_tokens: 4096,
-      system: `You are a product designer generating website JSON.
-Return ONLY valid JSON — no markdown, no explanation, no code fences.
-Include keys: theme, brand, hero, about, features, pricing, faq, cta.
-Keep copy concise and realistic. Do not invent business metrics unless the brief explicitly asks for them.`,
+      system: `You are a product designer generating website JSON. Return ONLY valid JSON — no markdown, no code fences, no explanation.
+
+Use exactly this structure:
+{
+  "theme": { "palette": { "brand": "#hex", "accent": "#hex", "background": "#hex", "foreground": "#hex" }, "vibe": "string" },
+  "brand": { "name": "string", "tagline": "string" },
+  "hero": { "title": "string", "subtitle": "string", "cta": { "label": "string" } },
+  "about": { "heading": "string", "body": "string", "bullets": ["string"] },
+  "features": { "title": "string", "items": [{ "title": "string", "description": "string" }] },
+  "pricing": { "title": "string", "plans": [{ "name": "string", "price": "string", "features": ["string"] }] },
+  "faq": { "title": "string", "items": [{ "q": "string", "a": "string" }] },
+  "cta": { "title": "string", "subtitle": "string", "button": { "label": "string" } }
+}
+
+Choose a color palette that fits the brand. Keep copy concise and realistic.`,
       messages: [
         { role: 'user', content: brief },
         { role: 'assistant', content: '{' },
@@ -93,8 +137,8 @@ Keep copy concise and realistic. Do not invent business metrics unless the brief
     });
 
     const responseText = message.content[0].type === 'text' ? message.content[0].text : '';
-    const raw = '{' + responseText;
-    const parsed = BuildSchema.parse(JSON.parse(raw));
+    const raw = normalize(JSON.parse('{' + responseText));
+    const parsed = BuildSchema.parse(raw);
 
     const data = {
       ...parsed,

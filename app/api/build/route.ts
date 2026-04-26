@@ -119,7 +119,7 @@ export async function POST(req: NextRequest) {
 
 Use exactly this structure:
 {
-  "theme": { "palette": { "brand": "#hex", "accent": "#hex", "background": "#hex", "foreground": "#hex" }, "vibe": "string" },
+  "theme": { "palette": { "brand": "#hex", "accent": "#hex", "background": "#hex", "foreground": "#hex" }, "vibe": "string", "density": "compact|cozy|comfortable" },
   "brand": { "name": "string", "tagline": "string" },
   "hero": { "title": "string", "subtitle": "string", "cta": { "label": "string" } },
   "about": { "heading": "string", "body": "string", "bullets": ["string"] },
@@ -129,7 +129,35 @@ Use exactly this structure:
   "cta": { "title": "string", "subtitle": "string", "button": { "label": "string" } }
 }
 
-Choose a color palette that fits the brand. Keep copy concise and realistic.`,
+EMOTIONAL REGISTER — read the brief carefully and match the tone and palette to the human context:
+
+SENSITIVE topics (death, grief, wills, estate planning, bereavement, end-of-life, serious illness, disability, mental health, crisis, divorce, elder care):
+- Palette: calm, muted, trustworthy. Brand = deep navy (#1e3a5f), forest green (#2d5a3d), or warm slate (#3d4f6b). Background = warm off-white (#faf8f5) or very dark (#0f1419). Accent = soft gold (#c9a84c) or muted teal (#4a8fa8). NO neon, NO bright purple, NO high-saturation colors.
+- Density: "comfortable" (generous spacing feels respectful and unhurried)
+- Copy: dignified, calm, reassuring. Lead with empathy and clarity, not urgency. Short sentences.
+- CTA labels: "Begin when you're ready", "Get started at your own pace", "Learn more", "See how it works" — NOT "Start now!", "Get it free!", "Sign up today!"
+- NO exclamation marks anywhere. NO words like "revolutionary", "game-changing", "powerful", "instant".
+- Hero subtitle should acknowledge the emotional weight, then offer relief: "Planning ahead is an act of care for the people you love."
+- Features section: focus on peace of mind, security, simplicity, legal certainty
+- FAQ: address real fears honestly (Is it legally binding? What if my situation is complex?)
+- Testimonials if included: focus on relief and clarity, not excitement
+
+PROFESSIONAL topics (B2B software, legal services, finance, insurance, healthcare, consulting):
+- Palette: authoritative and credible. Deep blues, dark greys, clean whites. Accent = moderate brand color.
+- Copy: clear, credible, benefit-focused without hype
+- Density: "cozy"
+
+ENERGETIC topics (consumer SaaS, startups, fitness, food, events, lifestyle, entertainment):
+- Palette: vibrant, distinctive. Express the brand personality boldly.
+- Copy: punchy, direct, conversion-focused. Exclamation marks are fine.
+- Density: "compact" or "cozy"
+
+CREATIVE topics (portfolios, agencies, design, art, music, fashion):
+- Palette: expressive, unique. Break conventions deliberately.
+- Copy: personality-first, distinctive voice.
+- Density: any that fits
+
+Keep copy concise and realistic. Match section selection to what the audience actually needs — a grief-adjacent service does not need an aggressive CTA section, it needs trust signals and a gentle FAQ.`,
       messages: [
         { role: 'user', content: brief },
         { role: 'assistant', content: '{' },

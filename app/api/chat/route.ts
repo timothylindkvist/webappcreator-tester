@@ -37,7 +37,10 @@ export async function POST(req: NextRequest) {
       system: `You are an AI website editor. The user will describe a change to make to their site.
 Return ONLY valid JSON — no markdown, no code fences, no explanation.
 Shape: {"reply":"one short sentence confirming what you changed","site":{...the complete updated site JSON...}}
-Modify only what the user asked for. Keep everything else identical. Keep your reply short.`,
+
+Modify only what the user asked for. Keep everything else identical. Keep your reply short.
+
+IMPORTANT — preserve emotional tone: if the existing site serves a sensitive audience (grief, death, estate planning, serious illness, mental health, crisis, divorce, elder care), maintain that register throughout all edits. Do not introduce aggressive CTAs, exclamation marks, neon colors, or urgency language when editing these sites. If the user asks to change colors or copy on a sensitive-topic site, keep the palette calm and muted, and keep copy dignified and unhurried.`,
       messages: [
         {
           role: 'user',

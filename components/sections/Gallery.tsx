@@ -16,8 +16,9 @@ interface GalleryProps {
 
 export default function Gallery({ title, items, images }: GalleryProps) {
   const entries = items ?? images ?? [];
+  if (entries.length === 0) return null;
   return (
-    <section className="px-6 py-16">
+    <section className="px-6 py-16" style={{ color: 'var(--foreground)' }}>
       <div className="mx-auto max-w-6xl">
         <h2 className="text-2xl font-bold sm:text-3xl">{title || 'Gallery'}</h2>
         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
@@ -25,9 +26,24 @@ export default function Gallery({ title, items, images }: GalleryProps) {
             const src = it.image ?? it.src;
             const caption = it.title ?? it.caption ?? it.alt;
             return (
-              <figure key={i} className="group overflow-hidden rounded-2xl border border-border/60">
-                {src && <img src={src} alt={caption ?? ''} className="aspect-[4/3] w-full object-cover transition-transform duration-500 group-hover:scale-105" />}
-                {caption && <figcaption className="p-3 text-sm text-muted-foreground">{caption}</figcaption>}
+              <figure
+                key={i}
+                className="group overflow-hidden rounded-2xl"
+                style={{ border: '1px solid var(--border)', background: 'var(--card)' }}
+              >
+                {src && (
+                  <img
+                    src={src}
+                    alt={caption ?? ''}
+                    className="aspect-[4/3] w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    loading="lazy"
+                  />
+                )}
+                {caption && (
+                  <figcaption className="p-3 text-sm" style={{ color: 'var(--muted)' }}>
+                    {caption}
+                  </figcaption>
+                )}
               </figure>
             );
           })}

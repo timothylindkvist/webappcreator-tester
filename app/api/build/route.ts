@@ -121,9 +121,10 @@ Use exactly this structure:
 {
   "theme": { "palette": { "brand": "#hex", "accent": "#hex", "background": "#hex", "foreground": "#hex" }, "vibe": "string", "density": "compact|cozy|comfortable" },
   "brand": { "name": "string", "tagline": "string" },
-  "hero": { "title": "string", "subtitle": "string", "cta": { "label": "string" } },
+  "hero": { "title": "string", "subtitle": "string", "cta": { "label": "string" }, "backgroundImage": "https://picsum.photos/seed/{keyword}/1600/900" },
   "about": { "heading": "string", "body": "string", "bullets": ["string"] },
   "features": { "title": "string", "items": [{ "title": "string", "description": "string" }] },
+  "gallery": { "title": "string", "images": [{ "src": "https://picsum.photos/seed/{keyword}/800/600", "caption": "string", "alt": "string" }] },
   "pricing": { "title": "string", "plans": [{ "name": "string", "price": "string", "features": ["string"] }] },
   "faq": { "title": "string", "items": [{ "q": "string", "a": "string" }] },
   "cta": { "title": "string", "subtitle": "string", "button": { "label": "string" } }
@@ -157,7 +158,23 @@ CREATIVE topics (portfolios, agencies, design, art, music, fashion):
 - Copy: personality-first, distinctive voice.
 - Density: any that fits
 
-Keep copy concise and realistic. Match section selection to what the audience actually needs — a grief-adjacent service does not need an aggressive CTA section, it needs trust signals and a gentle FAQ.`,
+Keep copy concise and realistic. Match section selection to what the audience actually needs — a grief-adjacent service does not need an aggressive CTA section, it needs trust signals and a gentle FAQ.
+
+IMAGES — always include both of these:
+1. hero.backgroundImage: a Picsum URL with a 2-3 word seed keyword that fits the brand/industry. Format: https://picsum.photos/seed/{keyword}/1600/900
+2. gallery section with 3–6 images. Each image: https://picsum.photos/seed/{keyword}-{n}/800/600 where n is 1,2,3…
+
+Choose seed keywords that evoke the right mood:
+- Sensitive/grief/legal: "calm-light", "soft-morning", "quiet-desk", "peaceful-nature", "warm-window"
+- Healthcare/wellness: "bright-clinic", "wellness-light", "clean-space"
+- Professional/finance/B2B: "modern-office", "city-architecture", "clean-workspace", "team-meeting"
+- Food/hospitality: "coffee-cup", "restaurant-table", "food-fresh", "warm-kitchen"
+- Fitness/sport: "athlete-run", "gym-weights", "sport-outdoor", "active-lifestyle"
+- Creative/design: "studio-creative", "art-minimal", "design-space", "colorful-work"
+- Tech/SaaS: "laptop-code", "tech-minimal", "startup-office", "digital-screen"
+- Nature/travel: "landscape-wide", "travel-adventure", "nature-forest", "ocean-horizon"
+
+Gallery captions should describe what the image represents for the business, not just generic labels.`,
       messages: [
         { role: 'user', content: brief },
         { role: 'assistant', content: '{' },
@@ -168,10 +185,11 @@ Keep copy concise and realistic. Match section selection to what the audience ac
     const raw = normalize(JSON.parse('{' + responseText));
     const parsed = BuildSchema.parse(raw);
 
+    const heroImage = parsed.hero?.backgroundImage || '';
     const data = {
       ...parsed,
-      media: { hero: { url: '' } },
-      hero: { ...parsed.hero, backgroundImage: '' },
+      media: { hero: { url: heroImage } },
+      hero: { ...parsed.hero, backgroundImage: heroImage },
     };
 
     return Response.json({ ok: true, data: { ...data, blocks: inferBlocks(data) } });

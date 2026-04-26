@@ -1,9 +1,33 @@
 'use client';
 
 import type { CSSProperties } from 'react';
+import { Suspense, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { BuilderProvider, useBuilder } from '../components/builder-context';
 import Builder from '../components/Builder';
 import ChatWidget from '../components/ChatWidget';
+
+function SiteLoader() {
+  const { loadSite, setSiteId } = useBuilder();
+  const params = useSearchParams();
+
+  useEffect(() => {
+    const id = params.get('site');
+    if (!id) return;
+    fetch(`/api/builder/${id}`)
+      .then((r) => r.json())
+      .then((json) => {
+        if (json.ok && json.site) {
+          loadSite(json.site, json.brief ?? '');
+          setSiteId(id);
+        }
+      })
+      .catch(console.error);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return null;
+}
 
 function isLightBackground(hex: string): boolean {
   const h = hex.replace('#', '');
@@ -130,6 +154,9 @@ function PreviewPane() {
 export default function Page() {
   return (
     <BuilderProvider>
+      <Suspense>
+        <SiteLoader />
+      </Suspense>
       <div className="h-screen flex flex-col overflow-hidden bg-[#08080d]">
         <TopBar />
         <div className="flex flex-1 overflow-hidden">

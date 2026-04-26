@@ -75,6 +75,9 @@ type CtxShape = {
   setBrief: (brief: string) => void;
   data: SiteData;
   setData: Dispatch<SetStateAction<SiteData>>;
+  siteId: string | null;
+  setSiteId: (id: string | null) => void;
+  loadSite: (site: Partial<SiteData>, brief?: string) => void;
   applyTheme: (theme: Partial<Theme> | Record<string, unknown>) => void;
   addSection: (section: string, payload?: unknown) => void;
   removeSection: (section: string) => void;
@@ -237,6 +240,12 @@ function mergeSite(cur: SiteData, incoming: Partial<SiteData>): SiteData {
 export function BuilderProvider({ children }: PropsWithChildren) {
   const [brief, setBrief] = useState('');
   const [data, setData] = useState<SiteData>(initialData);
+  const [siteId, setSiteId] = useState<string | null>(null);
+
+  const loadSite = (site: Partial<SiteData>, briefText?: string) => {
+    setData(cur => syncRootFromBlocks(mergeSite(cur, site)));
+    if (briefText !== undefined) setBrief(briefText);
+  };
 
   const applyTheme: CtxShape['applyTheme'] = (themeLike) => {
     const flat = themeLike || {};
@@ -316,6 +325,7 @@ export function BuilderProvider({ children }: PropsWithChildren) {
   const reset = () => {
     setBrief('');
     setData(initialData);
+    setSiteId(null);
   };
 
   const setSections = ({ blocks = [] as Array<{ id?: string; type: string; data?: unknown }> } = {}) => {
@@ -407,6 +417,9 @@ export function BuilderProvider({ children }: PropsWithChildren) {
     setBrief,
     data,
     setData,
+    siteId,
+    setSiteId,
+    loadSite,
     applyTheme,
     addSection,
     removeSection,

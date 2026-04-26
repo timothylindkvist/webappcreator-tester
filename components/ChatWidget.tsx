@@ -30,11 +30,7 @@ function TypingIndicator() {
       <div className="bg-white/[0.04] border border-white/[0.07] rounded-2xl rounded-tl-sm px-4 py-3">
         <div className="flex gap-1 items-center h-3.5">
           {[0, 150, 300].map((delay) => (
-            <span
-              key={delay}
-              className="w-1.5 h-1.5 rounded-full bg-white/30 animate-bounce"
-              style={{ animationDelay: `${delay}ms` }}
-            />
+            <span key={delay} className="w-1.5 h-1.5 rounded-full bg-white/30 animate-bounce" style={{ animationDelay: `${delay}ms` }} />
           ))}
         </div>
       </div>
@@ -43,44 +39,41 @@ function TypingIndicator() {
 }
 
 export default function ChatWidget() {
-  const { data, brief, setBrief, rebuild, reset } = useBuilder();
+  const { data, brief, setBrief, rebuild, siteId, setSiteId } = useBuilder();
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [hasBuilt, setHasBuilt] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  useEffect(() => {
-    setMessages([]);
-    setHasBuilt(false);
-    setError(null);
-    reset();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Derive from data instead of tracking separately — also picks up URL-loaded sites
+  const hasBuilt = !!(data.hero?.title);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, busy]);
 
-  const persistLatestSite = async () => {
+  const persistLatestSite = async (currentSiteId: string | null) => {
     try {
       const latest = (window as any).__sidesmithTools?.getSiteData?.() || data;
-      await fetch('/api/builder', {
+      const res = await fetch('/api/builder', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ site: latest, brief }),
+        body: JSON.stringify({ site: latest, brief, id: currentSiteId }),
       });
+      const json = await res.json();
+      if (json.ok && json.id && json.id !== currentSiteId) {
+        setSiteId(json.id);
+        window.history.replaceState(null, '', `?site=${json.id}`);
+      }
     } catch {
       // persistence is non-critical
     }
   };
 
   const resetTextarea = () => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-    }
+    if (textareaRef.current) textareaRef.current.style.height = 'auto';
   };
 
   const send = async (text?: string) => {
@@ -101,8 +94,7 @@ export default function ChatWidget() {
           ...cur,
           { role: 'assistant', content: "Your site is ready. Tell me what you'd like to change." },
         ]);
-        setHasBuilt(true);
-        await persistLatestSite();
+        await persistLatestSite(null);
         return;
       }
 
@@ -110,11 +102,8 @@ export default function ChatWidget() {
       setMessages(nextMessages);
 
       const res = await streamChat(nextMessages, { site: data, brief });
-      setMessages((cur) => [
-        ...cur,
-        { role: 'assistant', content: res.reply || 'Done.' },
-      ]);
-      await persistLatestSite();
+      setMessages((cur) => [...cur, { role: 'assistant', content: res.reply || 'Done.' }]);
+      await persistLatestSite(siteId);
     } catch (e: any) {
       setError(e?.message ?? String(e));
     } finally {
@@ -126,9 +115,7 @@ export default function ChatWidget() {
     <div className="flex flex-col h-full min-h-0">
       {/* Header */}
       <div className="flex-shrink-0 px-5 pt-5 pb-4 border-b border-white/[0.05]">
-        <p className="text-[11px] font-semibold text-white/25 uppercase tracking-widest mb-0.5">
-          Assistant
-        </p>
+        <p className="text-[11px] font-semibold text-white/25 uppercase tracking-widest mb-0.5">Assistant</p>
         <p className="text-[13px] text-white/50">
           {hasBuilt ? 'Ask me to change anything' : 'Describe the site you want to build'}
         </p>
@@ -136,7 +123,7 @@ export default function ChatWidget() {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 min-h-0">
-        {messages.length === 0 ? (
+        {messages.length === 0 && !hasBuilt ? (
           <div className="space-y-2 pt-1">
             <p className="text-[11px] text-white/20 text-center pb-1">Try an example</p>
             {EXAMPLES.map((example) => (
@@ -152,10 +139,7 @@ export default function ChatWidget() {
           </div>
         ) : (
           messages.map((message, index) => (
-            <div
-              key={index}
-              className={`flex items-start gap-2 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}
-            >
+            <div key={index} className={`flex items-start gap-2 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}>
               {message.role === 'assistant' && <BotIcon />}
               <div
                 className={
@@ -181,7 +165,7 @@ export default function ChatWidget() {
         </div>
       )}
 
-      {/* Input area */}
+      {/* Input */}
       <div className="flex-shrink-0 p-4 pt-3 border-t border-white/[0.05]">
         <div className="flex items-end gap-2">
           <textarea
@@ -216,9 +200,7 @@ export default function ChatWidget() {
             </svg>
           </button>
         </div>
-        <p className="text-[10px] text-white/15 mt-2 text-center">
-          Enter to send · Shift+Enter for new line
-        </p>
+        <p className="text-[10px] text-white/15 mt-2 text-center">Enter to send · Shift+Enter for new line</p>
       </div>
     </div>
   );

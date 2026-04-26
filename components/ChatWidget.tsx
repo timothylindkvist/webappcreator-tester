@@ -1,10 +1,46 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useBuilder } from './builder-context';
 import { streamChat } from '@/lib/aiStream';
 
 type Msg = { role: 'user' | 'assistant'; content: string };
+
+const EXAMPLES = [
+  'A landing page for an artisan coffee shop in Brooklyn',
+  'A sleek SaaS product page for a project management tool',
+  'A portfolio site for a freelance photographer',
+  'A modern gym website with pricing and class schedule',
+];
+
+function BotIcon() {
+  return (
+    <div className="w-6 h-6 rounded-full bg-[#8B5CF6]/15 flex-shrink-0 flex items-center justify-center">
+      <svg className="w-3 h-3 text-[#8B5CF6]" fill="currentColor" viewBox="0 0 20 20">
+        <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
+      </svg>
+    </div>
+  );
+}
+
+function TypingIndicator() {
+  return (
+    <div className="flex items-start gap-2">
+      <BotIcon />
+      <div className="bg-white/[0.04] border border-white/[0.07] rounded-2xl rounded-tl-sm px-4 py-3">
+        <div className="flex gap-1 items-center h-3.5">
+          {[0, 150, 300].map((delay) => (
+            <span
+              key={delay}
+              className="w-1.5 h-1.5 rounded-full bg-white/30 animate-bounce"
+              style={{ animationDelay: `${delay}ms` }}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function ChatWidget() {
   const { data, brief, setBrief, rebuild, reset } = useBuilder();
@@ -13,6 +49,8 @@ export default function ChatWidget() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasBuilt, setHasBuilt] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     setMessages([]);
@@ -22,6 +60,10 @@ export default function ChatWidget() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, busy]);
+
   const persistLatestSite = async () => {
     try {
       const latest = (window as any).__sidesmithTools?.getSiteData?.() || data;
@@ -30,39 +72,48 @@ export default function ChatWidget() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ site: latest, brief }),
       });
-    } catch (e) {
-      console.error('Failed to persist builder state:', e);
+    } catch {
+      // persistence is non-critical
     }
   };
 
-  const send = async () => {
-    const text = input.trim();
-    if (!text || busy) return;
+  const resetTextarea = () => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+    }
+  };
+
+  const send = async (text?: string) => {
+    const msg = (text ?? input).trim();
+    if (!msg || busy) return;
 
     setError(null);
     setBusy(true);
+    setInput('');
+    resetTextarea();
 
     try {
       if (!hasBuilt) {
-        setBrief(text);
-        setMessages((current) => [...current, { role: 'user', content: text }]);
-        setInput('');
-        await rebuild(text);
-        setMessages((current) => [
-          ...current,
-          { role: 'assistant', content: 'Generated the first version of your site. Tell me what to change next.' },
+        setBrief(msg);
+        setMessages((cur) => [...cur, { role: 'user', content: msg }]);
+        await rebuild(msg);
+        setMessages((cur) => [
+          ...cur,
+          { role: 'assistant', content: "Your site is ready. Tell me what you'd like to change." },
         ]);
         setHasBuilt(true);
         await persistLatestSite();
         return;
       }
 
-      const nextMessages: Msg[] = [...messages, { role: 'user', content: text }];
+      const nextMessages: Msg[] = [...messages, { role: 'user', content: msg }];
       setMessages(nextMessages);
-      setInput('');
 
       const res = await streamChat(nextMessages, { site: data, brief });
-      setMessages((current) => [...current, { role: 'assistant', content: res.reply || 'Done.' }]);
+      setMessages((cur) => [
+        ...cur,
+        { role: 'assistant', content: res.reply || 'Done.' },
+      ]);
       await persistLatestSite();
     } catch (e: any) {
       setError(e?.message ?? String(e));
@@ -72,47 +123,103 @@ export default function ChatWidget() {
   };
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="max-h-80 overflow-auto rounded-xl border border-slate-200 p-3 bg-transparent space-y-2">
-        {messages.map((message, index) => (
-          <div key={index} className={message.role === 'user' ? 'text-right' : 'text-left'}>
-            <span
-              className={
-                message.role === 'user'
-                  ? 'inline-block rounded-2xl bg-[var(--brand)] px-3 py-1.5 text-white'
-                  : 'inline-block rounded-2xl border border-white/20 px-3 py-1.5 text-[var(--foreground)]'
-              }
-            >
-              {message.content}
-            </span>
-          </div>
-        ))}
-        {messages.length === 0 ? (
-          <div className="muted text-sm">
-            Start by telling me what to build. Example: “A sleek landing page for a yoga studio in Stockholm with pricing and a contact section.”
-          </div>
-        ) : null}
+    <div className="flex flex-col h-full min-h-0">
+      {/* Header */}
+      <div className="flex-shrink-0 px-5 pt-5 pb-4 border-b border-white/[0.05]">
+        <p className="text-[11px] font-semibold text-white/25 uppercase tracking-widest mb-0.5">
+          Assistant
+        </p>
+        <p className="text-[13px] text-white/50">
+          {hasBuilt ? 'Ask me to change anything' : 'Describe the site you want to build'}
+        </p>
       </div>
 
-      <div className="flex gap-2">
-        <input
-          className="input flex-1"
-          disabled={busy}
-          placeholder={hasBuilt ? 'Type an edit request…' : 'Describe the website you want to build…'}
-          value={input}
-          onChange={(event) => setInput(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' && !event.shiftKey) {
-              event.preventDefault();
-              void send();
-            }
-          }}
-        />
-        <button className="btn-primary" disabled={busy} onClick={() => void send()}>
-          {busy ? 'Working…' : hasBuilt ? 'Send' : 'Build'}
-        </button>
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 min-h-0">
+        {messages.length === 0 ? (
+          <div className="space-y-2 pt-1">
+            <p className="text-[11px] text-white/20 text-center pb-1">Try an example</p>
+            {EXAMPLES.map((example) => (
+              <button
+                key={example}
+                className="w-full text-left px-3.5 py-3 rounded-xl bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.05] hover:border-white/[0.1] text-[12px] text-white/40 hover:text-white/60 transition-all duration-150"
+                onClick={() => void send(example)}
+                disabled={busy}
+              >
+                {example}
+              </button>
+            ))}
+          </div>
+        ) : (
+          messages.map((message, index) => (
+            <div
+              key={index}
+              className={`flex items-start gap-2 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}
+            >
+              {message.role === 'assistant' && <BotIcon />}
+              <div
+                className={
+                  message.role === 'user'
+                    ? 'bg-[#8B5CF6] text-white rounded-2xl rounded-tr-sm px-3.5 py-2.5 text-[13px] max-w-[88%] leading-relaxed'
+                    : 'bg-white/[0.04] text-white/75 rounded-2xl rounded-tl-sm px-3.5 py-2.5 text-[13px] max-w-[88%] leading-relaxed border border-white/[0.07]'
+                }
+              >
+                {message.content}
+              </div>
+            </div>
+          ))
+        )}
+
+        {busy && <TypingIndicator />}
+        <div ref={messagesEndRef} />
       </div>
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+
+      {/* Error */}
+      {error && (
+        <div className="mx-4 mb-2 px-3 py-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-[12px] text-red-400 flex-shrink-0">
+          {error}
+        </div>
+      )}
+
+      {/* Input area */}
+      <div className="flex-shrink-0 p-4 pt-3 border-t border-white/[0.05]">
+        <div className="flex items-end gap-2">
+          <textarea
+            ref={textareaRef}
+            rows={1}
+            className="flex-1 bg-white/[0.04] border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-[13px] text-white/80 placeholder-white/20 outline-none focus:border-[#8B5CF6]/50 focus:bg-white/[0.06] transition-all resize-none leading-relaxed overflow-hidden"
+            style={{ minHeight: '42px', maxHeight: '120px' }}
+            disabled={busy}
+            placeholder={hasBuilt ? 'Ask for a change…' : 'Describe what to build…'}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onInput={(e) => {
+              const t = e.currentTarget;
+              t.style.height = 'auto';
+              t.style.height = `${Math.min(t.scrollHeight, 120)}px`;
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                void send();
+              }
+            }}
+          />
+          <button
+            className="flex-shrink-0 w-[42px] h-[42px] rounded-xl bg-[#8B5CF6] hover:bg-[#7C3AED] active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center transition-all"
+            disabled={busy || !input.trim()}
+            onClick={() => void send()}
+            aria-label="Send"
+          >
+            <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" />
+            </svg>
+          </button>
+        </div>
+        <p className="text-[10px] text-white/15 mt-2 text-center">
+          Enter to send · Shift+Enter for new line
+        </p>
+      </div>
     </div>
   );
 }

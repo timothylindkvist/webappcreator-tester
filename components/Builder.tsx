@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, type ComponentType } from 'react';
+import { type ComponentType } from 'react';
 import About from './sections/About';
 import CTA from './sections/CTA';
 import FAQ from './sections/FAQ';
@@ -30,14 +30,6 @@ const KNOWN_KEYS = new Set(['theme', 'brand', 'media', 'blocks', 'hero', 'about'
 
 export default function Builder() {
   const { data } = useBuilder();
-
-  useEffect(() => {
-    const root = document.documentElement;
-    root.style.setProperty('--brand', data.theme.palette.brand);
-    root.style.setProperty('--accent', data.theme.palette.accent);
-    root.style.setProperty('--background', data.theme.palette.background);
-    root.style.setProperty('--foreground', data.theme.palette.foreground);
-  }, [data.theme]);
 
   const blocks = Array.isArray(data.blocks) ? data.blocks : [];
 

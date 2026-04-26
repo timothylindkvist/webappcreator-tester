@@ -2,7 +2,7 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   experimental: {
-    optimizePackageImports: ['openai'],
+    optimizePackageImports: ['@anthropic-ai/sdk'],
   },
   async headers() {
     return [
@@ -19,7 +19,7 @@ const nextConfig: NextConfig = {
               "script-src 'self' 'unsafe-inline' 'unsafe-eval';",
               "style-src 'self' 'unsafe-inline';",
               "img-src 'self' data: blob: https:;",
-              "connect-src 'self' https://api.openai.com;",
+              "connect-src 'self' https://api.anthropic.com;",
               "font-src 'self' data:;",
               "frame-ancestors 'none';",
             ].join(' '),

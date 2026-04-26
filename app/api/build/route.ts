@@ -1,11 +1,10 @@
+import Anthropic from '@anthropic-ai/sdk';
 import { rateLimit } from '@/lib/ratelimit';
+import { MODEL } from '@/lib/models';
 import { NextRequest } from 'next/server';
-import OpenAI from 'openai';
 import { z } from 'zod';
 
 export const runtime = 'nodejs';
-
-const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
 const BuildSchema = z.object({
   theme: z.object({
@@ -68,9 +67,11 @@ export async function POST(req: NextRequest) {
     return new Response(JSON.stringify({ error: 'rate_limited', reset: rl.reset }), { status: 429 });
   }
 
-  if (!process.env.OPENAI_API_KEY) {
-    return Response.json({ ok: false, error: 'Missing OPENAI_API_KEY' }, { status: 401 });
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return Response.json({ ok: false, error: 'Missing ANTHROPIC_API_KEY' }, { status: 401 });
   }
+
+  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
   try {
     const { brief } = await req.json();
@@ -78,39 +79,27 @@ export async function POST(req: NextRequest) {
       return Response.json({ ok: false, error: 'Missing or invalid brief' }, { status: 400 });
     }
 
-    const completion = await client.chat.completions.create({
-      model: process.env.OPENAI_MODEL || 'gpt-5-mini',
-      response_format: { type: 'json_object' },
-      messages: [
-        {
-          role: 'system',
-          content: `You are a product designer generating website JSON.
-Return only valid JSON with keys like theme, brand, hero, about, features, pricing, faq and cta.
+    const message = await client.messages.create({
+      model: MODEL,
+      max_tokens: 4096,
+      system: `You are a product designer generating website JSON.
+Return ONLY valid JSON — no markdown, no explanation, no code fences.
+Include keys: theme, brand, hero, about, features, pricing, faq, cta.
 Keep copy concise and realistic. Do not invent business metrics unless the brief explicitly asks for them.`,
-        },
+      messages: [
         { role: 'user', content: brief },
+        { role: 'assistant', content: '{' },
       ],
     });
 
-    const raw = completion.choices?.[0]?.message?.content?.trim() || '{}';
+    const responseText = message.content[0].type === 'text' ? message.content[0].text : '';
+    const raw = '{' + responseText;
     const parsed = BuildSchema.parse(JSON.parse(raw));
-
-    let imageUrl = '';
-    try {
-      const image = await client.images.generate({
-        model: 'gpt-image-1',
-        prompt: `Professional website hero background for: ${brief}`,
-        size: '1536x1024',
-      });
-      imageUrl = image.data?.[0]?.url || '';
-    } catch {
-      imageUrl = '';
-    }
 
     const data = {
       ...parsed,
-      media: { hero: { url: imageUrl } },
-      hero: { ...parsed.hero, backgroundImage: imageUrl || parsed.hero.backgroundImage || '' },
+      media: { hero: { url: '' } },
+      hero: { ...parsed.hero, backgroundImage: '' },
     };
 
     return Response.json({ ok: true, data: { ...data, blocks: inferBlocks(data) } });

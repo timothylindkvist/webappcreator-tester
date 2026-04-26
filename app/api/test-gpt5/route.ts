@@ -1,65 +1,37 @@
-import { log } from '@/lib/logger';
+import Anthropic from '@anthropic-ai/sdk';
 import { rateLimit } from '@/lib/ratelimit';
-import { z } from 'zod';
-import OpenAI from "openai";
-import { NextRequest } from "next/server";
+import { MODEL } from '@/lib/models';
+import { NextRequest } from 'next/server';
 
-export const runtime = "nodejs";
-
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY!,
-});
+export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
   const ip = (req.headers.get('x-forwarded-for') || 'anon').split(',')[0];
-  const rl = rateLimit(`post:${ip}`, 30, 60);
+  const rl = rateLimit(`test:${ip}`, 10, 60);
   if (!rl.ok) return new Response(JSON.stringify({ error: 'rate_limited', reset: rl.reset }), { status: 429 });
 
-  if (!process.env.OPENAI_API_KEY) {
-    return Response.json(
-      { ok: false, error: "Missing OPENAI_API_KEY" },
-      { status: 401 }
-    );
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return Response.json({ ok: false, error: 'Missing ANTHROPIC_API_KEY' }, { status: 401 });
   }
 
   try {
     const body = await req.json();
     const { prompt } = body;
 
-    if (!prompt || typeof prompt !== "string") {
-      return Response.json(
-        { ok: false, error: "Missing or invalid prompt" },
-        { status: 400 }
-      );
+    if (!prompt || typeof prompt !== 'string') {
+      return Response.json({ ok: false, error: 'Missing or invalid prompt' }, { status: 400 });
     }
 
-    const result = await client.images.generate({
-      model: "gpt-image-1",
-      prompt: prompt,
-      size: "1024x1024",
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const message = await client.messages.create({
+      model: MODEL,
+      max_tokens: 1024,
+      messages: [{ role: 'user', content: prompt }],
     });
 
-    const imageUrl =
-      result.data?.[0]?.url ||
-      (result.data?.[0]?.b64_json
-        ? `data:image/png;base64,${result.data[0].b64_json}`
-        : null);
-
-    if (!imageUrl) {
-      return Response.json(
-        { ok: false, error: "No image URL returned" },
-        { status: 502 }
-      );
-    }
-
-    return Response.json({ ok: true, url: imageUrl });
+    const text = message.content[0].type === 'text' ? message.content[0].text : '';
+    return Response.json({ ok: true, text });
   } catch (err: any) {
-    console.error("test-gpt5 route error", err);
-    return Response.json(
-      { ok: false, error: err?.message ?? String(err) },
-      { status: 500 }
-    );
+    return Response.json({ ok: false, error: err?.message ?? String(err) }, { status: 500 });
   }
 }
-
-// NOTE: Consider refactoring any OpenAI SDK calls above to the Responses API via fetch for Edge compatibility.

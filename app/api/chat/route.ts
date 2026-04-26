@@ -6,14 +6,9 @@ import { z } from 'zod';
 
 export const runtime = 'nodejs';
 
-const EventSchema = z.object({
-  name: z.enum(['setSiteData', 'updateBrief', 'applyTheme', 'addSection', 'removeSection', 'patchSection', 'setSections', 'insertSection', 'updateSection', 'moveSection', 'deleteSection']),
-  args: z.record(z.any()).default({}),
-});
-
 const ChatResponseSchema = z.object({
   reply: z.string(),
-  events: z.array(EventSchema).default([]),
+  site: z.record(z.any()).optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -38,30 +33,28 @@ export async function POST(req: NextRequest) {
 
     const message = await client.messages.create({
       model: MODEL,
-      max_tokens: 2048,
-      system: `You are an AI website editor.
-Return ONLY valid JSON — no markdown, no explanation, no code fences.
-Shape: {"reply":"...","events":[{"name":"...","args":{...}}]}
-Use events to change the site. Prefer:
-- applyTheme for palette or density updates
-- updateSection for edits to an existing section by id
-- insertSection for adding a new section
-- deleteSection for removing a section
-- setSiteData only for global fields like media.hero.url
-Keep the reply short and clear.`,
+      max_tokens: 4096,
+      system: `You are an AI website editor. The user will describe a change to make to their site.
+Return ONLY valid JSON — no markdown, no code fences, no explanation.
+Shape: {"reply":"one short sentence confirming what you changed","site":{...the complete updated site JSON...}}
+Modify only what the user asked for. Keep everything else identical. Keep your reply short.`,
       messages: [
         {
           role: 'user',
-          content: JSON.stringify({ brief, currentSite: site, requestedChange: lastUserMessage }),
+          content: `Brief: ${brief}\n\nCurrent site:\n${JSON.stringify(site, null, 2)}\n\nChange requested: ${lastUserMessage}`,
         },
         { role: 'assistant', content: '{' },
       ],
     });
 
     const responseText = message.content[0].type === 'text' ? message.content[0].text : '';
-    const raw = '{' + responseText;
-    const parsed = ChatResponseSchema.parse(JSON.parse(raw));
-    return Response.json({ ok: true, reply: parsed.reply, events: parsed.events });
+    const parsed = ChatResponseSchema.parse(JSON.parse('{' + responseText));
+
+    const events = parsed.site
+      ? [{ name: 'setSiteData', args: parsed.site }]
+      : [];
+
+    return Response.json({ ok: true, reply: parsed.reply, events });
   } catch (err: any) {
     return Response.json({ ok: false, error: err?.message ?? String(err) }, { status: 500 });
   }

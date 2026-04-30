@@ -146,10 +146,9 @@ export default function ChatWidget() {
                     },
                   })
                 }
-                className="w-[18px] h-[18px] rounded-full transition-transform hover:scale-110 active:scale-95 ring-2 ring-offset-2 ring-offset-[#f8f8fb]"
+                className="w-[18px] h-[18px] rounded-full transition-transform hover:scale-110 active:scale-95"
                 style={{
                   backgroundColor: preset.brand,
-                  ringColor: data.theme.palette.brand === preset.brand ? preset.brand : 'transparent',
                   outline: data.theme.palette.brand === preset.brand ? `2px solid ${preset.brand}` : 'none',
                   outlineOffset: '2px',
                 }}

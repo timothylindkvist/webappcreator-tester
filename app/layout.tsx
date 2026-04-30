@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 export const metadata = {
-  title: 'Sidesmith – Website Creator',
-  description: 'Generate sites from a short brief.'
+  title: 'appcreator',
+  description: 'Generate a website from a short description.'
 };
 
 import './globals.css';

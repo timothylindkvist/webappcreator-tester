@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { rateLimit } from '@/lib/ratelimit';
 import { MODEL } from '@/lib/models';
+import { sanitizeSiteImages } from '@/lib/imageKeywords';
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 
@@ -169,7 +170,7 @@ CRITICAL — keywords MUST reflect the actual business described. Extract concre
 - "yoga studio" → hero: "yoga,meditation" | gallery: "yoga?lock=1", "yoga,pose?lock=2", "meditation?lock=3", "wellness?lock=4"
 - "wedding photography" → hero: "wedding,photography" | gallery: "wedding?lock=1", "bride?lock=2", "wedding,ceremony?lock=3", "couple,portrait?lock=4"
 - "law firm" → hero: "lawyer,office" | gallery: "legal,office?lock=1", "lawyer?lock=2", "business,meeting?lock=3", "legal,documents?lock=4"
-- "gym/fitness" → hero: "gym,fitness" | gallery: "weightlifting?lock=1", "gym,workout?lock=2", "fitness,training?lock=3", "exercise?lock=4"
+- "gym/fitness" → hero: "gym-equipment,weight-room" | gallery: "gym-equipment?lock=1", "weightlifting?lock=2", "fitness-facility?lock=3", "athletic-training?lock=4"
 - "coffee shop" → hero: "coffee,cafe" | gallery: "espresso?lock=1", "latte,coffee?lock=2", "cafe,interior?lock=3", "coffee,beans?lock=4"
 - "tech startup" → hero: "technology,startup" | gallery: "coding,laptop?lock=1", "team,meeting?lock=2", "startup,office?lock=3", "software?lock=4"
 - "hair salon" → hero: "hair,salon" | gallery: "haircut?lock=1", "hair,color?lock=2", "salon,styling?lock=3", "beauty?lock=4"
@@ -179,6 +180,10 @@ Rules for keywords:
 - Hero keywords must match the core business identity — NEVER use "city", "street", "transportation", "architecture" unless the business is about those
 - Each gallery image must use different ?lock=N values so they show different photos
 - For sensitive topics (grief, legal, healthcare): use "office", "consultation", "family", "documents" — not abstract scenes
+
+BANNED keywords — these return sexualized or inappropriate results, never use them:
+"fitness", "body", "workout", "gym", "muscle", "exercise", "training", "sport", "physique", "abs"
+Use the specific safe alternatives shown in the examples above instead (gym-equipment, weight-room, fitness-facility, athletic-training, etc.)
 
 Gallery captions should describe what the image represents for the business, not just generic labels.`,
       messages: [
@@ -192,11 +197,11 @@ Gallery captions should describe what the image represents for the business, not
     const parsed = BuildSchema.parse(raw);
 
     const heroImage = parsed.hero?.backgroundImage || '';
-    const data = {
+    const data = sanitizeSiteImages({
       ...parsed,
       media: { hero: { url: heroImage } },
       hero: { ...parsed.hero, backgroundImage: heroImage },
-    };
+    });
 
     return Response.json({ ok: true, data: { ...data, blocks: inferBlocks(data) } });
   } catch (err: any) {

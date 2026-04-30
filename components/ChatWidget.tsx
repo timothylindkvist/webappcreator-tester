@@ -115,9 +115,8 @@ export default function ChatWidget() {
     <div className="flex flex-col h-full min-h-0">
       {/* Header */}
       <div className="flex-shrink-0 px-5 pt-5 pb-4 border-b border-white/[0.05]">
-        <p className="text-[11px] font-semibold text-white/25 uppercase tracking-widest mb-0.5">Assistant</p>
         <p className="text-[13px] text-white/50">
-          {hasBuilt ? 'Ask me to change anything' : 'Describe the site you want to build'}
+          {hasBuilt ? 'What would you like to change?' : 'Describe the site you want to build'}
         </p>
       </div>
 
@@ -200,7 +199,6 @@ export default function ChatWidget() {
             </svg>
           </button>
         </div>
-        <p className="text-[10px] text-white/15 mt-2 text-center">Enter to send · Shift+Enter for new line</p>
       </div>
     </div>
   );

@@ -38,8 +38,8 @@ export function sanitizeImageUrl(url: string): string {
 }
 
 // Walk the top-level image fields of a site object and sanitize all LoremFlickr URLs.
-export function sanitizeSiteImages(site: Record<string, any>): Record<string, any> {
-  const s = { ...site };
+export function sanitizeSiteImages<T extends Record<string, any>>(site: T): T {
+  const s: Record<string, any> = { ...site };
 
   if (s.hero?.backgroundImage) {
     s.hero = { ...s.hero, backgroundImage: sanitizeImageUrl(s.hero.backgroundImage) };
@@ -56,5 +56,5 @@ export function sanitizeSiteImages(site: Record<string, any>): Record<string, an
     };
   }
 
-  return s;
+  return s as T;
 }

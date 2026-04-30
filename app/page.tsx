@@ -95,7 +95,7 @@ function BrowserBar({ label }: { label: string }) {
         <div className="w-3 h-3 rounded-full bg-[#28C840]" />
       </div>
       <div className="flex-1 flex justify-center">
-        <div className="bg-white/[0.04] rounded-md px-4 py-1 text-[11px] text-white/25 font-mono min-w-[180px] max-w-[320px] text-center truncate">
+        <div className="bg-white/[0.04] rounded-md px-4 py-1 text-[11px] text-white/25 min-w-[180px] max-w-[320px] text-center truncate">
           {label}
         </div>
       </div>
@@ -127,8 +127,8 @@ function PreviewPane() {
   const { data } = useBuilder();
   const hasContent = !!(data.hero?.title);
   const siteName = hasContent
-    ? `${(data.brand?.name || 'preview').toLowerCase().replace(/\s+/g, '-')}.com`
-    : 'preview';
+    ? `${(data.brand?.name || 'yoursite').toLowerCase().replace(/\s+/g, '-')}.com`
+    : 'yoursite.com';
 
   const siteVars = deriveSiteVars(data.theme.palette);
 

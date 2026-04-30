@@ -160,7 +160,7 @@ export default function Page() {
       <div className="h-screen flex flex-col overflow-hidden bg-[#08080d]">
         <TopBar />
         <div className="flex flex-1 overflow-hidden">
-          <aside className="w-[360px] flex-shrink-0 flex flex-col border-r border-white/[0.06] bg-[#09090f]">
+          <aside className="w-[360px] flex-shrink-0 flex flex-col border-r border-zinc-200">
             <ChatWidget />
           </aside>
           <PreviewPane />

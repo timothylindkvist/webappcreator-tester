@@ -2,6 +2,8 @@ import Anthropic from '@anthropic-ai/sdk';
 import { rateLimit } from '@/lib/ratelimit';
 import { MODEL } from '@/lib/models';
 import { sanitizeSiteImages } from '@/lib/imageKeywords';
+import { patternForBusiness, VALID_PATTERNS } from '@/lib/heroPatterns';
+import type { PatternId } from '@/lib/heroPatterns';
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 
@@ -31,6 +33,7 @@ const BuildSchema = z.object({
     cta: z.object({ label: z.string(), href: z.string().optional() }).optional(),
     metrics: z.array(z.object({ value: z.string(), label: z.string() })).optional(),
     backgroundImage: z.string().optional(),
+    pattern: z.string().optional(),
   }),
   about: z.object({
     heading: z.string().optional(),
@@ -122,7 +125,7 @@ Use exactly this structure:
 {
   "theme": { "palette": { "brand": "#hex", "accent": "#hex", "background": "#hex", "foreground": "#hex" }, "vibe": "string", "density": "compact|cozy|comfortable" },
   "brand": { "name": "string", "tagline": "string" },
-  "hero": { "title": "string", "subtitle": "string", "cta": { "label": "string" }, "backgroundImage": "https://loremflickr.com/1600/900/keyword1,keyword2" },
+  "hero": { "title": "string", "subtitle": "string", "cta": { "label": "string" }, "pattern": "dark-grid" },
   "about": { "heading": "string", "body": "string", "bullets": ["string"] },
   "features": { "title": "string", "items": [{ "title": "string", "description": "string" }] },
   "gallery": { "title": "string", "images": [{ "src": "https://loremflickr.com/800/600/keyword1,keyword2?lock=N", "caption": "string", "alt": "string" }] },
@@ -161,31 +164,27 @@ CREATIVE topics (portfolios, agencies, design, art, music, fashion):
 
 Keep copy concise and realistic. Match section selection to what the audience actually needs — a grief-adjacent service does not need an aggressive CTA section, it needs trust signals and a gentle FAQ.
 
-IMAGES — always include both of these:
-1. hero.backgroundImage: a LoremFlickr URL using keywords extracted directly from the brief. Format: https://loremflickr.com/1600/900/keyword1,keyword2
-2. gallery section with 3–6 images. Each image: https://loremflickr.com/800/600/keyword1,keyword2?lock=N where N is a different integer (1, 2, 3…) per image to get variety.
+HERO PATTERN — set hero.pattern to one of these four values based on the business type:
+- "dark-grid": subtle white grid on very dark background with a brand-color radial glow. Best for: gym/fitness, food, events, lifestyle, general consumer, retail
+- "dot-matrix": small repeating dots on very dark background with glow. Best for: photography, film, music, media, podcasts, studios
+- "gradient-mesh": smooth multi-color gradient blobs on dark background (brand + accent colors). Best for: tech/SaaS, startups, creative agencies, design studios, AI products
+- "light-minimal": clean white/off-white with subtle grey grid lines. Best for: law firms, accountants, finance, insurance, medical, healthcare, grief/bereavement, estate planning, any professional or sensitive service
 
-CRITICAL — keywords MUST reflect the actual business described. Extract concrete nouns from the brief:
-- "wood-fired pizza restaurant" → hero: "pizza,restaurant" | gallery: "pizza?lock=1", "restaurant,interior?lock=2", "pasta,food?lock=3", "italian,cuisine?lock=4"
-- "yoga studio" → hero: "yoga,meditation" | gallery: "yoga?lock=1", "yoga,pose?lock=2", "meditation?lock=3", "wellness?lock=4"
-- "wedding photography" → hero: "wedding,photography" | gallery: "wedding?lock=1", "bride?lock=2", "wedding,ceremony?lock=3", "couple,portrait?lock=4"
-- "law firm" → hero: "lawyer,office" | gallery: "legal,office?lock=1", "lawyer?lock=2", "business,meeting?lock=3", "legal,documents?lock=4"
-- "gym/fitness" → hero: "gym-equipment,weight-room" | gallery: "gym-equipment?lock=1", "weightlifting?lock=2", "fitness-facility?lock=3", "athletic-training?lock=4"
-- "coffee shop" → hero: "coffee,cafe" | gallery: "espresso?lock=1", "latte,coffee?lock=2", "cafe,interior?lock=3", "coffee,beans?lock=4"
-- "tech startup" → hero: "technology,startup" | gallery: "coding,laptop?lock=1", "team,meeting?lock=2", "startup,office?lock=3", "software?lock=4"
-- "hair salon" → hero: "hair,salon" | gallery: "haircut?lock=1", "hair,color?lock=2", "salon,styling?lock=3", "beauty?lock=4"
+GALLERY IMAGES — always include a gallery section with 3–6 LoremFlickr images:
+Each image src: https://loremflickr.com/800/600/keyword1,keyword2?lock=N where N is a different integer per image.
 
-Rules for keywords:
-- Use 1-2 concrete nouns per URL (LoremFlickr searches Flickr by tag — short, common terms work best)
-- Hero keywords must match the core business identity — NEVER use "city", "street", "transportation", "architecture" unless the business is about those
-- Each gallery image must use different ?lock=N values so they show different photos
-- For sensitive topics (grief, legal, healthcare): use "office", "consultation", "family", "documents" — not abstract scenes
+Keywords MUST match the actual business:
+- pizza restaurant → "pizza?lock=1", "restaurant,interior?lock=2", "pasta,food?lock=3", "italian,cuisine?lock=4"
+- yoga studio → "yoga-class?lock=1", "yoga,mat?lock=2", "meditation?lock=3", "wellness?lock=4"
+- gym/fitness → "gym-equipment?lock=1", "weightlifting?lock=2", "fitness-facility?lock=3", "athletic-training?lock=4"
+- coffee shop → "espresso?lock=1", "latte,coffee?lock=2", "cafe,interior?lock=3", "coffee,beans?lock=4"
+- law firm → "legal,office?lock=1", "lawyer?lock=2", "business,meeting?lock=3", "legal,documents?lock=4"
+- tech startup → "coding,laptop?lock=1", "team,meeting?lock=2", "startup,office?lock=3", "software?lock=4"
 
-BANNED keywords — these return sexualized or inappropriate results, never use them:
-"fitness", "body", "workout", "gym", "muscle", "exercise", "training", "sport", "physique", "abs"
-Use the specific safe alternatives shown in the examples above instead (gym-equipment, weight-room, fitness-facility, athletic-training, etc.)
+BANNED gallery keywords (return inappropriate results): "fitness", "body", "workout", "gym", "muscle", "exercise", "training", "sport"
+Safe alternatives: "gym-equipment", "weight-room", "fitness-facility", "athletic-training"
 
-Gallery captions should describe what the image represents for the business, not just generic labels.`,
+Gallery captions should describe what the image represents for the business, not generic labels.`,
       messages: [
         { role: 'user', content: brief },
         { role: 'assistant', content: '{' },
@@ -196,11 +195,15 @@ Gallery captions should describe what the image represents for the business, not
     const raw = normalize(JSON.parse('{' + responseText));
     const parsed = BuildSchema.parse(raw);
 
-    const heroImage = parsed.hero?.backgroundImage || '';
+    // Use AI's pattern choice if valid, otherwise infer from the brief
+    const pattern: PatternId = VALID_PATTERNS.has(parsed.hero?.pattern ?? '')
+      ? (parsed.hero!.pattern as PatternId)
+      : patternForBusiness(brief);
+
     const data = sanitizeSiteImages({
       ...parsed,
-      media: { hero: { url: heroImage } },
-      hero: { ...parsed.hero, backgroundImage: heroImage },
+      hero: { ...parsed.hero, pattern, backgroundImage: '' },
+      media: { hero: { url: '' } },
     });
 
     return Response.json({ ok: true, data: { ...data, blocks: inferBlocks(data) } });

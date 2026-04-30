@@ -32,6 +32,7 @@ export type SiteData = {
     subtitle: string;
     cta?: { label: string; href?: string };
     backgroundImage?: string;
+    pattern?: string;
     metrics?: { value: string; label: string }[];
   };
   about?: { heading?: string; body?: string; bullets?: string[] };

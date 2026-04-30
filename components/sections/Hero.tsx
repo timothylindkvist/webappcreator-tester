@@ -19,6 +19,7 @@ export default function Hero({ title, subtitle, cta, backgroundImage, metrics = 
     const img = new Image();
     img.src = backgroundImage;
     img.onload = () => setLoaded(true);
+    img.onerror = () => setLoaded(true);
   }, [backgroundImage]);
 
   return (

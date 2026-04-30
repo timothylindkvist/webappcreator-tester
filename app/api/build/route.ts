@@ -121,10 +121,10 @@ Use exactly this structure:
 {
   "theme": { "palette": { "brand": "#hex", "accent": "#hex", "background": "#hex", "foreground": "#hex" }, "vibe": "string", "density": "compact|cozy|comfortable" },
   "brand": { "name": "string", "tagline": "string" },
-  "hero": { "title": "string", "subtitle": "string", "cta": { "label": "string" }, "backgroundImage": "https://source.unsplash.com/1600x900/?keyword1,keyword2" },
+  "hero": { "title": "string", "subtitle": "string", "cta": { "label": "string" }, "backgroundImage": "https://loremflickr.com/1600/900/keyword1,keyword2" },
   "about": { "heading": "string", "body": "string", "bullets": ["string"] },
   "features": { "title": "string", "items": [{ "title": "string", "description": "string" }] },
-  "gallery": { "title": "string", "images": [{ "src": "https://source.unsplash.com/800x600/?keyword1,keyword2", "caption": "string", "alt": "string" }] },
+  "gallery": { "title": "string", "images": [{ "src": "https://loremflickr.com/800/600/keyword1,keyword2?lock=N", "caption": "string", "alt": "string" }] },
   "pricing": { "title": "string", "plans": [{ "name": "string", "price": "string", "features": ["string"] }] },
   "faq": { "title": "string", "items": [{ "q": "string", "a": "string" }] },
   "cta": { "title": "string", "subtitle": "string", "button": { "label": "string" } }
@@ -161,25 +161,24 @@ CREATIVE topics (portfolios, agencies, design, art, music, fashion):
 Keep copy concise and realistic. Match section selection to what the audience actually needs — a grief-adjacent service does not need an aggressive CTA section, it needs trust signals and a gentle FAQ.
 
 IMAGES — always include both of these:
-1. hero.backgroundImage: an Unsplash URL using keywords extracted directly from the brief. Format: https://source.unsplash.com/1600x900/?keyword1,keyword2
-2. gallery section with 3–6 images. Each image: https://source.unsplash.com/800x600/?keyword1,keyword2 — use varied but related keywords across the gallery images.
+1. hero.backgroundImage: a LoremFlickr URL using keywords extracted directly from the brief. Format: https://loremflickr.com/1600/900/keyword1,keyword2
+2. gallery section with 3–6 images. Each image: https://loremflickr.com/800/600/keyword1,keyword2?lock=N where N is a different integer (1, 2, 3…) per image to get variety.
 
-CRITICAL — keywords MUST reflect the actual business described. Extract concrete nouns and descriptors from the brief:
-- "wood-fired pizza restaurant" → hero: "pizza,italian-food,restaurant" | gallery: "pizza", "wood-fired-oven", "margherita-pizza", "restaurant-interior", "pasta", "italian-cuisine"
-- "yoga studio" → hero: "yoga,meditation,studio" | gallery: "yoga-pose", "yoga-mat", "meditation", "wellness", "stretching", "zen"
-- "wedding photography" → hero: "wedding,photography,couple" | gallery: "wedding-ceremony", "wedding-dress", "bride", "reception", "wedding-flowers", "couple-portrait"
-- "law firm" → hero: "law,office,professional" | gallery: "courthouse", "legal-documents", "lawyer-office", "business-meeting", "scales-of-justice", "professional"
-- "gym/fitness" → hero: "gym,fitness,workout" | gallery: "weightlifting", "treadmill", "personal-trainer", "exercise", "strength-training", "fitness-equipment"
-- "coffee shop" → hero: "coffee,cafe,barista" | gallery: "espresso", "latte-art", "coffee-beans", "cafe-interior", "croissant", "coffee-cup"
-- "tech startup" → hero: "technology,startup,office" | gallery: "coding", "laptop", "team-meeting", "product-demo", "startup-office", "collaboration"
-- "hair salon" → hero: "hair-salon,hairstyle,beauty" | gallery: "haircut", "hair-color", "styling", "salon-interior", "blowout", "balayage"
+CRITICAL — keywords MUST reflect the actual business described. Extract concrete nouns from the brief:
+- "wood-fired pizza restaurant" → hero: "pizza,restaurant" | gallery: "pizza?lock=1", "restaurant,interior?lock=2", "pasta,food?lock=3", "italian,cuisine?lock=4"
+- "yoga studio" → hero: "yoga,meditation" | gallery: "yoga?lock=1", "yoga,pose?lock=2", "meditation?lock=3", "wellness?lock=4"
+- "wedding photography" → hero: "wedding,photography" | gallery: "wedding?lock=1", "bride?lock=2", "wedding,ceremony?lock=3", "couple,portrait?lock=4"
+- "law firm" → hero: "lawyer,office" | gallery: "legal,office?lock=1", "lawyer?lock=2", "business,meeting?lock=3", "legal,documents?lock=4"
+- "gym/fitness" → hero: "gym,fitness" | gallery: "weightlifting?lock=1", "gym,workout?lock=2", "fitness,training?lock=3", "exercise?lock=4"
+- "coffee shop" → hero: "coffee,cafe" | gallery: "espresso?lock=1", "latte,coffee?lock=2", "cafe,interior?lock=3", "coffee,beans?lock=4"
+- "tech startup" → hero: "technology,startup" | gallery: "coding,laptop?lock=1", "team,meeting?lock=2", "startup,office?lock=3", "software?lock=4"
+- "hair salon" → hero: "hair,salon" | gallery: "haircut?lock=1", "hair,color?lock=2", "salon,styling?lock=3", "beauty?lock=4"
 
 Rules for keywords:
-- Use actual product/service names, not moods or adjectives ("pizza" not "delicious", "yoga" not "calm")
-- Multi-word terms use hyphens: "wood-fired-oven", "latte-art"
-- Hero keywords must match the core business identity — NEVER use generic terms like "city", "street", "transportation", "architecture" unless the business is about those things
-- Vary keywords across gallery images so each photo shows something different about the business
-- For sensitive topics (grief, legal, healthcare): use professional, contextually relevant imagery: "legal-documents", "consultation", "peaceful-office", "family-care" — not abstract nature scenes
+- Use 1-2 concrete nouns per URL (LoremFlickr searches Flickr by tag — short, common terms work best)
+- Hero keywords must match the core business identity — NEVER use "city", "street", "transportation", "architecture" unless the business is about those
+- Each gallery image must use different ?lock=N values so they show different photos
+- For sensitive topics (grief, legal, healthcare): use "office", "consultation", "family", "documents" — not abstract scenes
 
 Gallery captions should describe what the image represents for the business, not just generic labels.`,
       messages: [

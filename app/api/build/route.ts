@@ -121,10 +121,10 @@ Use exactly this structure:
 {
   "theme": { "palette": { "brand": "#hex", "accent": "#hex", "background": "#hex", "foreground": "#hex" }, "vibe": "string", "density": "compact|cozy|comfortable" },
   "brand": { "name": "string", "tagline": "string" },
-  "hero": { "title": "string", "subtitle": "string", "cta": { "label": "string" }, "backgroundImage": "https://picsum.photos/seed/{keyword}/1600/900" },
+  "hero": { "title": "string", "subtitle": "string", "cta": { "label": "string" }, "backgroundImage": "https://source.unsplash.com/1600x900/?keyword1,keyword2" },
   "about": { "heading": "string", "body": "string", "bullets": ["string"] },
   "features": { "title": "string", "items": [{ "title": "string", "description": "string" }] },
-  "gallery": { "title": "string", "images": [{ "src": "https://picsum.photos/seed/{keyword}/800/600", "caption": "string", "alt": "string" }] },
+  "gallery": { "title": "string", "images": [{ "src": "https://source.unsplash.com/800x600/?keyword1,keyword2", "caption": "string", "alt": "string" }] },
   "pricing": { "title": "string", "plans": [{ "name": "string", "price": "string", "features": ["string"] }] },
   "faq": { "title": "string", "items": [{ "q": "string", "a": "string" }] },
   "cta": { "title": "string", "subtitle": "string", "button": { "label": "string" } }
@@ -161,18 +161,25 @@ CREATIVE topics (portfolios, agencies, design, art, music, fashion):
 Keep copy concise and realistic. Match section selection to what the audience actually needs — a grief-adjacent service does not need an aggressive CTA section, it needs trust signals and a gentle FAQ.
 
 IMAGES — always include both of these:
-1. hero.backgroundImage: a Picsum URL with a 2-3 word seed keyword that fits the brand/industry. Format: https://picsum.photos/seed/{keyword}/1600/900
-2. gallery section with 3–6 images. Each image: https://picsum.photos/seed/{keyword}-{n}/800/600 where n is 1,2,3…
+1. hero.backgroundImage: an Unsplash URL using keywords extracted directly from the brief. Format: https://source.unsplash.com/1600x900/?keyword1,keyword2
+2. gallery section with 3–6 images. Each image: https://source.unsplash.com/800x600/?keyword1,keyword2 — use varied but related keywords across the gallery images.
 
-Choose seed keywords that evoke the right mood:
-- Sensitive/grief/legal: "calm-light", "soft-morning", "quiet-desk", "peaceful-nature", "warm-window"
-- Healthcare/wellness: "bright-clinic", "wellness-light", "clean-space"
-- Professional/finance/B2B: "modern-office", "city-architecture", "clean-workspace", "team-meeting"
-- Food/hospitality: "coffee-cup", "restaurant-table", "food-fresh", "warm-kitchen"
-- Fitness/sport: "athlete-run", "gym-weights", "sport-outdoor", "active-lifestyle"
-- Creative/design: "studio-creative", "art-minimal", "design-space", "colorful-work"
-- Tech/SaaS: "laptop-code", "tech-minimal", "startup-office", "digital-screen"
-- Nature/travel: "landscape-wide", "travel-adventure", "nature-forest", "ocean-horizon"
+CRITICAL — keywords MUST reflect the actual business described. Extract concrete nouns and descriptors from the brief:
+- "wood-fired pizza restaurant" → hero: "pizza,italian-food,restaurant" | gallery: "pizza", "wood-fired-oven", "margherita-pizza", "restaurant-interior", "pasta", "italian-cuisine"
+- "yoga studio" → hero: "yoga,meditation,studio" | gallery: "yoga-pose", "yoga-mat", "meditation", "wellness", "stretching", "zen"
+- "wedding photography" → hero: "wedding,photography,couple" | gallery: "wedding-ceremony", "wedding-dress", "bride", "reception", "wedding-flowers", "couple-portrait"
+- "law firm" → hero: "law,office,professional" | gallery: "courthouse", "legal-documents", "lawyer-office", "business-meeting", "scales-of-justice", "professional"
+- "gym/fitness" → hero: "gym,fitness,workout" | gallery: "weightlifting", "treadmill", "personal-trainer", "exercise", "strength-training", "fitness-equipment"
+- "coffee shop" → hero: "coffee,cafe,barista" | gallery: "espresso", "latte-art", "coffee-beans", "cafe-interior", "croissant", "coffee-cup"
+- "tech startup" → hero: "technology,startup,office" | gallery: "coding", "laptop", "team-meeting", "product-demo", "startup-office", "collaboration"
+- "hair salon" → hero: "hair-salon,hairstyle,beauty" | gallery: "haircut", "hair-color", "styling", "salon-interior", "blowout", "balayage"
+
+Rules for keywords:
+- Use actual product/service names, not moods or adjectives ("pizza" not "delicious", "yoga" not "calm")
+- Multi-word terms use hyphens: "wood-fired-oven", "latte-art"
+- Hero keywords must match the core business identity — NEVER use generic terms like "city", "street", "transportation", "architecture" unless the business is about those things
+- Vary keywords across gallery images so each photo shows something different about the business
+- For sensitive topics (grief, legal, healthcare): use professional, contextually relevant imagery: "legal-documents", "consultation", "peaceful-office", "family-care" — not abstract nature scenes
 
 Gallery captions should describe what the image represents for the business, not just generic labels.`,
       messages: [

@@ -40,7 +40,10 @@ Shape: {"reply":"one short sentence confirming what you changed","site":{...the 
 
 Modify only what the user asked for. Keep everything else identical. Keep your reply short.
 
-IMPORTANT — preserve emotional tone: if the existing site serves a sensitive audience (grief, death, estate planning, serious illness, mental health, crisis, divorce, elder care), maintain that register throughout all edits. Do not introduce aggressive CTAs, exclamation marks, neon colors, or urgency language when editing these sites. If the user asks to change colors or copy on a sensitive-topic site, keep the palette calm and muted, and keep copy dignified and unhurried.`,
+IMPORTANT — preserve emotional tone: if the existing site serves a sensitive audience (grief, death, estate planning, serious illness, mental health, crisis, divorce, elder care), maintain that register throughout all edits. Do not introduce aggressive CTAs, exclamation marks, neon colors, or urgency language when editing these sites. If the user asks to change colors or copy on a sensitive-topic site, keep the palette calm and muted, and keep copy dignified and unhurried.
+
+IMAGES — if you update any image URLs, use Unsplash Source format: https://source.unsplash.com/800x600/?keyword1,keyword2
+Keywords must match what the business actually is (pizza restaurant → "pizza,restaurant", yoga studio → "yoga,wellness"). Never use generic terms like "city", "street", or "transportation" unless the business is about those things.`,
       messages: [
         {
           role: 'user',

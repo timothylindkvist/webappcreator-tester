@@ -312,7 +312,7 @@ export function BuilderProvider({ children }: PropsWithChildren) {
         const imageSection = sec as { images?: NonNullable<SiteData['gallery']>['images'] };
         if (Array.isArray(imageSection.images)) {
           imageSection.images = imageSection.images.map((image, index) => ({
-            src: image?.src || `https://picsum.photos/seed/${key}-${index}/1200/800`,
+            src: image?.src || `https://source.unsplash.com/1200x800/?${key},business`,
             caption: image?.caption || '',
             alt: image?.alt || image?.caption || `${key} image ${index + 1}`,
           }));

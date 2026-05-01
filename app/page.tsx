@@ -124,6 +124,35 @@ function EmptyPreview() {
   );
 }
 
+// ── Page navigation helpers ───────────────────────────────────────────────────
+
+type Page = import('../components/builder-context').Page;
+
+function hrefToPageId(href: string, pages: Page[]): string | null {
+  const clean = href.split('?')[0].split('#')[0].toLowerCase().trim();
+  if (clean === '' || clean === '/' || clean === 'index.html') return 'home';
+  const base = clean.replace(/\.html$/, '');
+  const match = pages.find((p) => p.id.toLowerCase() === base || p.name.toLowerCase() === base);
+  return match?.id ?? null;
+}
+
+// Intercepts internal anchor clicks inside an iframe and postMessages them to parent.
+// Injected once per iframe load, regardless of edit mode.
+const NAV_INTERCEPT_SCRIPT = `(function(){
+if(window.__smNavActive)return;
+window.__smNavActive=true;
+document.addEventListener('click',function(e){
+  var t=e.target;
+  while(t&&t.tagName!=='A'){t=t.parentElement;}
+  if(!t)return;
+  var href=(t.getAttribute('href')||'').trim();
+  if(!href||href.charAt(0)==='#'||/^(https?:|\/\/|mailto:|tel:)/.test(href))return;
+  e.preventDefault();
+  e.stopPropagation();
+  window.parent.postMessage({type:'sidesmith:navigate',href:href},'*');
+},true);
+})();`;
+
 // ── Iframe edit-mode injection script ────────────────────────────────────────
 
 function generateEditScript(palette: { brand: string; accent: string }): string {
@@ -164,9 +193,21 @@ tb.innerHTML=html;
 document.body.appendChild(tb);
 var ae=null,ce=null;
 function findCard(el){var p=el.parentElement;while(p&&p.tagName!=='BODY'){var bg=window.getComputedStyle(p).backgroundColor;if(bg&&bg!=='rgba(0, 0, 0, 0)'&&bg!=='transparent'){var t=p.tagName;if(t!=='SECTION'&&t!=='MAIN'&&t!=='BODY'&&t!=='HTML'&&t!=='HEADER'&&t!=='FOOTER'&&t!=='NAV')return p;}p=p.parentElement;}return null;}
-function pos(el){var r=el.getBoundingClientRect(),h=46,t=r.top-h-6;if(t<4)t=r.bottom+6;tb.style.top=Math.max(4,t)+'px';tb.style.left=Math.max(4,Math.min(window.innerWidth-360,r.left))+'px';tb.style.display='flex';}
-document.addEventListener('focusin',function(e){if(!e.target.getAttribute||!e.target.getAttribute('data-editable'))return;ae=e.target;ce=findCard(ae);var bx=document.getElementById('__sm_bx');if(bx)bx.style.display=ce?'flex':'none';pos(ae);});
-document.addEventListener('mousedown',function(e){if(tb.contains(e.target))return;if(!e.target.getAttribute||!e.target.getAttribute('data-editable'))tb.style.display='none';});
+function showTb(el){var r=el.getBoundingClientRect(),h=46,t=r.top-h-6;if(t<4)t=r.bottom+6;tb.style.top=Math.max(4,t)+'px';tb.style.left=Math.max(4,Math.min(window.innerWidth-360,r.left))+'px';tb.style.display='flex';}
+document.addEventListener('click',function(e){
+  if(tb.contains(e.target))return;
+  var t=e.target;
+  while(t&&t.tagName!=='BODY'){
+    if(t.getAttribute&&t.getAttribute('data-editable')){
+      ae=t;ce=findCard(ae);
+      var bx=document.getElementById('__sm_bx');
+      if(bx)bx.style.display=ce?'flex':'none';
+      showTb(ae);ae.focus();return;
+    }
+    t=t.parentElement;
+  }
+  tb.style.display='none';
+});
 tb.addEventListener('mousedown',function(e){e.preventDefault();var t=e.target;while(t&&t!==tb){if(t.dataset){if(t.dataset.sz&&ae&&SZ[t.dataset.sz])ae.style.fontSize=SZ[t.dataset.sz];if(t.dataset.bd&&ae){var fw=parseInt(window.getComputedStyle(ae).fontWeight)||400;ae.style.fontWeight=fw>=600?'normal':'bold';}if(t.dataset.tc&&ae)ae.style.color=t.dataset.tc;if(t.dataset.bc&&ce)ce.style.background=t.dataset.bc;if(t.dataset.al&&ae)ae.style.textAlign=t.dataset.al;}t=t.parentElement;}if(ae)ae.focus();});
 tb.addEventListener('change',function(e){var t=e.target;if(!t||!t.dataset)return;if(t.dataset.tcC&&ae)ae.style.color=t.value;if(t.dataset.bcC&&ce)ce.style.background=t.value;});
 document.addEventListener('blur',function(e){if(!e.target.getAttribute||!e.target.getAttribute('data-editable'))return;try{window.parent.postMessage({type:'sidesmith:page-update',html:'<!DOCTYPE html>'+document.documentElement.outerHTML},'*');}catch(x){}},true);
@@ -517,7 +558,7 @@ function PageTabBar() {
 // ── Preview pane ──────────────────────────────────────────────────────────────
 
 function PreviewPane() {
-  const { data, pages, activePage, updatePage } = useBuilder();
+  const { data, pages, activePage, updatePage, setActivePage } = useBuilder();
   const { isEditMode, hasChanges, saveChanges } = useEditMode();
   const hasContent = !!(data.hero?.title);
   const domain = hasContent
@@ -577,16 +618,68 @@ function PreviewPane() {
     }
   }, [isEditMode, activePageData?.id, data.theme.palette]);
 
-  // Listen for page-update postMessages from iframes
+  // Always inject nav-intercept script into iframes (independent of edit mode)
+  useEffect(() => {
+    if (!activePageData) return;
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+
+    const injectNav = () => {
+      try {
+        const iwin = iframe.contentWindow as any;
+        const doc = iframe.contentDocument;
+        if (!doc || iwin?.__smNavActive) return;
+        iwin.__smNavActive = true;
+        const script = doc.createElement('script');
+        script.textContent = NAV_INTERCEPT_SCRIPT;
+        doc.body.appendChild(script);
+      } catch { /* sandboxing */ }
+    };
+
+    if (iframe.contentDocument?.readyState === 'complete') {
+      injectNav();
+    } else {
+      iframe.addEventListener('load', injectNav, { once: true });
+      return () => iframe.removeEventListener('load', injectNav);
+    }
+  }, [activePageData?.id]);
+
+  // Handle postMessages from iframes (page updates + navigation)
   useEffect(() => {
     const handler = (e: MessageEvent) => {
       if (e.data?.type === 'sidesmith:page-update' && activePage !== 'home') {
         updatePage(activePage, e.data.html as string);
       }
+      if (e.data?.type === 'sidesmith:navigate') {
+        const targetId = hrefToPageId(e.data.href as string, pages);
+        if (targetId !== null) setActivePage(targetId);
+      }
     };
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);
-  }, [activePage, updatePage]);
+  }, [activePage, updatePage, pages, setActivePage]);
+
+  // Intercept nav clicks on the home page to switch page tabs
+  useEffect(() => {
+    if (!hasContent) return;
+    const container = homeContentRef.current;
+    if (!container) return;
+
+    const handleNavClick = (e: MouseEvent) => {
+      const a = (e.target as Element).closest('a');
+      if (!a) return;
+      const href = (a.getAttribute('href') || '').trim();
+      if (!href || href.startsWith('#') || /^(https?:|\/\/|mailto:|tel:)/.test(href)) return;
+      const targetId = hrefToPageId(href, pages);
+      if (targetId !== null) {
+        e.preventDefault();
+        setActivePage(targetId);
+      }
+    };
+
+    container.addEventListener('click', handleNavClick);
+    return () => container.removeEventListener('click', handleNavClick);
+  }, [hasContent, pages, setActivePage]);
 
   return (
     <div className="flex-1 flex flex-col min-w-0 bg-[#0b0b12] relative">

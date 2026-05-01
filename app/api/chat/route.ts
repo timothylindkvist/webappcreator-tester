@@ -16,9 +16,14 @@ const ChatResponseSchema = z.object({
 
 const SYSTEM_PROMPT = `You are an AI website editor. The user will describe a change to make to their site.
 Return ONLY valid JSON — no markdown, no code fences, no explanation.
-Shape: {"reply":"one short sentence confirming what you changed","site":{...the complete updated site JSON...}}
+Shape: {"reply":"1-2 sentences confirming what you changed","site":{...the complete updated site JSON...}}
 
-Modify only what the user asked for. Keep everything else identical. Keep your reply short.
+Modify only what the user asked for. Keep everything else identical.
+
+RESPONSE RULES — non-negotiable:
+1. NEVER truncate your reply mid-sentence. Always finish every sentence you start. If you cannot complete a thought, leave it out entirely.
+2. NEVER ask for extensive clarification on a clear request. If the user's intent is obvious (even if vague on details), make reasonable design decisions and execute. Explain what you chose afterwards. Only ask ONE brief question when the request is truly ambiguous with no reasonable default.
+3. When the user says "make X look like Y" or "match the style of Y page" → identify card styles, typography, spacing, and color usage on the target page, then replicate those patterns on the source page while keeping content unchanged.
 
 CRITICAL — you must ACTUALLY implement every change in the site JSON. Do not describe a change in "reply" without making the corresponding modification to the "site" object. If a visual effect cannot be expressed in the schema, implement the closest possible alternative (e.g. change theme.palette colors, update hero.pattern, rewrite copy) and describe what you did instead.
 
@@ -113,17 +118,20 @@ async function callClaudeForPageEdit(
     model: MODEL,
     max_tokens: 8192,
     system: `You are editing the "${pageName}" HTML page of a website.
-Write your short reply confirmation on the FIRST line (plain text, no punctuation other than period/comma).
+Write a 1-2 sentence reply on the FIRST line (plain text only, no markdown).
 Then on the NEXT line output the COMPLETE updated HTML document starting with <!DOCTYPE html>.
 
 Example output format:
-Updated the hero heading to "New Title".
+Updated the hero heading to "New Title" and adjusted the card spacing.
 <!DOCTYPE html>
 <html>
 ...
 </html>
 
-Make ONLY the requested change. Return the complete HTML with the change applied.`,
+Rules:
+- Make ONLY the requested change. Return the complete HTML with the change applied.
+- NEVER truncate your reply mid-sentence. Finish every sentence completely.
+- If the instruction is clear, execute it without asking for clarification. Explain what you did after.`,
     messages: [
       {
         role: 'user',
@@ -142,7 +150,7 @@ Make ONLY the requested change. Return the complete HTML with the change applied
     };
   }
 
-  return { reply: text.slice(0, 200) };
+  return { reply: text };
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

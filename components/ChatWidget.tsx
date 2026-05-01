@@ -7,7 +7,7 @@ import { streamChat } from '@/lib/aiStream';
 
 type Msg = { role: 'user' | 'assistant'; content: string };
 type CreationStep = 'idle' | 'clarifying' | 'generating-brief' | 'briefing' | 'live';
-type Answers = Partial<Record<'style' | 'audience' | 'goal' | 'theme' | 'gallery', string>>;
+type Answers = Partial<Record<'style' | 'audience' | 'goal' | 'theme' | 'gallery' | 'pages', string>>;
 
 const EXAMPLES = [
   'A landing page for an artisan coffee shop in Brooklyn',
@@ -50,6 +50,11 @@ const QUESTIONS: Array<{ key: keyof Answers; label: string; options: string[] }>
     label: 'Gallery section',
     options: ['Yes, use real photos', 'No, use icons & patterns', 'No gallery needed'],
   },
+  {
+    key: 'pages',
+    label: 'How many pages?',
+    options: ['Just a landing page', 'Landing page + 1–2 extra', 'Full multi-page site'],
+  },
 ];
 
 function autoDetectAnswers(desc: string): Answers {
@@ -83,6 +88,13 @@ function autoDetectAnswers(desc: string): Answers {
     answers.gallery = 'Yes, use real photos';
   } else if (/\b(saas|software|platform|finance|investment|law|legal|consulting|agency|startup|app|service|b2b)\b/.test(d)) {
     answers.gallery = 'No, use icons & patterns';
+  }
+
+  // Pages
+  if (/\b(portfolio|agency|firm|enterprise|company|organization|association|school|university)\b/.test(d)) {
+    answers.pages = 'Landing page + 1–2 extra';
+  } else if (/\b(e-commerce|ecommerce|shop|store|marketplace|clinic|practice|multi.?page)\b/.test(d)) {
+    answers.pages = 'Full multi-page site';
   }
 
   return answers;
@@ -230,7 +242,7 @@ function BriefEditor({
 }
 
 export default function ChatWidget() {
-  const { data, brief, setBrief, rebuild, siteId, setSiteId, applyTheme } = useBuilder();
+  const { data, brief, setBrief, rebuild, siteId, setSiteId, applyTheme, pages, activePage, setActivePage } = useBuilder();
   const { isEditMode, toggleEditMode, hasChanges, reapplyOverrides } = useEditMode();
   const [step, setStep] = useState<CreationStep>('idle');
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -317,20 +329,31 @@ export default function ChatWidget() {
     const baseBrief = briefOverride ?? briefText;
     setBrief(baseBrief);
 
-    // Append gallery directive so Claude respects the user's photo choice
+    // Append directive instructions so Claude respects gallery and pages choices
     let effectiveBrief = baseBrief;
     if (answers.gallery === 'No gallery needed') {
       effectiveBrief += '\n[Do NOT include a gallery section in this site.]';
     } else if (answers.gallery === 'No, use icons & patterns') {
       effectiveBrief += '\n[Gallery must use icon-cards, feature-cards, or color-blocks — no photos.]';
     }
+    if (answers.pages === 'No gallery needed') {
+      effectiveBrief += '\n[Do NOT include a gallery section.]';
+    }
 
     try {
       await rebuild(effectiveBrief);
-      setMessages((cur) => [
-        ...cur,
-        { role: 'assistant', content: "Your site is ready! Tell me what you'd like to change." },
-      ]);
+
+      // Post-generation message depends on pages preference
+      let readyMsg = "Your site is ready! Tell me what you'd like to change.";
+      if (answers.pages === 'Just a landing page') {
+        readyMsg =
+          "Your landing page is ready! You can add more pages anytime — just say \"add a Team page\" or \"add a Contact page\" and I'll build it for you.";
+      } else if (answers.pages === 'Landing page + 1–2 extra' || answers.pages === 'Full multi-page site') {
+        readyMsg =
+          "Your landing page is ready! Click the \"+\" tab in the preview to add more pages, or just say \"add a Team page\" and I'll build it.";
+      }
+
+      setMessages((cur) => [...cur, { role: 'assistant', content: readyMsg }]);
       setStep('live');
       await persistLatestSite(null);
     } catch (e: any) {
@@ -355,7 +378,14 @@ export default function ChatWidget() {
     resetTextarea();
     setBusy(true);
     try {
-      const res = await streamChat(nextMessages, { site: data, brief });
+      const activePageData = activePage !== 'home' ? pages.find((p) => p.id === activePage) : null;
+      const res = await streamChat(nextMessages, {
+        site: data,
+        brief,
+        activePage,
+        pageHtml: activePageData?.html,
+        pages: pages.map((p) => ({ id: p.id, name: p.name })),
+      });
       setMessages((cur) => [...cur, { role: 'assistant', content: res.reply || 'Done.' }]);
       // Re-apply any inline edits on top of the AI's changes
       if (hasChanges) reapplyOverrides();
@@ -438,6 +468,25 @@ export default function ChatWidget() {
               </>
             )}
           </button>
+        </div>
+      )}
+
+      {/* Page context indicator — live + non-home only */}
+      {isLive && activePage !== 'home' && (
+        <div className="flex-shrink-0 px-5 py-2 border-b border-zinc-100 flex items-center gap-2 bg-[#faf9ff]">
+          <button
+            onClick={() => setActivePage('home')}
+            className="flex items-center gap-1 text-[11px] text-zinc-400 hover:text-zinc-600 transition-colors"
+          >
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+            </svg>
+            Home
+          </button>
+          <span className="text-zinc-300 text-[11px]">/</span>
+          <span className="text-[11px] font-medium text-[#7c3aed]">
+            {pages.find((p) => p.id === activePage)?.name ?? activePage} page
+          </span>
         </div>
       )}
 
@@ -533,7 +582,13 @@ export default function ChatWidget() {
               className="flex-1 bg-[#f8f8fb] border border-zinc-200 rounded-xl px-3.5 py-2.5 text-[13px] text-zinc-800 placeholder-zinc-400 outline-none focus:border-[#8B5CF6]/60 focus:bg-white transition-all resize-none leading-relaxed overflow-hidden"
               style={{ minHeight: '42px', maxHeight: '120px' }}
               disabled={busy}
-              placeholder={isLive ? 'Ask for a change…' : 'Describe what to build…'}
+              placeholder={
+                isLive && activePage !== 'home'
+                  ? `Edit the ${pages.find((p) => p.id === activePage)?.name ?? activePage} page…`
+                  : isLive
+                  ? 'Ask for a change…'
+                  : 'Describe what to build…'
+              }
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onInput={(e) => {

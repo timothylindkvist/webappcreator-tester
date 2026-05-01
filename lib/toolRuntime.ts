@@ -14,6 +14,10 @@ type Bridge = {
   updateSection?: (args: any) => void;
   moveSection?: (args: any) => void;
   deleteSection?: (args: any) => void;
+  // Multi-page
+  addPage?: (args: any) => void;
+  updatePage?: (args: any) => void;
+  removePage?: (args: any) => void;
 };
 
 declare global {

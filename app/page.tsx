@@ -1,7 +1,7 @@
 'use client';
 
 import type { CSSProperties } from 'react';
-import { Suspense, useEffect } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { BuilderProvider, useBuilder } from '../components/builder-context';
 import { EditModeProvider, useEditMode } from '../components/EditModeContext';
@@ -124,38 +124,206 @@ function EmptyPreview() {
   );
 }
 
+const PAGE_SUGGESTIONS = ['Team', 'About', 'Contact', 'Services', 'Portfolio', 'Pricing'];
+
+function PageTabBar() {
+  const { data, brief, pages, activePage, setActivePage, addPage } = useBuilder();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [customInput, setCustomInput] = useState('');
+  const [busy, setBusy] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const hasContent = !!(data.hero?.title);
+
+  // Close menu on outside click
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [menuOpen]);
+
+  const handleAddPage = async (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed || busy || !hasContent) return;
+    setBusy(true);
+    setMenuOpen(false);
+    setCustomInput('');
+    try {
+      const res = await fetch('/api/page', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pageName: trimmed,
+          brief,
+          designSystem: {
+            colors: data.theme.palette,
+            brandName: data.brand.name,
+          },
+          existingPages: [
+            { id: 'home', name: 'Home' },
+            ...pages.map((p) => ({ id: p.id, name: p.name })),
+          ],
+        }),
+      });
+      const json = await res.json();
+      if (json.ok && json.html) {
+        addPage({ id: json.pageId, name: json.pageName, html: json.html });
+      }
+    } catch { /* ignore */ } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!hasContent) return null;
+
+  return (
+    <div className="relative flex-shrink-0 flex items-center h-8 bg-[#0c0c14] border-b border-white/[0.05] overflow-visible">
+      {/* Home tab */}
+      <button
+        onClick={() => setActivePage('home')}
+        className={`h-full px-4 text-[11px] font-medium border-b-2 transition-colors whitespace-nowrap ${
+          activePage === 'home'
+            ? 'text-white border-[#7c3aed]'
+            : 'text-white/35 border-transparent hover:text-white/60'
+        }`}
+      >
+        Home
+      </button>
+
+      {/* Additional page tabs */}
+      {pages.map((page) => (
+        <button
+          key={page.id}
+          onClick={() => setActivePage(page.id)}
+          className={`h-full px-4 text-[11px] font-medium border-b-2 transition-colors whitespace-nowrap ${
+            activePage === page.id
+              ? 'text-white border-[#7c3aed]'
+              : 'text-white/35 border-transparent hover:text-white/60'
+          }`}
+        >
+          {page.name}
+        </button>
+      ))}
+
+      {/* Add page button */}
+      <button
+        onClick={() => setMenuOpen((o) => !o)}
+        disabled={busy}
+        title="Add a page"
+        className="ml-1 h-5 w-5 flex items-center justify-center rounded text-white/25 hover:text-white/60 hover:bg-white/5 text-[16px] leading-none disabled:opacity-40 transition-colors"
+      >
+        {busy ? (
+          <span className="text-[10px] animate-pulse">…</span>
+        ) : (
+          <svg className="w-3 h-3" fill="none" viewBox="0 0 12 12" stroke="currentColor" strokeWidth={1.8}>
+            <path strokeLinecap="round" d="M6 1v10M1 6h10" />
+          </svg>
+        )}
+      </button>
+
+      {/* Add page dropdown */}
+      {menuOpen && (
+        <div
+          ref={menuRef}
+          className="absolute top-full left-0 mt-1 z-50 bg-[#17172a] border border-white/[0.1] rounded-xl shadow-2xl p-3 min-w-[210px]"
+        >
+          <p className="text-[10px] text-white/35 font-semibold uppercase tracking-wider mb-2">Add a page</p>
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {PAGE_SUGGESTIONS.map((name) => (
+              <button
+                key={name}
+                onClick={() => handleAddPage(name)}
+                className="px-2.5 py-1 rounded-lg text-[11px] bg-white/[0.04] text-white/55 hover:bg-[#7c3aed]/20 hover:text-white border border-white/[0.07] transition-colors"
+              >
+                {name}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-1.5">
+            <input
+              value={customInput}
+              onChange={(e) => setCustomInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleAddPage(customInput);
+                if (e.key === 'Escape') setMenuOpen(false);
+              }}
+              placeholder="Custom page name…"
+              className="flex-1 bg-white/[0.04] border border-white/[0.08] rounded-lg px-2.5 py-1.5 text-[11px] text-white/70 placeholder-white/20 outline-none focus:border-[#7c3aed]/40"
+            />
+            <button
+              onClick={() => handleAddPage(customInput)}
+              disabled={!customInput.trim()}
+              className="px-2.5 py-1.5 bg-[#7c3aed] hover:bg-[#6d28d9] rounded-lg text-[11px] text-white font-medium disabled:opacity-40 transition-colors"
+            >
+              Add
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PreviewPane() {
-  const { data } = useBuilder();
+  const { data, pages, activePage } = useBuilder();
   const { isEditMode, hasChanges, saveChanges } = useEditMode();
   const hasContent = !!(data.hero?.title);
-  const siteName = hasContent
+  const domain = hasContent
     ? `${(data.brand?.name || 'yoursite').toLowerCase().replace(/\s+/g, '-')}.com`
     : 'yoursite.com';
 
+  const activePageData = activePage !== 'home' ? pages.find((p) => p.id === activePage) : null;
+  const urlLabel = activePageData ? `${domain}/${activePageData.id}.html` : domain;
   const siteVars = deriveSiteVars(data.theme.palette);
 
   return (
     <div className="flex-1 flex flex-col min-w-0 bg-[#0b0b12] relative">
-      {isEditMode && (
+      {/* Inline-edit highlight styles — home page only */}
+      {isEditMode && activePage === 'home' && (
         <style>{`
           [data-editable]:hover { box-shadow: 0 0 0 2px rgba(124,58,237,0.35); border-radius: 3px; cursor: text; }
           [data-editable]:focus { box-shadow: 0 0 0 2px rgba(124,58,237,0.65); border-radius: 3px; outline: none; }
         `}</style>
       )}
-      <BrowserBar label={siteName} />
+
+      <BrowserBar label={urlLabel} />
+      <PageTabBar />
+
+      {/* Main content area */}
       <div
-        className="flex-1 overflow-y-auto"
-        style={hasContent ? siteVars : {}}
+        className="flex-1 overflow-y-auto min-h-0"
+        style={hasContent && activePage === 'home' ? siteVars : {}}
       >
-        {hasContent ? (
-          <div style={{ background: data.theme.palette.background, color: data.theme.palette.foreground, minHeight: '100%' }} className="p-3">
+        {activePageData ? (
+          /* Non-home page rendered in a sandboxed iframe */
+          <iframe
+            key={activePageData.id}
+            srcDoc={activePageData.html}
+            title={activePageData.name}
+            className="w-full border-none block"
+            style={{ height: '100%', minHeight: '600px' }}
+            sandbox="allow-same-origin allow-scripts"
+          />
+        ) : hasContent ? (
+          <div
+            style={{
+              background: data.theme.palette.background,
+              color: data.theme.palette.foreground,
+              minHeight: '100%',
+            }}
+            className="p-3"
+          >
             <Builder />
           </div>
         ) : (
           <EmptyPreview />
         )}
       </div>
-      {hasChanges && (
+
+      {/* Inline-edit save button — home page only */}
+      {hasChanges && activePage === 'home' && (
         <button
           onClick={saveChanges}
           className="absolute bottom-5 right-5 flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#7c3aed] text-white text-[13px] font-semibold shadow-xl hover:bg-[#6d28d9] active:scale-95 transition-all z-50"

@@ -22,6 +22,7 @@ export type Theme = {
 };
 
 export type Block = { id: string; type: string; data?: Record<string, unknown> };
+export type Page = { id: string; name: string; html: string };
 
 export type SiteData = {
   theme: Theme;
@@ -92,6 +93,13 @@ type CtxShape = {
   redesign: (concept?: string) => void;
   rebuild: (briefOverride?: string) => Promise<void>;
   reset: () => void;
+  // Multi-page
+  pages: Page[];
+  activePage: string;
+  addPage: (page: Page) => void;
+  updatePage: (id: string, html: string) => void;
+  removePage: (id: string) => void;
+  setActivePage: (id: string) => void;
 };
 
 const BuilderCtx = createContext<CtxShape | null>(null);
@@ -276,14 +284,42 @@ function setNestedOverride(obj: Record<string, unknown>, parts: string[], value:
   target[isNaN(Number(last)) ? last : Number(last)] = value;
 }
 
+// Inject a nav link into an HTML page's <nav><ul> using the browser DOMParser.
+function injectNavLink(html: string, page: Pick<Page, 'id' | 'name'>): string {
+  if (typeof window === 'undefined') return html;
+  try {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const navUl = doc.querySelector('nav ul');
+    if (navUl && !navUl.querySelector(`[href="${page.id}.html"]`)) {
+      const existingA = navUl.querySelector<HTMLAnchorElement>('li a');
+      const li = doc.createElement('li');
+      const a = doc.createElement('a');
+      a.href = `${page.id}.html`;
+      a.textContent = page.name;
+      if (existingA) {
+        a.className = existingA.className;
+        a.style.cssText = existingA.style.cssText;
+      }
+      li.appendChild(a);
+      navUl.appendChild(li);
+      return '<!DOCTYPE html>' + doc.documentElement.outerHTML;
+    }
+  } catch { /* ignore */ }
+  return html;
+}
+
 export function BuilderProvider({ children }: PropsWithChildren) {
   const [brief, setBrief] = useState('');
   const [data, setData] = useState<SiteData>(initialData);
   const [siteId, setSiteId] = useState<string | null>(null);
+  const [pages, setPages] = useState<Page[]>([]);
+  const [activePage, setActivePage] = useState('home');
 
   const loadSite = (site: Partial<SiteData>, briefText?: string) => {
     setData(cur => syncRootFromBlocks(mergeSite(cur, site)));
     if (briefText !== undefined) setBrief(briefText);
+    setPages([]);
+    setActivePage('home');
   };
 
   const applyTheme: CtxShape['applyTheme'] = (themeLike) => {
@@ -365,6 +401,29 @@ export function BuilderProvider({ children }: PropsWithChildren) {
     setBrief('');
     setData(initialData);
     setSiteId(null);
+    setPages([]);
+    setActivePage('home');
+  };
+
+  const addPage = (page: Page) => {
+    setPages(cur => {
+      if (cur.some(p => p.id === page.id)) {
+        return cur.map(p => p.id === page.id ? page : p);
+      }
+      // Update all existing pages' navs to include the new page link
+      const updated = cur.map(p => ({ ...p, html: injectNavLink(p.html, page) }));
+      return [...updated, page];
+    });
+    setActivePage(page.id);
+  };
+
+  const updatePage = (id: string, html: string) => {
+    setPages(cur => cur.map(p => p.id === id ? { ...p, html } : p));
+  };
+
+  const removePage = (id: string) => {
+    setPages(cur => cur.filter(p => p.id !== id));
+    setActivePage('home');
   };
 
   const setSections = ({ blocks = [] as Array<{ id?: string; type: string; data?: unknown }> } = {}) => {
@@ -453,8 +512,11 @@ export function BuilderProvider({ children }: PropsWithChildren) {
       moveSection,
       deleteSection,
       reset,
+      addPage: (args: Page) => addPage(args),
+      updatePage: (args: { id: string; html: string }) => updatePage(args.id, args.html),
+      removePage: (args: { id: string }) => removePage(args.id),
     };
-  }, [data]);
+  }, [data, pages]);
 
   const redesign = () => {};
 
@@ -494,7 +556,13 @@ export function BuilderProvider({ children }: PropsWithChildren) {
     redesign,
     rebuild,
     reset,
-  }), [brief, data]);
+    pages,
+    activePage,
+    addPage,
+    updatePage,
+    removePage,
+    setActivePage,
+  }), [brief, data, pages, activePage]);
 
   return <BuilderCtx.Provider value={value}>{children}</BuilderCtx.Provider>;
 }

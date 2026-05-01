@@ -3,6 +3,7 @@ import { rateLimit } from '@/lib/ratelimit';
 import { MODEL } from '@/lib/models';
 import { sanitizeSiteImages, extractVisualKeywords, buildProfessionalImageUrls } from '@/lib/imageKeywords';
 import { collectAllOps } from '@/lib/sectionTemplates';
+import { generatePage } from '@/lib/pageGenerator';
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 
@@ -37,7 +38,7 @@ When the user says:
 IMPORTANT — preserve emotional tone: if the existing site serves a sensitive audience (grief, death, estate planning, serious illness, mental health, crisis, divorce, elder care), maintain that register throughout all edits. Do not introduce aggressive CTAs, exclamation marks, neon colors, or urgency language when editing these sites.
 
 GALLERY — gallery.displayType controls how the gallery section looks. Valid values:
-- "photos": photo grid using images[] with Unsplash Source URLs (https://source.unsplash.com/800x600/?keyword1,keyword2&sig=N)
+- "photos": photo grid using images[] with Unsplash featured URLs (https://source.unsplash.com/featured/800x600/?keyword1,keyword2)
 - "icon-cards": emoji icons on colored cards; items[]: [{ icon, title, description, color }]
 - "feature-cards": stat/number cards; items[]: [{ stat, title, subtitle }]
 - "color-blocks": colorful gradient blocks; items[]: [{ gradient, title }]
@@ -74,23 +75,80 @@ function resolveImageRequest(
     events: [
       {
         name: 'patchSection',
-        args: {
-          section: 'gallery',
-          patch: { displayType: 'photos', images },
-        },
+        args: { section: 'gallery', patch: { displayType: 'photos', images } },
       },
     ],
     reply: `Added 6 professional ${keywords[0].replace(/-/g, ' ')} images to the gallery.`,
   };
 }
 
+// ── Page-add detection ────────────────────────────────────────────────────────
+
+const ADD_PAGE_PATTERN =
+  /\b(?:add|create|build|make|generate)\s+(?:a\s+)?(.+?)\s+page\b/i;
+
+// Avoid false positives for "home", "landing", "main", or section names
+const NOT_A_PAGE = /\b(home|landing|main|index|hero|cta|contact.?form|pricing.?table)\b/i;
+
+function detectPageAdd(message: string): string | null {
+  const m = message.match(ADD_PAGE_PATTERN);
+  if (!m) return null;
+  const name = m[1].trim();
+  if (NOT_A_PAGE.test(name)) return null;
+  // Filter very long matches (probably not a page name)
+  if (name.split(/\s+/).length > 4) return null;
+  return name;
+}
+
+// ── Page HTML editing ─────────────────────────────────────────────────────────
+
+async function callClaudeForPageEdit(
+  client: Anthropic,
+  instruction: string,
+  pageHtml: string,
+  brief: string,
+  pageName: string
+): Promise<{ reply: string; html?: string }> {
+  const message = await client.messages.create({
+    model: MODEL,
+    max_tokens: 8192,
+    system: `You are editing the "${pageName}" HTML page of a website.
+Write your short reply confirmation on the FIRST line (plain text, no punctuation other than period/comma).
+Then on the NEXT line output the COMPLETE updated HTML document starting with <!DOCTYPE html>.
+
+Example output format:
+Updated the hero heading to "New Title".
+<!DOCTYPE html>
+<html>
+...
+</html>
+
+Make ONLY the requested change. Return the complete HTML with the change applied.`,
+    messages: [
+      {
+        role: 'user',
+        content: `Brief: ${brief}\n\nCurrent "${pageName}" page HTML:\n${pageHtml}\n\nChange requested: ${instruction}`,
+      },
+    ],
+  });
+
+  const text = message.content[0].type === 'text' ? message.content[0].text.trim() : '';
+  const docStart = text.search(/<!DOCTYPE|<html/i);
+
+  if (docStart > 0) {
+    return {
+      reply: text.slice(0, docStart).trim(),
+      html: text.slice(docStart).trim(),
+    };
+  }
+
+  return { reply: text.slice(0, 200) };
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function siteEffectivelyChanged(before: Record<string, any>, after: Record<string, any>): boolean {
-  const strip = (s: Record<string, any>) => {
-    const { blocks: _, ...rest } = s;
-    return rest;
-  };
+  const strip = (s: Record<string, any>) => { const { blocks: _, ...rest } = s; return rest; };
   return JSON.stringify(strip(before)) !== JSON.stringify(strip(after));
 }
 
@@ -114,7 +172,6 @@ async function callClaude(
 
   const firstText = firstMessage.content[0].type === 'text' ? firstMessage.content[0].text : '';
   const firstParsed = ChatResponseSchema.parse(JSON.parse('{' + firstText));
-
   let finalParsed = firstParsed;
 
   if (firstParsed.site && !siteEffectivelyChanged(site, firstParsed.site)) {
@@ -128,7 +185,7 @@ async function callClaude(
         {
           role: 'user',
           content:
-            'The site JSON you returned is identical to the input — the change was not applied to the data. You MUST modify the actual site JSON fields. Editable fields include: theme.palette (colors), hero.backgroundImage (LoremFlickr URL), hero.title/subtitle/cta, about/features/gallery/pricing/faq/cta sections. If the exact effect cannot be represented, pick the closest supported alternative and implement it.',
+            'The site JSON you returned is identical to the input — the change was not applied. You MUST modify the actual site JSON fields. Editable fields include: theme.palette (colors), hero.backgroundImage, hero.title/subtitle/cta, about/features/gallery/pricing/faq/cta sections.',
         },
         { role: 'assistant', content: '{' },
       ],
@@ -137,16 +194,11 @@ async function callClaude(
     const retryText = retryMessage.content[0].type === 'text' ? retryMessage.content[0].text : '';
     try {
       const retryParsed = ChatResponseSchema.parse(JSON.parse('{' + retryText));
-      if (retryParsed.site && siteEffectivelyChanged(site, retryParsed.site)) {
-        finalParsed = retryParsed;
-      }
-    } catch {
-      // Retry parse failed — keep first response
-    }
+      if (retryParsed.site && siteEffectivelyChanged(site, retryParsed.site)) finalParsed = retryParsed;
+    } catch { /* keep first */ }
   }
 
   const updatedSite = finalParsed.site ? sanitizeSiteImages(finalParsed.site) : undefined;
-
   return {
     reply: finalParsed.reply,
     siteEvent: updatedSite ? { name: 'setSiteData', args: updatedSite } : undefined,
@@ -173,42 +225,69 @@ export async function POST(req: NextRequest) {
     const messages = Array.isArray(body?.messages) ? body.messages : [];
     const site = body?.site || {};
     const brief = typeof body?.brief === 'string' ? body.brief : '';
+    const activePage: string = typeof body?.activePage === 'string' ? body.activePage : 'home';
+    const pageHtml: string | undefined = typeof body?.pageHtml === 'string' ? body.pageHtml : undefined;
+    const incomingPages: Array<{ id: string; name: string }> = Array.isArray(body?.pages) ? body.pages : [];
     const lastUserMessage = [...messages].reverse().find((m: any) => m?.role === 'user')?.content || '';
 
-    // ── Fast path: professional images (no Claude needed) ──────────────────
+    // ── Fast path 1: add a new page ────────────────────────────────────────
+    const pageAddName = detectPageAdd(lastUserMessage);
+    if (pageAddName) {
+      const colors = site?.theme?.palette ?? {};
+      const brandName = site?.brand?.name ?? '';
+      const existingPages = [{ id: 'home', name: 'Home' }, ...incomingPages];
+
+      const generated = await generatePage(client, {
+        pageName: pageAddName,
+        brief,
+        designSystem: { colors, brandName },
+        existingPages,
+      });
+
+      return Response.json({
+        ok: true,
+        reply: `Added a ${generated.pageName} page. Click the "${generated.pageName}" tab in the preview to see it.`,
+        events: [{ name: 'addPage', args: generated }],
+      });
+    }
+
+    // ── Fast path 2: editing a non-home page ───────────────────────────────
+    if (activePage !== 'home' && pageHtml) {
+      const pageName = incomingPages.find((p) => p.id === activePage)?.name ?? activePage;
+      const result = await callClaudeForPageEdit(client, lastUserMessage, pageHtml, brief, pageName);
+      return Response.json({
+        ok: true,
+        reply: result.reply || `Updated the ${pageName} page.`,
+        events: result.html
+          ? [{ name: 'updatePage', args: { id: activePage, html: result.html } }]
+          : [],
+      });
+    }
+
+    // ── Standard home-page editing ─────────────────────────────────────────
     const imageResult = resolveImageRequest(lastUserMessage, site, brief);
     if (imageResult) {
       return Response.json({ ok: true, reply: imageResult.reply, events: imageResult.events });
     }
 
-    // ── Template detection (add/remove sections) ───────────────────────────
     const ops = collectAllOps(lastUserMessage, site);
-
     const allEvents: Array<{ name: string; args: Record<string, any> }> = [];
     const allReplies: string[] = [];
 
-    // If there are non-template edits, call Claude for just those
     if (ops.nonTemplateInstruction) {
       const claude = await callClaude(client, ops.nonTemplateInstruction, site, brief);
       allReplies.push(claude.reply);
-      // Claude's setSiteData goes first so template inserts run on top of the updated site
       if (claude.siteEvent) allEvents.push(claude.siteEvent);
     }
 
-    // Template events (inserts/deletes) run after Claude's site update
     allEvents.push(...ops.events);
     allReplies.push(...ops.replies);
 
-    // If nothing happened at all, return Claude's no-op reply
     if (allReplies.length === 0 && allEvents.length === 0) {
       return Response.json({ ok: true, reply: "I didn't find anything to change.", events: [] });
     }
 
-    return Response.json({
-      ok: true,
-      reply: allReplies.filter(Boolean).join(' '),
-      events: allEvents,
-    });
+    return Response.json({ ok: true, reply: allReplies.filter(Boolean).join(' '), events: allEvents });
   } catch (err: any) {
     return Response.json({ ok: false, error: err?.message ?? String(err) }, { status: 500 });
   }

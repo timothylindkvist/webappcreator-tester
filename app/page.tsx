@@ -133,6 +133,7 @@ function hrefToPageId(href: string, pages: Page[]): string | null {
   const clean = href.split('?')[0].split('#')[0].toLowerCase().trim();
   if (clean === '' || clean === '/' || clean === 'index.html') return 'home';
   const base = clean.replace(/\.html$/, '');
+  if (base === 'home') return 'home';
   const match = pages.find((p) => p.id.toLowerCase() === base || p.name.toLowerCase() === base);
   return match?.id ?? null;
 }
@@ -618,7 +619,8 @@ function PreviewPane() {
     }
   }, [isEditMode, activePageData?.id, data.theme.palette]);
 
-  // Always inject nav-intercept script into iframes (independent of edit mode)
+  // Always inject nav-intercept script into iframes. Re-runs whenever the page
+  // HTML changes (after edits) so the script survives srcDoc reloads.
   useEffect(() => {
     if (!activePageData) return;
     const iframe = iframeRef.current;
@@ -642,7 +644,7 @@ function PreviewPane() {
       iframe.addEventListener('load', injectNav, { once: true });
       return () => iframe.removeEventListener('load', injectNav);
     }
-  }, [activePageData?.id]);
+  }, [activePageData?.html]);
 
   // Handle postMessages from iframes (page updates + navigation)
   useEffect(() => {
@@ -713,6 +715,20 @@ function PreviewPane() {
             className="w-full border-none block"
             style={{ height: '100%', minHeight: '600px' }}
             sandbox="allow-same-origin allow-scripts"
+            onLoad={() => {
+              const iframe = iframeRef.current;
+              if (!iframe) return;
+              try {
+                const iwin = iframe.contentWindow as any;
+                if (!iwin || iwin.__smNavActive) return;
+                iwin.__smNavActive = true;
+                const doc = iframe.contentDocument;
+                if (!doc?.body) return;
+                const script = doc.createElement('script');
+                script.textContent = NAV_INTERCEPT_SCRIPT;
+                doc.body.appendChild(script);
+              } catch { /* sandboxed */ }
+            }}
           />
         ) : hasContent ? (
           <div

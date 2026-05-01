@@ -15,7 +15,7 @@ const SECTION_LABELS: Record<string, string> = {
 const SKIP_NAV = new Set(['hero', 'cta', 'game', 'html', 'history']);
 
 export default function NavBar() {
-  const { data } = useBuilder();
+  const { data, pages, setActivePage } = useBuilder();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const navLinks = (data.blocks ?? [])
@@ -74,6 +74,16 @@ export default function NavBar() {
               {link.label}
             </button>
           ))}
+          {pages.map((page) => (
+            <button
+              key={page.id}
+              onClick={() => { setActivePage(page.id); setMenuOpen(false); }}
+              className="text-[13px] transition-colors hover:opacity-100"
+              style={{ color: 'var(--muted)' }}
+            >
+              {page.name}
+            </button>
+          ))}
         </div>
 
         {/* CTA + hamburger */}
@@ -130,6 +140,16 @@ export default function NavBar() {
               style={{ color: 'var(--muted)' }}
             >
               {link.label}
+            </button>
+          ))}
+          {pages.map((page) => (
+            <button
+              key={page.id}
+              onClick={() => { setActivePage(page.id); setMenuOpen(false); }}
+              className="px-2 py-2.5 text-left text-[13px] transition-colors"
+              style={{ color: 'var(--muted)' }}
+            >
+              {page.name}
             </button>
           ))}
           <button

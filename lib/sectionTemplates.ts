@@ -1,13 +1,12 @@
-// Pre-built section templates to inject directly without requiring Claude to regenerate
-// the entire site JSON. Avoids max_tokens truncation for section-add requests.
+// Pre-built section templates injected directly without requiring Claude to regenerate
+// the entire site JSON — avoids max_tokens truncation for structural operations.
 
-const ADD_INTENT = /\b(add|insert|include|create|put in|show|display|make|build)\b/i;
+const ADD_INTENT = /\b(add|insert|include|create)\b/i;
 const REMOVE_INTENT = /\b(remove|delete|get rid of|take out|drop|eliminate|hide the)\b/i;
 
 type TemplateEntry = {
   pattern: RegExp;
   type: string;
-  id?: string;
   label: string;
   build: (brandName: string) => Record<string, unknown>;
   reply: string;
@@ -19,12 +18,8 @@ const TEMPLATES: TemplateEntry[] = [
     type: 'app-download',
     label: 'App Download',
     build: (brand) => ({
-      title: 'Available on iOS & Android',
+      title: 'Take it with you',
       body: `Download ${brand || 'our app'} and get started in minutes.`,
-      items: [
-        { title: 'App Store', description: 'iPhone & iPad' },
-        { title: 'Google Play', description: 'Android' },
-      ],
     }),
     reply: 'Added an App Store & Google Play download section.',
   },
@@ -52,7 +47,7 @@ const TEMPLATES: TemplateEntry[] = [
     reply: 'Added a testimonials section with 3 customer quotes. Update the quotes with real ones when ready.',
   },
   {
-    pattern: /\bteam|staff|people|meet.*(us|the.?team)|our.*(team|people|crew)/i,
+    pattern: /\bteam\b|staff\b|meet.*(us|the.?team)|our.*(team|people|crew)/i,
     type: 'team',
     label: 'Team',
     build: () => ({
@@ -93,7 +88,7 @@ const TEMPLATES: TemplateEntry[] = [
     reply: 'Added an FAQ section. Update the questions and answers to match your business.',
   },
   {
-    pattern: /\bstat|number|metric|figure|result|achievement|milestone|by.the.number/i,
+    pattern: /\bstat\b|number\b|metric\b|figure\b|achievement\b|milestone\b|by.the.number/i,
     type: 'stats',
     label: 'Stats',
     build: () => ({
@@ -123,7 +118,7 @@ const TEMPLATES: TemplateEntry[] = [
     reply: "Added an 'As featured in' logos section. Update the publication names as needed.",
   },
   {
-    pattern: /\bnewsletter|email.?sign.?up|subscribe|mailing.?list|join.*(list|email)/i,
+    pattern: /\bnewsletter\b|email.?sign.?up|subscribe\b|mailing.?list|join.*(list|email)/i,
     type: 'newsletter',
     label: 'Newsletter',
     build: (brand) => ({
@@ -134,7 +129,7 @@ const TEMPLATES: TemplateEntry[] = [
     reply: 'Added a newsletter signup section.',
   },
   {
-    pattern: /\bcontact|get.?in.?touch|reach.?(us|out)|contact.?form|inquiry/i,
+    pattern: /\bcontact\b|get.?in.?touch|reach.?(us|out)|contact.?form|inquiry/i,
     type: 'contact',
     label: 'Contact',
     build: () => ({
@@ -150,10 +145,10 @@ const TEMPLATES: TemplateEntry[] = [
   },
 ];
 
-// Also include core section types for removal detection (not all have add templates)
+// Extended keyword list used for removal detection (includes core sections that have no add template)
 const ALL_SECTION_KEYWORDS: Array<{ pattern: RegExp; type: string; label: string }> = [
   ...TEMPLATES.map((t) => ({ pattern: t.pattern, type: t.type, label: t.label })),
-  { pattern: /\bhero\b|\bbanner\b|\bheader\s*section\b/i, type: 'hero', label: 'Hero' },
+  { pattern: /\bhero\s*(section|block)?\b/i, type: 'hero', label: 'Hero' },
   { pattern: /\babout\s*(us|section)?\b/i, type: 'about', label: 'About' },
   { pattern: /\bfeatures?\s*(section|list)?\b/i, type: 'features', label: 'Features' },
   { pattern: /\bgallery\s*(section)?\b/i, type: 'gallery', label: 'Gallery' },
@@ -161,94 +156,104 @@ const ALL_SECTION_KEYWORDS: Array<{ pattern: RegExp; type: string; label: string
   { pattern: /\bcta\b|\bcall.to.action\b/i, type: 'cta', label: 'CTA' },
 ];
 
-// ─── Add ───────────────────────────────────────────────────────────────────────
+// ─── Multi-command support ─────────────────────────────────────────────────────
 
-export type SectionInsert = {
-  kind: 'insert';
-  type: string;
-  id?: string;
-  data: Record<string, unknown>;
-  reply: string;
+export type OpEvent = { name: string; args: Record<string, unknown> };
+
+export type CollectedOps = {
+  events: OpEvent[];
+  replies: string[];
+  /** The portion of the original message that templates didn't cover; pass to Claude if non-empty. */
+  nonTemplateInstruction: string;
 };
 
-export type SectionAlreadyExists = {
-  kind: 'already-exists';
-  type: string;
-  label: string;
-  reply: string;
-};
+/** Split "do X and also do Y" into ["do X", "do Y"] */
+function splitInstructions(message: string): string[] {
+  return message
+    .split(/,?\s+and(?:\s+also)?\s+|,?\s+also\s+|\s+additionally\s+|\s+plus\s+|;\s*/i)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 2);
+}
 
-export function detectSectionAdd(
-  message: string,
-  site: Record<string, any>
-): SectionInsert | SectionAlreadyExists | null {
-  if (!ADD_INTENT.test(message)) return null;
-
+/**
+ * Scan the full message for ALL template-matchable operations (adds and removes) and
+ * return them together with any leftover sub-instructions that need Claude.
+ *
+ * Call once per incoming chat message — replaces the old detectSectionAdd /
+ * detectSectionRemove single-match functions.
+ */
+export function collectAllOps(message: string, site: Record<string, any>): CollectedOps {
   const existingBlocks: Array<{ type: string; id: string }> = Array.isArray(site?.blocks)
     ? site.blocks
     : [];
-  const existingTypes = new Set(existingBlocks.map((b) => b.type));
-  const existingIds = new Set(existingBlocks.map((b) => b.id));
+
+  // Track which types/ids are "live" during this pass so a single message can't add + re-add
+  const liveTypes = new Set(existingBlocks.map((b) => b.type));
+  const liveIds = new Set(existingBlocks.map((b) => b.id));
 
   const brandName: string = site?.brand?.name || '';
 
-  for (const tmpl of TEMPLATES) {
-    if (!tmpl.pattern.test(message)) continue;
+  const events: OpEvent[] = [];
+  const replies: string[] = [];
+  const nonTemplateParts: string[] = [];
 
-    const targetId = tmpl.id ?? tmpl.type;
+  const parts = splitInstructions(message);
+  // If splitting produced nothing (e.g. very short message), treat the whole message as one part
+  const instructions = parts.length > 0 ? parts : [message];
 
-    if (existingIds.has(targetId) || (!tmpl.id && existingTypes.has(tmpl.type))) {
-      return {
-        kind: 'already-exists',
-        type: tmpl.type,
-        label: tmpl.label,
-        reply: `A ${tmpl.label} section already exists. Tell me what you'd like to change about it and I'll update it.`,
-      };
+  for (const part of instructions) {
+    let handled = false;
+
+    // ── Remove detection ────────────────────────────────────────────────
+    if (REMOVE_INTENT.test(part)) {
+      for (const { pattern, type, label } of ALL_SECTION_KEYWORDS) {
+        if (!pattern.test(part)) continue;
+        const block = existingBlocks.find((b) => b.type === type || b.id === type);
+        if (block) {
+          events.push({ name: 'deleteSection', args: { id: block.id } });
+          replies.push(`Removed the ${label} section.`);
+          liveTypes.delete(type);
+          liveIds.delete(block.id);
+        } else {
+          replies.push(`There's no ${label} section to remove.`);
+        }
+        handled = true;
+        break;
+      }
     }
 
-    return {
-      kind: 'insert',
-      type: tmpl.type,
-      id: tmpl.id,
-      data: tmpl.build(brandName),
-      reply: tmpl.reply,
-    };
-  }
+    // ── Add detection ───────────────────────────────────────────────────
+    if (!handled && ADD_INTENT.test(part)) {
+      for (const tmpl of TEMPLATES) {
+        if (!tmpl.pattern.test(part)) continue;
+        const targetId = tmpl.type; // templates always use type as id
 
-  return null;
-}
-
-// ─── Remove ────────────────────────────────────────────────────────────────────
-
-export type SectionRemove =
-  | { kind: 'remove'; id: string; label: string; reply: string }
-  | { kind: 'not-found'; label: string; reply: string };
-
-export function detectSectionRemove(
-  message: string,
-  site: Record<string, any>
-): SectionRemove | null {
-  if (!REMOVE_INTENT.test(message)) return null;
-
-  const existingBlocks: Array<{ type: string; id: string }> = Array.isArray(site?.blocks)
-    ? site.blocks
-    : [];
-
-  for (const { pattern, type, label } of ALL_SECTION_KEYWORDS) {
-    if (!pattern.test(message)) continue;
-
-    const block = existingBlocks.find((b) => b.type === type || b.id === type);
-    if (!block) {
-      return { kind: 'not-found', label, reply: `There's no ${label} section to remove.` };
+        if (liveIds.has(targetId) || liveTypes.has(tmpl.type)) {
+          replies.push(
+            `A ${tmpl.label} section already exists. Tell me what you'd like to change about it.`
+          );
+        } else {
+          events.push({
+            name: 'insertSection',
+            args: { type: tmpl.type, id: targetId, data: tmpl.build(brandName) },
+          });
+          replies.push(tmpl.reply);
+          liveTypes.add(tmpl.type);
+          liveIds.add(targetId);
+        }
+        handled = true;
+        break;
+      }
     }
 
-    return {
-      kind: 'remove',
-      id: block.id,
-      label,
-      reply: `Removed the ${label} section.`,
-    };
+    if (!handled) {
+      nonTemplateParts.push(part);
+    }
   }
 
-  return null;
+  return {
+    events,
+    replies,
+    nonTemplateInstruction: nonTemplateParts.join(' and '),
+  };
 }

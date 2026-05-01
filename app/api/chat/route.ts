@@ -2,7 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { rateLimit } from '@/lib/ratelimit';
 import { MODEL } from '@/lib/models';
 import { sanitizeSiteImages } from '@/lib/imageKeywords';
-import { detectSectionAdd, detectSectionRemove } from '@/lib/sectionTemplates';
+import { collectAllOps } from '@/lib/sectionTemplates';
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 
@@ -46,13 +46,71 @@ GALLERY — gallery.displayType controls how the gallery section looks. Valid va
 When user says "replace images with icons/illustrations/no photos/something colorful/stats/numbers" → update gallery.displayType and regenerate items[] accordingly.
 BANNED photo keywords: "fitness", "body", "workout", "gym", "muscle". Use "gym-equipment", "fitness-facility" instead.`;
 
-// Compare site objects ignoring the server-inferred `blocks` array.
 function siteEffectivelyChanged(before: Record<string, any>, after: Record<string, any>): boolean {
   const strip = (s: Record<string, any>) => {
     const { blocks: _, ...rest } = s;
     return rest;
   };
   return JSON.stringify(strip(before)) !== JSON.stringify(strip(after));
+}
+
+async function callClaude(
+  client: Anthropic,
+  instruction: string,
+  site: Record<string, any>,
+  brief: string
+): Promise<{ reply: string; siteEvent?: { name: string; args: Record<string, any> } }> {
+  const userContent = `Brief: ${brief}\n\nCurrent site:\n${JSON.stringify(site, null, 2)}\n\nChange requested: ${instruction}`;
+
+  const firstMessage = await client.messages.create({
+    model: MODEL,
+    max_tokens: 8192,
+    system: SYSTEM_PROMPT,
+    messages: [
+      { role: 'user', content: userContent },
+      { role: 'assistant', content: '{' },
+    ],
+  });
+
+  const firstText = firstMessage.content[0].type === 'text' ? firstMessage.content[0].text : '';
+  const firstParsed = ChatResponseSchema.parse(JSON.parse('{' + firstText));
+
+  let finalParsed = firstParsed;
+
+  if (firstParsed.site && !siteEffectivelyChanged(site, firstParsed.site)) {
+    const retryMessage = await client.messages.create({
+      model: MODEL,
+      max_tokens: 8192,
+      system: SYSTEM_PROMPT,
+      messages: [
+        { role: 'user', content: userContent },
+        { role: 'assistant', content: '{' + firstText },
+        {
+          role: 'user',
+          content:
+            'The site JSON you returned is identical to the input — the change was not applied to the data. You MUST modify the actual site JSON fields. Editable fields include: theme.palette (colors), hero.backgroundImage (LoremFlickr URL), hero.title/subtitle/cta, about/features/gallery/pricing/faq/cta sections. If the exact effect cannot be represented, pick the closest supported alternative and implement it.',
+        },
+        { role: 'assistant', content: '{' },
+      ],
+    });
+
+    const retryText = retryMessage.content[0].type === 'text' ? retryMessage.content[0].text : '';
+    try {
+      const retryParsed = ChatResponseSchema.parse(JSON.parse('{' + retryText));
+      if (retryParsed.site && siteEffectivelyChanged(site, retryParsed.site)) {
+        finalParsed = retryParsed;
+      }
+    } catch {
+      // Retry parse failed — keep first response
+    }
+  }
+
+  const updatedSite = finalParsed.site ? sanitizeSiteImages(finalParsed.site) : undefined;
+
+  return {
+    reply: finalParsed.reply,
+    siteEvent: updatedSite ? { name: 'setSiteData', args: updatedSite } : undefined,
+  };
 }
 
 export async function POST(req: NextRequest) {
@@ -75,94 +133,34 @@ export async function POST(req: NextRequest) {
     const brief = typeof body?.brief === 'string' ? body.brief : '';
     const lastUserMessage = [...messages].reverse().find((m: any) => m?.role === 'user')?.content || '';
 
-    const userContent = `Brief: ${brief}\n\nCurrent site:\n${JSON.stringify(site, null, 2)}\n\nChange requested: ${lastUserMessage}`;
+    // Collect all template-matched operations (adds/removes) and the leftover for Claude
+    const ops = collectAllOps(lastUserMessage, site);
 
-    // Fast path: section remove — find by type/id and delete without regenerating full JSON
-    const sectionRemove = detectSectionRemove(lastUserMessage, site);
-    if (sectionRemove) {
-      if (sectionRemove.kind === 'remove') {
-        return Response.json({
-          ok: true,
-          reply: sectionRemove.reply,
-          events: [{ name: 'deleteSection', args: { id: sectionRemove.id } }],
-        });
-      }
-      // kind === 'not-found': section doesn't exist, inform and stop
-      return Response.json({ ok: true, reply: sectionRemove.reply, events: [] });
+    const allEvents: Array<{ name: string; args: Record<string, any> }> = [];
+    const allReplies: string[] = [];
+
+    // If there are non-template edits, call Claude for just those
+    if (ops.nonTemplateInstruction) {
+      const claude = await callClaude(client, ops.nonTemplateInstruction, site, brief);
+      allReplies.push(claude.reply);
+      // Claude's setSiteData goes first so template inserts run on top of the updated site
+      if (claude.siteEvent) allEvents.push(claude.siteEvent);
     }
 
-    // Fast path: section add — use pre-built template to avoid JSON truncation
-    const sectionAdd = detectSectionAdd(lastUserMessage, site);
-    if (sectionAdd) {
-      if (sectionAdd.kind === 'already-exists') {
-        // Section exists — tell the user rather than letting Claude potentially duplicate it
-        return Response.json({ ok: true, reply: sectionAdd.reply, events: [] });
-      }
-      // kind === 'insert'
-      return Response.json({
-        ok: true,
-        reply: sectionAdd.reply,
-        events: [
-          {
-            name: 'insertSection',
-            args: { type: sectionAdd.type, id: sectionAdd.id ?? sectionAdd.type, data: sectionAdd.data },
-          },
-        ],
-      });
+    // Template events (inserts/deletes) run after Claude's site update
+    allEvents.push(...ops.events);
+    allReplies.push(...ops.replies);
+
+    // If nothing happened at all, return Claude's no-op reply (happens when Claude returns reply but no site change)
+    if (allReplies.length === 0 && allEvents.length === 0) {
+      return Response.json({ ok: true, reply: "I didn't find anything to change.", events: [] });
     }
 
-    // First attempt
-    const firstMessage = await client.messages.create({
-      model: MODEL,
-      max_tokens: 8192,
-      system: SYSTEM_PROMPT,
-      messages: [
-        { role: 'user', content: userContent },
-        { role: 'assistant', content: '{' },
-      ],
+    return Response.json({
+      ok: true,
+      reply: allReplies.filter(Boolean).join(' '),
+      events: allEvents,
     });
-
-    const firstText = firstMessage.content[0].type === 'text' ? firstMessage.content[0].text : '';
-    const firstParsed = ChatResponseSchema.parse(JSON.parse('{' + firstText));
-
-    let finalParsed = firstParsed;
-
-    // Verify: if the AI returned a site but it's identical to the input, the change wasn't applied.
-    if (firstParsed.site && !siteEffectivelyChanged(site, firstParsed.site)) {
-      const retryMessage = await client.messages.create({
-        model: MODEL,
-        max_tokens: 8192,
-        system: SYSTEM_PROMPT,
-        messages: [
-          { role: 'user', content: userContent },
-          { role: 'assistant', content: '{' + firstText },
-          {
-            role: 'user',
-            content:
-              'The site JSON you returned is identical to the input — the change was not applied to the data. You MUST modify the actual site JSON fields. Editable fields include: theme.palette (colors), hero.backgroundImage (LoremFlickr URL), hero.title/subtitle/cta, about/features/gallery/pricing/faq/cta sections. If the exact effect cannot be represented, pick the closest supported alternative and implement it.',
-          },
-          { role: 'assistant', content: '{' },
-        ],
-      });
-
-      const retryText = retryMessage.content[0].type === 'text' ? retryMessage.content[0].text : '';
-      try {
-        const retryParsed = ChatResponseSchema.parse(JSON.parse('{' + retryText));
-        // Only use retry if it actually changed something
-        if (retryParsed.site && siteEffectivelyChanged(site, retryParsed.site)) {
-          finalParsed = retryParsed;
-        }
-      } catch {
-        // Retry parse failed — fall back to first response
-      }
-    }
-
-    // Sanitize any image URLs in the updated site
-    const updatedSite = finalParsed.site ? sanitizeSiteImages(finalParsed.site) : undefined;
-
-    const events = updatedSite ? [{ name: 'setSiteData', args: updatedSite }] : [];
-
-    return Response.json({ ok: true, reply: finalParsed.reply, events });
   } catch (err: any) {
     return Response.json({ ok: false, error: err?.message ?? String(err) }, { status: 500 });
   }

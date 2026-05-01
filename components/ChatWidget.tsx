@@ -5,37 +5,13 @@ import { useBuilder } from './builder-context';
 import { streamChat } from '@/lib/aiStream';
 
 type Msg = { role: 'user' | 'assistant'; content: string };
-type CreationStep = 'idle' | 'clarifying' | 'briefing' | 'live';
-type Answers = Partial<Record<'style' | 'audience' | 'goal' | 'theme', string>>;
+type CreationStep = 'idle' | 'generating-brief' | 'briefing' | 'live';
 
 const EXAMPLES = [
   'A landing page for an artisan coffee shop in Brooklyn',
   'A sleek SaaS product page for a project management tool',
   'A portfolio site for a freelance photographer',
   'A modern gym website with pricing and class schedule',
-];
-
-const QUESTIONS = [
-  {
-    id: 'style' as const,
-    text: 'What style are you going for?',
-    options: ['Modern & minimal', 'Bold & colorful', 'Professional & corporate', 'Warm & friendly'],
-  },
-  {
-    id: 'audience' as const,
-    text: "Who's your main audience?",
-    options: ['Consumers (B2C)', 'Businesses (B2B)', 'Both'],
-  },
-  {
-    id: 'goal' as const,
-    text: "What's the main goal of this page?",
-    options: ['Get leads / inquiries', 'Sell a product', 'Showcase work', 'Share information'],
-  },
-  {
-    id: 'theme' as const,
-    text: 'Light or dark theme?',
-    options: ['Light', 'Dark', 'Auto (based on business type)'],
-  },
 ];
 
 const COLOR_PRESETS = [
@@ -45,28 +21,6 @@ const COLOR_PRESETS = [
   { name: 'Green', brand: '#16a34a', accent: '#10b981' },
   { name: 'Slate', brand: '#334155', accent: '#64748b' },
 ];
-
-function buildBriefText(description: string, answers: Answers): string {
-  const parts: string[] = [description];
-  const styleMap: Record<string, string> = {
-    'Modern & minimal': 'modern minimal design with clean whitespace',
-    'Bold & colorful': 'bold colorful design with vibrant accent colors',
-    'Professional & corporate': 'professional corporate aesthetic',
-    'Warm & friendly': 'warm friendly approachable design',
-  };
-  const goalMap: Record<string, string> = {
-    'Get leads / inquiries': 'generate leads and inquiries',
-    'Sell a product': 'drive product sales and conversions',
-    'Showcase work': 'showcase portfolio and past work',
-    'Share information': 'inform and educate visitors',
-  };
-  if (answers.style) parts.push(`Style: ${styleMap[answers.style] ?? answers.style}`);
-  if (answers.audience && answers.audience !== 'Both') parts.push(`Audience: ${answers.audience}`);
-  if (answers.goal) parts.push(`Goal: ${goalMap[answers.goal] ?? answers.goal}`);
-  if (answers.theme === 'Light') parts.push('Use a light theme with white background');
-  else if (answers.theme === 'Dark') parts.push('Use a dark theme with dark background and light text');
-  return parts.join('. ') + '.';
-}
 
 function BotIcon() {
   return (
@@ -93,68 +47,6 @@ function TypingIndicator() {
   );
 }
 
-function ClarifyingQuestions({
-  answers,
-  onAnswer,
-  onContinue,
-  onSkip,
-  busy,
-}: {
-  answers: Answers;
-  onAnswer: (id: keyof Answers, val: string) => void;
-  onContinue: () => void;
-  onSkip: () => void;
-  busy: boolean;
-}) {
-  const allAnswered = QUESTIONS.every((q) => answers[q.id]);
-  return (
-    <div className="space-y-3 py-1">
-      <p className="text-center text-[11px] text-zinc-400">
-        A few quick questions to get the best result
-      </p>
-      {QUESTIONS.map((q) => (
-        <div key={q.id} className="rounded-2xl border border-zinc-100 bg-white p-4 shadow-sm">
-          <p className="mb-2.5 text-[12px] font-semibold text-zinc-600">{q.text}</p>
-          <div className="flex flex-wrap gap-1.5">
-            {q.options.map((opt) => (
-              <button
-                key={opt}
-                disabled={busy}
-                onClick={() => onAnswer(q.id, opt)}
-                className={`rounded-full px-3 py-1.5 text-[11px] font-medium transition-all ${
-                  answers[q.id] === opt
-                    ? 'bg-[#7c3aed] text-white shadow-sm'
-                    : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
-                }`}
-              >
-                {opt}
-              </button>
-            ))}
-          </div>
-        </div>
-      ))}
-      <div className="flex gap-2 pt-1">
-        {allAnswered && (
-          <button
-            disabled={busy}
-            onClick={onContinue}
-            className="flex-1 rounded-xl bg-[#7c3aed] py-2.5 text-[13px] font-semibold text-white disabled:opacity-50"
-          >
-            Preview brief →
-          </button>
-        )}
-        <button
-          disabled={busy}
-          onClick={onSkip}
-          className="flex-1 rounded-xl border border-zinc-200 py-2.5 text-[13px] text-zinc-500 hover:bg-zinc-50 disabled:opacity-50"
-        >
-          Skip and generate
-        </button>
-      </div>
-    </div>
-  );
-}
-
 function BriefEditor({
   briefText,
   onChange,
@@ -176,12 +68,12 @@ function BriefEditor({
             <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
           </svg>
         </div>
-        <p className="text-[12px] font-semibold text-zinc-600">Your brief — edit if you'd like</p>
+        <p className="text-[12px] font-semibold text-zinc-600">Design brief — edit if you'd like</p>
       </div>
       <textarea
         value={briefText}
         onChange={(e) => onChange(e.target.value)}
-        rows={5}
+        rows={7}
         className="w-full resize-none rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-[12px] leading-relaxed text-zinc-700 outline-none transition-colors focus:border-[#7c3aed]/50 focus:bg-white"
       />
       <div className="flex gap-2">
@@ -211,8 +103,6 @@ export default function ChatWidget() {
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pendingDesc, setPendingDesc] = useState('');
-  const [answers, setAnswers] = useState<Answers>({});
   const [briefText, setBriefText] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -221,7 +111,7 @@ export default function ChatWidget() {
   const hasContent = !!(data.hero?.title);
   useEffect(() => {
     if (hasContent && step === 'idle') setStep('live');
-  }, [hasContent]);
+  }, [hasContent]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -247,22 +137,46 @@ export default function ChatWidget() {
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
   };
 
-  // Step 1 → Step 2: receive initial description
-  const startCreationFlow = (desc: string) => {
+  // Step 1: user sends description → generate brief via AI
+  const startCreationFlow = async (desc: string) => {
     setMessages([{ role: 'user', content: desc }]);
-    setPendingDesc(desc);
-    setAnswers({});
     setInput('');
     resetTextarea();
-    setStep('clarifying');
+    setBusy(true);
+    setStep('generating-brief');
+
+    try {
+      const res = await fetch('/api/brief', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description: desc }),
+      });
+      const json = await res.json();
+
+      if (json.ok && json.brief) {
+        setBriefText(json.brief);
+        setMessages((cur) => [
+          ...cur,
+          { role: 'assistant', content: "Here's a design brief based on your idea. Edit it if you'd like, then generate your site." },
+        ]);
+        setStep('briefing');
+      } else {
+        // Brief generation failed — fall back to direct generate
+        await doGenerate(desc);
+      }
+    } catch {
+      await doGenerate(desc);
+    } finally {
+      setBusy(false);
+    }
   };
 
-  // Skip from clarifying → generate directly
-  const skipAndGenerate = async () => {
-    setBusy(true);
+  // Direct generate without showing brief (fallback or on "Back" from briefing)
+  const doGenerate = async (briefOverride?: string) => {
+    const nextBrief = briefOverride ?? briefText;
+    setBrief(nextBrief);
     try {
-      setBrief(pendingDesc);
-      await rebuild(pendingDesc);
+      await rebuild(nextBrief);
       setMessages((cur) => [
         ...cur,
         { role: 'assistant', content: "Your site is ready! Tell me what you'd like to change." },
@@ -271,34 +185,16 @@ export default function ChatWidget() {
       await persistLatestSite(null);
     } catch (e: any) {
       setError(e?.message ?? String(e));
-    } finally {
-      setBusy(false);
+      setStep('idle');
     }
   };
 
-  // Step 2 → Step 3: move to brief editor
-  const proceedToBrief = () => {
-    setBriefText(buildBriefText(pendingDesc, answers));
-    setStep('briefing');
-  };
-
-  // Step 3 → live: generate from brief
+  // Step 2: user clicks Generate from brief editor
   const generateFromBrief = async () => {
     setBusy(true);
-    try {
-      setBrief(briefText);
-      await rebuild(briefText);
-      setMessages((cur) => [
-        ...cur,
-        { role: 'assistant', content: "Your site is ready! Tell me what you'd like to change." },
-      ]);
-      setStep('live');
-      await persistLatestSite(null);
-    } catch (e: any) {
-      setError(e?.message ?? String(e));
-    } finally {
-      setBusy(false);
-    }
+    setError(null);
+    await doGenerate(briefText);
+    setBusy(false);
   };
 
   // Chat after site is live
@@ -323,7 +219,7 @@ export default function ChatWidget() {
     const msg = (text ?? input).trim();
     if (!msg || busy) return;
     setError(null);
-    if (step === 'idle') { startCreationFlow(msg); return; }
+    if (step === 'idle') { await startCreationFlow(msg); return; }
     if (step === 'live') { await sendChat(msg); }
   };
 
@@ -407,15 +303,14 @@ export default function ChatWidget() {
           </div>
         ))}
 
-        {/* Clarifying questions */}
-        {step === 'clarifying' && (
-          <ClarifyingQuestions
-            answers={answers}
-            onAnswer={(id, val) => setAnswers((prev) => ({ ...prev, [id]: val }))}
-            onContinue={proceedToBrief}
-            onSkip={skipAndGenerate}
-            busy={busy}
-          />
+        {/* Brief generation spinner */}
+        {step === 'generating-brief' && busy && (
+          <div className="flex items-start gap-2">
+            <BotIcon />
+            <div className="bg-white border border-zinc-100 shadow-sm rounded-2xl rounded-tl-sm px-4 py-3 text-[13px] text-zinc-500">
+              Crafting your design brief…
+            </div>
+          </div>
         )}
 
         {/* Brief editor */}
@@ -424,12 +319,12 @@ export default function ChatWidget() {
             briefText={briefText}
             onChange={setBriefText}
             onGenerate={generateFromBrief}
-            onBack={() => setStep('clarifying')}
+            onBack={() => { setStep('idle'); setMessages([]); }}
             busy={busy}
           />
         )}
 
-        {busy && step !== 'clarifying' && step !== 'briefing' && <TypingIndicator />}
+        {busy && step === 'live' && <TypingIndicator />}
         <div ref={messagesEndRef} />
       </div>
 
@@ -441,7 +336,7 @@ export default function ChatWidget() {
         </div>
       )}
 
-      {/* Input — only shown in idle/live */}
+      {/* Input — idle and live only */}
       {(step === 'idle' || step === 'live') && (
         <div className="flex-shrink-0 p-4 pt-3 border-t border-zinc-200/70 bg-white">
           <div className="flex items-end gap-2">

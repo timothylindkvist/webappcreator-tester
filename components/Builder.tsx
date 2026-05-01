@@ -2,6 +2,7 @@
 
 import { type ComponentType } from 'react';
 import About from './sections/About';
+import AppDownload from './sections/AppDownload';
 import CTA from './sections/CTA';
 import FAQ from './sections/FAQ';
 import Features from './sections/Features';
@@ -25,6 +26,7 @@ const SECTION_COMPONENTS: Record<string, ComponentType<any>> = {
   cta: CTA,
   game: Game,
   html: Html,
+  'app-download': AppDownload,
 };
 
 const KNOWN_KEYS = new Set(['theme', 'brand', 'media', 'blocks', 'hero', 'about', 'features', 'gallery', 'testimonials', 'pricing', 'faq', 'cta', 'game', 'history', 'html']);

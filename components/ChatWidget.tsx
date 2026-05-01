@@ -7,7 +7,9 @@ import { streamChat } from '@/lib/aiStream';
 import { useCapture } from './capture-context';
 import { needsScreenshot, detectTargetPage, detectReferencedPage, captureElement, capturePageHtml } from '@/lib/screenshot';
 
-type Msg = { role: 'user' | 'assistant'; content: string };
+type TextMsg = { role: 'user' | 'assistant'; content: string };
+type ContextMsg = { role: 'context'; screenshots: Array<{ label: string; src: string }> };
+type Msg = TextMsg | ContextMsg;
 type CreationStep = 'idle' | 'clarifying' | 'generating-brief' | 'briefing' | 'live';
 type Answers = Partial<Record<'style' | 'audience' | 'goal' | 'theme' | 'gallery' | 'pages', string>>;
 
@@ -252,7 +254,12 @@ async function captureContextScreenshots(
   pages: Array<{ id: string; name: string; html: string }>,
   homeRef: React.RefObject<HTMLDivElement | null>,
   setStatus: (s: string | null) => void
-): Promise<{ current: string | null; referenced: string | null; referencedPageName: string | null }> {
+): Promise<{
+  current: string | null;
+  referenced: string | null;
+  referencedPageName: string | null;
+  referencedPageHtml: string | null;
+}> {
   setStatus('Analysing current page...');
   let current: string | null = null;
   try {
@@ -270,23 +277,24 @@ async function captureContextScreenshots(
   const referencedPageId = detectReferencedPage(message, candidatePages);
   let referenced: string | null = null;
   let referencedPageName: string | null = null;
+  let referencedPageHtml: string | null = null;
 
   if (referencedPageId && referencedPageId !== currentPage) {
     referencedPageName = allPages.find((p) => p.id === referencedPageId)?.name ?? null;
     setStatus(`Analysing ${referencedPageName} page...`);
     try {
       if (referencedPageId === 'home' && homeRef.current) {
-        // Can only capture home if it's currently rendered (user is on home)
         referenced = await captureElement(homeRef.current);
       } else {
-        const refHtml = pages.find((p) => p.id === referencedPageId)?.html;
+        const refHtml = pages.find((p) => p.id === referencedPageId)?.html ?? null;
+        referencedPageHtml = refHtml;
         if (refHtml) referenced = await capturePageHtml(refHtml);
       }
     } catch { /* fail gracefully */ }
   }
 
   setStatus(null);
-  return { current, referenced, referencedPageName };
+  return { current, referenced, referencedPageName, referencedPageHtml };
 }
 
 export default function ChatWidget() {
@@ -439,6 +447,7 @@ export default function ChatWidget() {
     let screenshot: string | undefined;
     let referencedScreenshot: string | undefined;
     let referencedPageName: string | undefined;
+    let referencedPageHtml: string | undefined;
 
     if (needsScreenshot(msg)) {
       setScreenshotStatus('Analysing pages...');
@@ -453,12 +462,26 @@ export default function ChatWidget() {
         if (result.current) screenshot = result.current;
         if (result.referenced) referencedScreenshot = result.referenced;
         if (result.referencedPageName) referencedPageName = result.referencedPageName;
+        if (result.referencedPageHtml) referencedPageHtml = result.referencedPageHtml;
+
+        // Show captured screenshots as thumbnails in the chat
+        const contextScreenshots: Array<{ label: string; src: string }> = [];
+        if (result.current) contextScreenshots.push({ label: 'Current page', src: result.current });
+        if (result.referenced && result.referencedPageName) {
+          contextScreenshots.push({ label: `${result.referencedPageName} page`, src: result.referenced });
+        }
+        if (contextScreenshots.length > 0) {
+          setMessages((cur) => [...cur, { role: 'context', screenshots: contextScreenshots }]);
+        }
       } catch { /* fail gracefully — screenshot is optional */ }
       setScreenshotStatus(null);
     }
 
+    // Context messages are display-only — exclude from API payload
+    const apiMessages = nextMessages.filter((m): m is TextMsg => m.role !== 'context');
+
     try {
-      const res = await streamChat(nextMessages, {
+      const res = await streamChat(apiMessages, {
         site: data,
         brief,
         activePage: effectiveActivePage,
@@ -467,6 +490,7 @@ export default function ChatWidget() {
         screenshot,
         referencedScreenshot,
         referencedPageName,
+        referencedPageHtml,
       });
       setMessages((cur) => [...cur, { role: 'assistant', content: res.reply || 'Done.' }]);
       // Switch view to the edited page so the user sees the result
@@ -595,23 +619,47 @@ export default function ChatWidget() {
         )}
 
         {/* Chat history */}
-        {messages.map((message, index) => (
-          <div
-            key={index}
-            className={`flex items-start gap-2 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}
-          >
-            {message.role === 'assistant' && <BotIcon />}
+        {messages.map((message, index) => {
+          if (message.role === 'context') {
+            return (
+              <div key={index} className="flex items-start gap-2">
+                <BotIcon />
+                <div className="rounded-2xl rounded-tl-sm bg-white border border-zinc-100 shadow-sm p-3 space-y-2 max-w-[88%]">
+                  <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">Pages analysed</p>
+                  <div className="flex gap-2 flex-wrap">
+                    {message.screenshots.map((img) => (
+                      <div key={img.label} className="text-center">
+                        <img
+                          src={img.src}
+                          alt={img.label}
+                          className="w-28 h-[68px] object-cover object-top rounded-lg border border-zinc-200"
+                        />
+                        <p className="text-[10px] text-zinc-400 mt-1">{img.label}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            );
+          }
+          return (
             <div
-              className={
-                message.role === 'user'
-                  ? 'bg-[#ede9fe] text-[#3b0764] rounded-2xl rounded-tr-sm px-3.5 py-2.5 text-[13px] max-w-[88%] leading-relaxed'
-                  : 'bg-white text-zinc-700 rounded-2xl rounded-tl-sm px-3.5 py-2.5 text-[13px] max-w-[88%] leading-relaxed border border-zinc-100 shadow-sm'
-              }
+              key={index}
+              className={`flex items-start gap-2 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}
             >
-              {message.content}
+              {message.role === 'assistant' && <BotIcon />}
+              <div
+                className={
+                  message.role === 'user'
+                    ? 'bg-[#ede9fe] text-[#3b0764] rounded-2xl rounded-tr-sm px-3.5 py-2.5 text-[13px] max-w-[88%] leading-relaxed'
+                    : 'bg-white text-zinc-700 rounded-2xl rounded-tl-sm px-3.5 py-2.5 text-[13px] max-w-[88%] leading-relaxed border border-zinc-100 shadow-sm'
+                }
+              >
+                {message.content}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
 
         {/* Clarifying questions */}
         {step === 'clarifying' && (

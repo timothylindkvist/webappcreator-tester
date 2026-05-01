@@ -44,6 +44,8 @@ IMPORTANT — preserve emotional tone: if the existing site serves a sensitive a
 
 SCREENSHOTS — when screenshots are provided: Screenshot 1 is the page being edited; Screenshot 2 (if present) is the reference page the user wants to match. Use both images to understand the visual differences and apply the correct styles accurately.
 
+REFERENCE PAGE HTML — when a reference page HTML is provided alongside a "make consistent" or "match" request, extract these from the reference page and apply them to the site JSON: (1) color values used in backgrounds, text, and borders → update theme.palette; (2) card/section styles (border-radius, shadows, padding patterns) → match via gallery.displayType and section data; (3) typographic hierarchy (heading sizes, weights) → reflect in content emphasis; (4) section presence/order → add missing sections or reorder blocks. Layout that is structurally fixed in React components cannot be changed, but colors, spacing feel, and content organisation can always be aligned.
+
 GALLERY — gallery.displayType controls how the gallery section looks. Valid values:
 - "photos": photo grid using images[] with Unsplash featured URLs (https://source.unsplash.com/featured/800x600/?keyword1,keyword2)
 - "icon-cards": emoji icons on colored cards; items[]: [{ icon, title, description, color }]
@@ -126,6 +128,11 @@ function buildImageBlocks(
   return blocks;
 }
 
+// Removes <script> tags from HTML before sending as reference context.
+function stripScripts(html: string): string {
+  return html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+}
+
 // ── Page-add detection ────────────────────────────────────────────────────────
 
 const ADD_PAGE_PATTERN =
@@ -152,9 +159,14 @@ async function callClaudeForPageEdit(
   pageHtml: string,
   brief: string,
   pageName: string,
-  imageBlocks?: Array<Record<string, unknown>>
+  imageBlocks?: Array<Record<string, unknown>>,
+  referencedPageHtml?: string,
+  referencedPageName?: string
 ): Promise<{ reply: string; html?: string }> {
-  const textContent = `Brief: ${brief}\n\nCurrent "${pageName}" page HTML:\n${pageHtml}\n\nChange requested: ${instruction}`;
+  const refBlock = referencedPageHtml
+    ? `\n\nReference page ("${referencedPageName || 'reference'}" page) HTML — use its colors, card styles, and layout patterns:\n${stripScripts(referencedPageHtml)}`
+    : '';
+  const textContent = `Brief: ${brief}\n\nCurrent "${pageName}" page HTML:\n${pageHtml}${refBlock}\n\nChange requested: ${instruction}`;
   const userContent: any = imageBlocks?.length
     ? [...imageBlocks, { type: 'text', text: textContent }]
     : textContent;
@@ -211,9 +223,14 @@ async function callClaude(
   instruction: string,
   site: Record<string, any>,
   brief: string,
-  imageBlocks?: Array<Record<string, unknown>>
+  imageBlocks?: Array<Record<string, unknown>>,
+  referencedPageHtml?: string,
+  referencedPageName?: string
 ): Promise<{ reply: string; siteEvent?: { name: string; args: Record<string, any> } }> {
-  const textContent = `Brief: ${brief}\n\nCurrent site:\n${JSON.stringify(site, null, 2)}\n\nChange requested: ${instruction}`;
+  const refBlock = referencedPageHtml
+    ? `\n\nReference page ("${referencedPageName || 'reference'}" page) HTML — extract its color palette, card styles, typography weights, and section structure to apply to the site JSON:\n${stripScripts(referencedPageHtml)}`
+    : '';
+  const textContent = `Brief: ${brief}\n\nCurrent site:\n${JSON.stringify(site, null, 2)}${refBlock}\n\nChange requested: ${instruction}`;
   const userContent: any = imageBlocks?.length
     ? [...imageBlocks, { type: 'text', text: textContent }]
     : textContent;
@@ -289,6 +306,7 @@ export async function POST(req: NextRequest) {
     const screenshot: string | undefined = typeof body?.screenshot === 'string' ? body.screenshot : undefined;
     const referencedScreenshot: string | undefined = typeof body?.referencedScreenshot === 'string' ? body.referencedScreenshot : undefined;
     const referencedPageName: string | undefined = typeof body?.referencedPageName === 'string' ? body.referencedPageName : undefined;
+    const referencedPageHtml: string | undefined = typeof body?.referencedPageHtml === 'string' ? body.referencedPageHtml : undefined;
     const imageBlocks = buildImageBlocks(screenshot, referencedScreenshot, referencedPageName);
     const lastUserMessage = [...messages].reverse().find((m: any) => m?.role === 'user')?.content || '';
 
@@ -316,7 +334,7 @@ export async function POST(req: NextRequest) {
     // ── Fast path 2: editing a non-home page ───────────────────────────────
     if (activePage !== 'home' && pageHtml) {
       const pageName = incomingPages.find((p) => p.id === activePage)?.name ?? activePage;
-      const result = await callClaudeForPageEdit(client, lastUserMessage, pageHtml, brief, pageName, imageBlocks.length ? imageBlocks : undefined);
+      const result = await callClaudeForPageEdit(client, lastUserMessage, pageHtml, brief, pageName, imageBlocks.length ? imageBlocks : undefined, referencedPageHtml, referencedPageName);
       return Response.json({
         ok: true,
         reply: result.reply || `Updated the ${pageName} page.`,
@@ -337,7 +355,7 @@ export async function POST(req: NextRequest) {
     const allReplies: string[] = [];
 
     if (ops.nonTemplateInstruction) {
-      const claude = await callClaude(client, ops.nonTemplateInstruction, site, brief, imageBlocks.length ? imageBlocks : undefined);
+      const claude = await callClaude(client, ops.nonTemplateInstruction, site, brief, imageBlocks.length ? imageBlocks : undefined, referencedPageHtml, referencedPageName);
       allReplies.push(claude.reply);
       if (claude.siteEvent) allEvents.push(claude.siteEvent);
     }

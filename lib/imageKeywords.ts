@@ -59,88 +59,240 @@ export function sanitizeSiteImages<T extends Record<string, any>>(site: T): T {
   return s as T;
 }
 
-// ── Professional image keyword inference ──────────────────────────────────────
+// ── Dynamic visual keyword extraction ────────────────────────────────────────
 
-// Industry → specific, safe LoremFlickr keyword pairs that reliably return
-// relevant, professional results.
-const INDUSTRY_IMAGE_KEYWORDS: Record<string, string[]> = {
-  finance: [
-    'financial-district',
-    'boardroom',
-    'trading-floor',
-    'document-signing',
-    'city-skyline',
-    'conference-room',
-  ],
-  tech: ['technology', 'computer', 'software', 'startup-office', 'data-center', 'workspace'],
-  healthcare: ['medical-office', 'clinic', 'healthcare', 'hospital-lobby', 'pharmacy'],
-  food: ['food', 'restaurant', 'coffee', 'cuisine', 'kitchen', 'espresso'],
-  fitness: [
-    'gym-equipment',
-    'fitness-facility',
-    'athletic-training',
-    'sports-facility',
-    'weight-room',
-  ],
-  creative: ['photography', 'studio', 'creative-workspace', 'design-office', 'art'],
-  retail: ['retail', 'shopping', 'store-interior', 'product', 'fashion'],
-  education: ['university', 'classroom', 'campus', 'library', 'students'],
+const STOP_WORDS = new Set([
+  'a', 'an', 'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of',
+  'with', 'by', 'from', 'as', 'is', 'was', 'are', 'were', 'be', 'been', 'being',
+  'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should',
+  'may', 'might', 'that', 'this', 'these', 'those', 'it', 'its', 'we', 'our',
+  'you', 'your', 'they', 'their', 'my', 'i', 'me', 'he', 'she', 'his', 'her',
+  'us', 'them', 'which', 'who', 'what', 'when', 'where', 'how', 'why', 'all',
+  'each', 'every', 'both', 'few', 'more', 'most', 'other', 'some', 'such',
+  'than', 'then', 'too', 'very', 's', 't', 'can', 'just', 'into', 'up', 'out',
+  'about', 'help', 'make', 'new', 'also', 'use', 'get', 'work', 'need', 'way',
+]);
+
+// Abstract business words that produce useless stock photo results
+const ABSTRACT_TERMS = new Set([
+  'platform', 'solution', 'service', 'business', 'company', 'management',
+  'system', 'process', 'strategy', 'approach', 'experience', 'growth',
+  'success', 'improve', 'enhance', 'optimize', 'increase', 'develop', 'create',
+  'provide', 'offer', 'deliver', 'built', 'designed', 'tailored', 'world',
+  'leading', 'global', 'premier', 'best', 'top', 'trusted', 'reliable',
+  'innovative', 'modern', 'unique', 'brand', 'client', 'customer', 'user',
+  'team', 'based', 'focused', 'driven', 'oriented',
+]);
+
+// Maps business/domain terms to specific, photogenic Unsplash search keywords
+const DOMAIN_TO_VISUAL: Record<string, string> = {
+  // Finance / investment
+  investment: 'financial-district',
+  investing: 'financial-district',
+  investor: 'boardroom',
+  portfolio: 'document-signing',
+  trading: 'trading-floor',
+  equity: 'boardroom',
+  hedge: 'trading-floor',
+  fund: 'conference-room',
+  securities: 'trading-floor',
+  wealth: 'city-skyline',
+  capital: 'financial-district',
+  debt: 'document-signing',
+  bonds: 'trading-floor',
+  credit: 'document-signing',
+  finance: 'financial-district',
+  financial: 'financial-district',
+  accounting: 'document-signing',
+  accounting_firm: 'document-signing',
+  insurance: 'document-signing',
+  mortgage: 'document-signing',
+  loan: 'document-signing',
+  bank: 'financial-district',
+  banking: 'financial-district',
+
+  // Healthcare / medical
+  medical: 'medical-office',
+  clinic: 'clinic',
+  hospital: 'hospital-lobby',
+  doctor: 'medical-office',
+  patient: 'clinic',
+  health: 'healthcare',
+  healthcare: 'healthcare',
+  wellness: 'healthcare',
+  pharma: 'pharmacy',
+  pharmacy: 'pharmacy',
+  dental: 'dental-office',
+  dentist: 'dental-office',
+  therapy: 'clinic',
+  therapist: 'clinic',
+  nurse: 'medical-office',
+  surgeon: 'hospital-lobby',
+
+  // Tech / software
+  software: 'computer',
+  saas: 'startup-office',
+  app: 'technology',
+  application: 'workspace',
+  dashboard: 'workspace',
+  startup: 'startup-office',
+  data: 'data-center',
+  ai: 'technology',
+  api: 'computer',
+  code: 'computer',
+  coding: 'workspace',
+  developer: 'workspace',
+  tech: 'technology',
+  technology: 'technology',
+  cyber: 'data-center',
+  cloud: 'data-center',
+  programming: 'workspace',
+
+  // Food / hospitality
+  restaurant: 'restaurant',
+  food: 'food',
+  cafe: 'coffee',
+  coffee: 'espresso',
+  cuisine: 'cuisine',
+  dining: 'restaurant',
+  bakery: 'bakery',
+  catering: 'kitchen',
+  chef: 'kitchen',
+  pizza: 'pizza',
+  sushi: 'sushi',
+  italian: 'italian-food',
+  menu: 'restaurant',
+  bar: 'cocktail',
+  cocktail: 'cocktail',
+
+  // Fitness / sport
+  gym: 'gym-equipment',
+  fitness: 'fitness-facility',
+  sport: 'sports-facility',
+  sports: 'sports-facility',
+  athletic: 'athletic-training',
+  crossfit: 'gym-equipment',
+  pilates: 'yoga-class',
+  yoga: 'yoga-class',
+  running: 'running',
+  cycling: 'cycling',
+  swimming: 'swimming-pool',
+  personal_training: 'athletic-training',
+
+  // Creative / media
+  photography: 'photography',
+  photo: 'photography',
+  design: 'creative-workspace',
+  creative: 'studio',
+  agency: 'design-office',
+  art: 'art',
+  artist: 'art-studio',
+  fashion: 'fashion',
+  model: 'fashion',
+  film: 'film',
+  video: 'studio',
+  music: 'recording-studio',
+  podcast: 'recording-studio',
+
+  // Retail / ecommerce
+  shop: 'store-interior',
+  store: 'store-interior',
+  retail: 'retail',
+  ecommerce: 'product',
+  boutique: 'boutique',
+  jewelry: 'jewelry',
+  clothing: 'clothing',
+
+  // Education
+  school: 'classroom',
+  university: 'university',
+  education: 'classroom',
+  learning: 'library',
+  course: 'campus',
+  academy: 'campus',
+  college: 'university',
+  tutoring: 'classroom',
+
+  // Real estate
+  real_estate: 'architecture',
+  property: 'architecture',
+  home: 'interior-design',
+  house: 'architecture',
+  apartment: 'interior-design',
+  construction: 'construction',
+  architecture: 'architecture',
+
+  // Legal
+  law: 'document-signing',
+  legal: 'document-signing',
+  attorney: 'boardroom',
+  lawyer: 'boardroom',
+  litigation: 'boardroom',
+
+  // Travel / hospitality
+  hotel: 'hotel-lobby',
+  travel: 'travel',
+  tourism: 'travel',
+  resort: 'resort',
+  vacation: 'travel',
 };
 
 /**
- * Infer the best image keyword set from a site brief and brand name.
- * Returns an array of safe LoremFlickr keywords ordered by relevance.
+ * Dynamically extract visual/photogenic keywords from a site description and brand name.
+ * Returns an ordered array of safe Unsplash search keywords.
  */
-export function inferIndustryKeywords(brief: string, brand: string): string[] {
-  const text = (brief + ' ' + brand).toLowerCase();
+export function extractVisualKeywords(description: string, brand: string): string[] {
+  const text = (description + ' ' + brand).toLowerCase();
+  const found: string[] = [];
+  const seen = new Set<string>();
 
-  if (
-    /\b(invest|debt|fund|equity|asset|capital|portfolio|hedge|trading|securities|financial|private equity|wealth management|credit|bonds?|fixed income)\b/.test(
-      text
-    )
-  ) {
-    return INDUSTRY_IMAGE_KEYWORDS.finance;
-  }
-  if (
-    /\b(medical|clinic|doctor|hospital|patient|wellness|pharma|healthcare|dental|therapy|surgeon|nurse)\b/.test(
-      text
-    )
-  ) {
-    return INDUSTRY_IMAGE_KEYWORDS.healthcare;
-  }
-  if (
-    /\b(restaurant|food|cafe|coffee|cuisine|dining|bakery|catering|chef|kitchen|bistro|eatery)\b/.test(
-      text
-    )
-  ) {
-    return INDUSTRY_IMAGE_KEYWORDS.food;
-  }
-  if (/\b(gym|fitness|sport|athletic|training facility|crossfit|pilates)\b/.test(text)) {
-    return INDUSTRY_IMAGE_KEYWORDS.fitness;
-  }
-  if (
-    /\b(photographer|photography|portfolio|creative agency|art studio|gallery|fashion|design studio)\b/.test(
-      text
-    )
-  ) {
-    return INDUSTRY_IMAGE_KEYWORDS.creative;
-  }
-  if (/\b(shop|store|retail|ecommerce|fashion|boutique|brand)\b/.test(text)) {
-    return INDUSTRY_IMAGE_KEYWORDS.retail;
-  }
-  if (/\b(school|university|education|learning|course|academy|college|campus)\b/.test(text)) {
-    return INDUSTRY_IMAGE_KEYWORDS.education;
-  }
-  if (/\b(saas|software|platform|api|dashboard|startup|tech company|app)\b/.test(text)) {
-    return INDUSTRY_IMAGE_KEYWORDS.tech;
+  // First pass: scan for multi-word or exact domain term matches
+  for (const [domain, visual] of Object.entries(DOMAIN_TO_VISUAL)) {
+    const term = domain.replace(/_/g, '[ -]?');
+    if (new RegExp(`\\b${term}\\b`).test(text) && !seen.has(visual)) {
+      seen.add(visual);
+      found.push(visual);
+      if (found.length >= 6) break;
+    }
   }
 
-  // Default: generic professional office photography
-  return ['professional-office', 'business-meeting', 'modern-workspace', 'team', 'conference'];
+  if (found.length >= 3) return found.slice(0, 6);
+
+  // Second pass: tokenize and try individual words
+  const tokens = text
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter((w) => w.length > 3 && !STOP_WORDS.has(w) && !ABSTRACT_TERMS.has(w));
+
+  for (const token of tokens) {
+    const visual = DOMAIN_TO_VISUAL[token];
+    if (visual && !seen.has(visual)) {
+      seen.add(visual);
+      found.push(visual);
+    } else if (!visual && !seen.has(token) && token.length > 4) {
+      seen.add(token);
+      found.push(token);
+    }
+    if (found.length >= 6) break;
+  }
+
+  if (found.length === 0) {
+    return ['professional-office', 'business-meeting', 'modern-workspace', 'team', 'conference'];
+  }
+
+  return found.slice(0, 6);
 }
 
 /**
- * Build an array of LoremFlickr image objects using the given keywords.
+ * @deprecated Use extractVisualKeywords for dynamic extraction.
+ * Kept for backwards compatibility — infers industry from brief using pattern matching.
+ */
+export function inferIndustryKeywords(brief: string, brand: string): string[] {
+  return extractVisualKeywords(brief, brand);
+}
+
+/**
+ * Build an array of Unsplash image objects using the given keywords.
  * Each image uses a pair of complementary keywords for better results.
  */
 export function buildProfessionalImageUrls(
@@ -150,8 +302,7 @@ export function buildProfessionalImageUrls(
   return Array.from({ length: count }, (_, i) => {
     const kw1 = keywords[i % keywords.length];
     const kw2 = keywords[(i + 1) % keywords.length];
-    // Use lock values starting at 100 to avoid collision with auto-generated images
-    const src = `https://loremflickr.com/800/600/${kw1},${kw2}?lock=${100 + i}`;
+    const src = `https://source.unsplash.com/800x600/?${kw1},${kw2}&sig=${i + 1}`;
     return { src, alt: kw1.replace(/-/g, ' '), caption: '' };
   });
 }

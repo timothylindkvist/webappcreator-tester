@@ -237,6 +237,28 @@ function mergeSite(cur: SiteData, incoming: Partial<SiteData>): SiteData {
     out.media = { hero: { url: incoming.hero?.backgroundImage || '' } };
   }
 
+  // Sync out.blocks so inferBlocks (which prefers block.data) doesn't revert freshly merged data.
+  if (Array.isArray((out as any).blocks)) {
+    const changedKeys = new Set<string>();
+    for (const [key, value] of Object.entries(incoming || {})) {
+      if (key !== 'blocks' && key !== 'theme' && value !== undefined) changedKeys.add(key);
+    }
+    if ((incoming as Partial<SiteData>)?.media?.hero?.url !== undefined) changedKeys.add('hero');
+    if ((incoming as any)?.hero?.backgroundImage !== undefined) changedKeys.add('hero');
+
+    if (changedKeys.size > 0) {
+      (out as any).blocks = (out as any).blocks.map((block: Block) => {
+        if (!block?.type) return block;
+        if (!changedKeys.has(block.type) && !changedKeys.has(block.id ?? '')) return block;
+        const freshData = (out as Record<string, unknown>)[block.type];
+        if (freshData !== undefined && typeof freshData === 'object' && !Array.isArray(freshData)) {
+          return { ...block, data: clone(freshData) };
+        }
+        return block;
+      });
+    }
+  }
+
   return syncRootFromBlocks(out as SiteData);
 }
 

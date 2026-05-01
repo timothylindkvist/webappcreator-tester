@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { rateLimit } from '@/lib/ratelimit';
 import { MODEL } from '@/lib/models';
-import { sanitizeSiteImages, inferIndustryKeywords, buildProfessionalImageUrls } from '@/lib/imageKeywords';
+import { sanitizeSiteImages, extractVisualKeywords, buildProfessionalImageUrls } from '@/lib/imageKeywords';
 import { collectAllOps } from '@/lib/sectionTemplates';
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
@@ -37,7 +37,7 @@ When the user says:
 IMPORTANT — preserve emotional tone: if the existing site serves a sensitive audience (grief, death, estate planning, serious illness, mental health, crisis, divorce, elder care), maintain that register throughout all edits. Do not introduce aggressive CTAs, exclamation marks, neon colors, or urgency language when editing these sites.
 
 GALLERY — gallery.displayType controls how the gallery section looks. Valid values:
-- "photos": photo grid using images[] with LoremFlickr URLs (https://loremflickr.com/800/600/keyword?lock=N)
+- "photos": photo grid using images[] with Unsplash Source URLs (https://source.unsplash.com/800x600/?keyword1,keyword2&sig=N)
 - "icon-cards": emoji icons on colored cards; items[]: [{ icon, title, description, color }]
 - "feature-cards": stat/number cards; items[]: [{ stat, title, subtitle }]
 - "color-blocks": colorful gradient blocks; items[]: [{ gradient, title }]
@@ -45,14 +45,14 @@ GALLERY — gallery.displayType controls how the gallery section looks. Valid va
 
 When user says "replace images with icons/illustrations/no photos/something colorful/stats/numbers" → update gallery.displayType and regenerate items[] accordingly.
 
-IMAGE KEYWORDS — when updating gallery images, always use SPECIFIC, BUSINESS-APPROPRIATE keywords:
-- Finance/investment sites → "financial-district", "boardroom", "trading-floor", "document-signing", "city-skyline"
-- Tech/SaaS → "technology", "computer", "software", "startup-office", "workspace"
-- Healthcare → "medical-office", "clinic", "healthcare", "hospital-lobby"
-- Food/restaurant → "food", "restaurant", "coffee", "cuisine", "kitchen"
+GALLERY IMAGES — always use Unsplash Source URLs: https://source.unsplash.com/800x600/?keyword1,keyword2&sig=N
+Use SPECIFIC, BUSINESS-APPROPRIATE keywords (not generic "business" or "office"):
+- Finance/investment → "financial-district", "boardroom", "trading-floor", "document-signing", "city-skyline"
+- Tech/SaaS → "technology", "computer", "startup-office", "data-center", "workspace"
+- Healthcare → "medical-office", "clinic", "healthcare", "hospital-lobby", "pharmacy"
+- Food/restaurant → "food", "restaurant", "espresso", "cuisine", "kitchen"
 - Fitness → "gym-equipment", "fitness-facility", "athletic-training", "sports-facility"
-NEVER use generic keywords like "business" or "office" alone for finance sites.
-BANNED photo keywords: "fitness", "body", "workout", "gym", "muscle". Use "gym-equipment", "fitness-facility" instead.`;
+BANNED keywords: "fitness", "body", "workout", "gym", "muscle" — use safe alternatives above.`;
 
 // ── Professional images fast-path ─────────────────────────────────────────────
 
@@ -67,7 +67,7 @@ function resolveImageRequest(
   if (!PROFESSIONAL_IMAGES_INTENT.test(message)) return null;
 
   const brand: string = site?.brand?.name ?? '';
-  const keywords = inferIndustryKeywords(brief, brand);
+  const keywords = extractVisualKeywords(brief, brand);
   const images = buildProfessionalImageUrls(keywords, 6);
 
   return {

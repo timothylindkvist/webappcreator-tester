@@ -134,7 +134,7 @@ Use exactly this structure:
   "hero": { "title": "string", "subtitle": "string", "cta": { "label": "string" }, "pattern": "dark-grid" },
   "about": { "heading": "string", "body": "string", "bullets": ["string"] },
   "features": { "title": "string", "items": [{ "title": "string", "description": "string" }] },
-  "gallery": { "title": "string", "displayType": "photos|icon-cards|feature-cards|color-blocks|screenshot-mockups", "images": [{ "src": "https://loremflickr.com/800/600/keyword1?lock=N", "caption": "string", "alt": "string" }], "items": [] },
+  "gallery": { "title": "string", "displayType": "photos|icon-cards|feature-cards|color-blocks|screenshot-mockups", "images": [{ "src": "https://source.unsplash.com/800x600/?keyword1,keyword2&sig=N", "caption": "string", "alt": "string" }], "items": [] },
   "pricing": { "title": "string", "plans": [{ "name": "string", "price": "string", "features": ["string"] }] },
   "faq": { "title": "string", "items": [{ "q": "string", "a": "string" }] },
   "cta": { "title": "string", "subtitle": "string", "button": { "label": "string" } }
@@ -183,13 +183,13 @@ GALLERY DISPLAY TYPE — set gallery.displayType based on the business:
 - "color-blocks": creative agencies, design studios, art brands, fashion — purely decorative colorful grid. Use items[]: [{ "gradient": "linear-gradient(135deg, #color1, #color2)", "title": "string" }]
 - "screenshot-mockups": software products, apps, SaaS tools where showing the interface matters. Use items[]: [{ "title": "Dashboard view", "accentColor": "#hex", "url": "app.example.com" }]
 
-For "photos" displayType, use images[] with LoremFlickr URLs:
-https://loremflickr.com/800/600/keyword?lock=N (different N per image)
+For "photos" displayType, use images[] with Unsplash Source URLs:
+https://source.unsplash.com/800x600/?keyword1,keyword2&sig=N (different N per image, start at 1)
 Keywords MUST match the actual business:
-- pizza restaurant → "pizza?lock=1", "restaurant?lock=2", "pasta?lock=3", "italian?lock=4"
-- yoga studio → "yoga-class?lock=1", "yoga,mat?lock=2", "meditation?lock=3", "wellness?lock=4"
-- gym/fitness → "gym-equipment?lock=1", "weightlifting?lock=2", "fitness-facility?lock=3", "athletic-training?lock=4"
-- coffee shop → "espresso?lock=1", "latte?lock=2", "cafe,interior?lock=3", "coffee,beans?lock=4"
+- pizza restaurant → "pizza,restaurant&sig=1", "pasta,kitchen&sig=2", "italian,food&sig=3", "cuisine,dining&sig=4"
+- yoga studio → "yoga-class,wellness&sig=1", "meditation,studio&sig=2", "pilates,class&sig=3"
+- gym/fitness → "gym-equipment,weights&sig=1", "fitness-facility,training&sig=2", "athletic-training,sports&sig=3"
+- coffee shop → "espresso,coffee&sig=1", "latte,cafe&sig=2", "coffee,interior&sig=3"
 BANNED keywords: "fitness", "body", "workout", "gym", "muscle", "exercise" — use safe alternatives above.`,
       messages: [
         { role: 'user', content: brief },

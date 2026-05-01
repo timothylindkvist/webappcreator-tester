@@ -435,8 +435,9 @@ export default function ChatWidget() {
 
       {/* Error */}
       {error && (
-        <div className="mx-4 mb-2 px-3 py-2.5 rounded-xl bg-red-50 border border-red-200 text-[12px] text-red-600 flex-shrink-0">
-          Something went wrong — please try again.
+        <div className="mx-4 mb-2 px-3 py-2.5 rounded-xl bg-red-50 border border-red-200 text-[12px] text-red-700 flex-shrink-0 space-y-1">
+          <p className="font-medium">Something went wrong — please try again.</p>
+          <p className="text-red-500 font-mono text-[10px] break-all leading-relaxed">{error}</p>
         </div>
       )}
 

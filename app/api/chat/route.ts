@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { rateLimit } from '@/lib/ratelimit';
 import { MODEL } from '@/lib/models';
 import { sanitizeSiteImages } from '@/lib/imageKeywords';
+import { detectSectionAdd } from '@/lib/sectionTemplates';
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 
@@ -76,10 +77,24 @@ export async function POST(req: NextRequest) {
 
     const userContent = `Brief: ${brief}\n\nCurrent site:\n${JSON.stringify(site, null, 2)}\n\nChange requested: ${lastUserMessage}`;
 
+    // Fast path: section-add requests use pre-built templates to avoid JSON truncation
+    const sectionInsert = detectSectionAdd(lastUserMessage, site);
+    if (sectionInsert) {
+      const event = {
+        name: 'insertSection',
+        args: {
+          type: sectionInsert.type,
+          id: sectionInsert.id ?? sectionInsert.type,
+          data: sectionInsert.data,
+        },
+      };
+      return Response.json({ ok: true, reply: sectionInsert.reply, events: [event] });
+    }
+
     // First attempt
     const firstMessage = await client.messages.create({
       model: MODEL,
-      max_tokens: 4096,
+      max_tokens: 8192,
       system: SYSTEM_PROMPT,
       messages: [
         { role: 'user', content: userContent },
@@ -96,7 +111,7 @@ export async function POST(req: NextRequest) {
     if (firstParsed.site && !siteEffectivelyChanged(site, firstParsed.site)) {
       const retryMessage = await client.messages.create({
         model: MODEL,
-        max_tokens: 4096,
+        max_tokens: 8192,
         system: SYSTEM_PROMPT,
         messages: [
           { role: 'user', content: userContent },

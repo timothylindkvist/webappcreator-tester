@@ -5,7 +5,7 @@ import { useBuilder } from './builder-context';
 import { useEditMode } from './EditModeContext';
 import { streamChat } from '@/lib/aiStream';
 import { useCapture } from './capture-context';
-import { needsScreenshot, detectReferencedPage, captureElement } from '@/lib/screenshot';
+import { needsScreenshot, detectReferencedPage, captureElement, capturePageHtml } from '@/lib/screenshot';
 
 type Msg = { role: 'user' | 'assistant'; content: string };
 type CreationStep = 'idle' | 'clarifying' | 'generating-brief' | 'briefing' | 'live';
@@ -243,13 +243,14 @@ function BriefEditor({
   );
 }
 
+// Pages passed here are the full Page objects (including html field).
+// We never navigate away from the current page — non-home pages are rendered
+// in a temporary off-screen iframe so there is no visible flicker.
 async function captureContextScreenshots(
   message: string,
   currentPage: string,
-  pages: Array<{ id: string; name: string }>,
+  pages: Array<{ id: string; name: string; html: string }>,
   homeRef: React.RefObject<HTMLDivElement | null>,
-  iframeRef: React.RefObject<HTMLIFrameElement | null>,
-  setActivePage: (id: string) => void,
   setStatus: (s: string | null) => void
 ): Promise<{ current: string | null; referenced: string | null; referencedPageName: string | null }> {
   setStatus('Analysing current page...');
@@ -257,8 +258,9 @@ async function captureContextScreenshots(
   try {
     if (currentPage === 'home' && homeRef.current) {
       current = await captureElement(homeRef.current);
-    } else if (iframeRef.current?.contentDocument?.body) {
-      current = await captureElement(iframeRef.current.contentDocument.body);
+    } else {
+      const pageHtml = pages.find((p) => p.id === currentPage)?.html;
+      if (pageHtml) current = await capturePageHtml(pageHtml);
     }
   } catch { /* fail gracefully */ }
 
@@ -269,22 +271,16 @@ async function captureContextScreenshots(
 
   if (referencedPageId && referencedPageId !== currentPage) {
     referencedPageName = allPages.find((p) => p.id === referencedPageId)?.name ?? null;
-    setStatus(`Navigating to ${referencedPageName} page...`);
-    setActivePage(referencedPageId);
-    await new Promise((r) => setTimeout(r, 800));
-
     setStatus(`Analysing ${referencedPageName} page...`);
     try {
       if (referencedPageId === 'home' && homeRef.current) {
+        // Can only capture home if it's currently rendered (user is on home)
         referenced = await captureElement(homeRef.current);
-      } else if (iframeRef.current?.contentDocument?.body) {
-        referenced = await captureElement(iframeRef.current.contentDocument.body);
+      } else {
+        const refHtml = pages.find((p) => p.id === referencedPageId)?.html;
+        if (refHtml) referenced = await capturePageHtml(refHtml);
       }
     } catch { /* fail gracefully */ }
-
-    setStatus('Switching back...');
-    setActivePage(currentPage);
-    await new Promise((r) => setTimeout(r, 400));
   }
 
   setStatus(null);
@@ -294,7 +290,7 @@ async function captureContextScreenshots(
 export default function ChatWidget() {
   const { data, brief, setBrief, rebuild, siteId, setSiteId, applyTheme, pages, activePage, setActivePage } = useBuilder();
   const { isEditMode, toggleEditMode, hasChanges, reapplyOverrides } = useEditMode();
-  const { homeRef, iframeRef } = useCapture();
+  const { homeRef } = useCapture();
   const [step, setStep] = useState<CreationStep>('idle');
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState('');
@@ -440,10 +436,8 @@ export default function ChatWidget() {
         const result = await captureContextScreenshots(
           msg,
           activePage,
-          pages.map((p) => ({ id: p.id, name: p.name })),
+          pages,
           homeRef,
-          iframeRef,
-          setActivePage,
           setScreenshotStatus
         );
         if (result.current) screenshot = result.current;

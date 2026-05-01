@@ -1,8 +1,8 @@
 export function needsScreenshot(message: string): boolean {
   const triggers = [
     'look like', 'similar to', 'match',
-    'consistent', 'same as', 'that section',
-    'those boxes', 'those cards', 'the cards',
+    'consistent', 'same as', 'same theme', 'same style', 'same design', 'same look',
+    'that section', 'those boxes', 'those cards', 'the cards',
     'make it', 'make them', 'like the',
     'as the', 'compared to', 'check the', 'look at',
   ];
@@ -24,6 +24,7 @@ export function detectTargetPage(
     'redesign', 'restyle', 'style', 'align', 'modify', 'format', 'improve',
   ];
   for (const page of allPages) {
+    if (!page.id || !page.name) continue;
     const name = page.name.toLowerCase();
     const id = page.id.toLowerCase();
     for (const action of actions) {
@@ -56,6 +57,7 @@ export function detectReferencedPage(
 ): string | null {
   const lower = message.toLowerCase();
   for (const page of pages) {
+    if (!page.id || !page.name) continue;
     const pageName = page.name.toLowerCase();
     const pageId = page.id.toLowerCase();
     if (

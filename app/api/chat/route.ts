@@ -5,10 +5,14 @@ import { sanitizeSiteImages, extractVisualKeywords, buildProfessionalImageUrls }
 import { collectAllOps } from '@/lib/sectionTemplates';
 import { generatePage } from '@/lib/pageGenerator';
 import { restoreNavEmbed } from '@/lib/navIntercept';
+import { screenshotHtmlServer } from '@/lib/server-screenshot';
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 
 export const runtime = 'nodejs';
+
+const VISUAL_CONSISTENCY_RE =
+  /\b(match(es)?|look(s)?\s+like|same\s+(theme|style|design|look|color|colour)|similar\s+to|consistent\s+with|make\s+it\s+like|apply\s+the\s+same)\b/i;
 
 const ChatResponseSchema = z.object({
   reply: z.string(),
@@ -309,8 +313,17 @@ export async function POST(req: NextRequest) {
     const referencedScreenshot: string | undefined = typeof body?.referencedScreenshot === 'string' ? body.referencedScreenshot : undefined;
     const referencedPageName: string | undefined = typeof body?.referencedPageName === 'string' ? body.referencedPageName : undefined;
     const referencedPageHtml: string | undefined = typeof body?.referencedPageHtml === 'string' ? body.referencedPageHtml : undefined;
-    const imageBlocks = buildImageBlocks(screenshot, referencedScreenshot, referencedPageName);
     const lastUserMessage = [...messages].reverse().find((m: any) => m?.role === 'user')?.content || '';
+
+    // For visual consistency requests, screenshot the reference page server-side at
+    // 1280×800 via Puppeteer instead of relying on the client's html2canvas capture.
+    let effectiveReferencedScreenshot = referencedScreenshot;
+    if (referencedPageHtml && VISUAL_CONSISTENCY_RE.test(lastUserMessage)) {
+      const serverShot = await screenshotHtmlServer(referencedPageHtml);
+      if (serverShot) effectiveReferencedScreenshot = serverShot;
+    }
+
+    const imageBlocks = buildImageBlocks(screenshot, effectiveReferencedScreenshot, referencedPageName);
 
     // ── Fast path 1: add a new page ────────────────────────────────────────
     const pageAddName = detectPageAdd(lastUserMessage);
@@ -329,7 +342,7 @@ export async function POST(req: NextRequest) {
       return Response.json({
         ok: true,
         reply: `Added a ${generated.pageName} page. Click the "${generated.pageName}" tab in the preview to see it.`,
-        events: [{ name: 'addPage', args: generated }],
+        events: [{ name: 'addPage', args: { id: generated.pageId, name: generated.pageName, html: generated.html } }],
       });
     }
 

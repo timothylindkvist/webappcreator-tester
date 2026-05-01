@@ -1,5 +1,7 @@
 'use client';
 
+import { useState } from 'react';
+
 interface BaseItem {
   title?: string;
   caption?: string;
@@ -29,39 +31,103 @@ interface GalleryProps {
   images?: BaseItem[];
 }
 
-// ── Display type renderers ─────────────────────────────────────────────────
+// ── CSS-only fallback visuals ─────────────────────────────────────────────────
+
+// Abstract bar chart — used when an image fails to load or no images are present.
+// Uses CSS variables so it always matches the current site palette.
+function AbstractBarFallback({ index }: { index: number }) {
+  const PRESETS = [
+    [55, 80, 45, 70, 90, 60, 75],
+    [70, 50, 85, 55, 65, 80, 40],
+    [40, 75, 60, 90, 50, 70, 85],
+  ];
+  const bars = PRESETS[index % PRESETS.length];
+  return (
+    <div
+      className="aspect-[4/3] w-full flex items-end justify-center gap-1.5 px-5 pb-4 pt-8"
+      style={{ background: 'var(--card)', borderBottom: '1px solid var(--border)' }}
+    >
+      {bars.map((h, i) => (
+        <div
+          key={i}
+          style={{
+            flex: 1,
+            height: `${h}%`,
+            background: i % 2 === 0 ? 'var(--brand)' : 'var(--accent)',
+            opacity: 0.45 + i * 0.07,
+            borderRadius: '3px 3px 0 0',
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ── Photo grid ────────────────────────────────────────────────────────────────
+
+function PhotoGridItem({ it, index }: { it: BaseItem; index: number }) {
+  const [imgError, setImgError] = useState(false);
+  const src = it.image ?? it.src;
+  const caption = it.title ?? it.caption ?? it.alt;
+  return (
+    <figure
+      className="group overflow-hidden rounded-2xl"
+      style={{ border: '1px solid var(--border)', background: 'var(--card)' }}
+    >
+      {src && !imgError ? (
+        <img
+          src={src}
+          alt={caption ?? ''}
+          className="aspect-[4/3] w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          loading="lazy"
+          onError={() => setImgError(true)}
+        />
+      ) : (
+        <AbstractBarFallback index={index} />
+      )}
+      {caption && (
+        <figcaption className="p-3 text-sm" style={{ color: 'var(--muted)' }}>
+          {caption}
+        </figcaption>
+      )}
+    </figure>
+  );
+}
 
 function PhotoGrid({ items }: { items: BaseItem[] }) {
   return (
     <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
-      {items.map((it, i) => {
-        const src = it.image ?? it.src;
-        const caption = it.title ?? it.caption ?? it.alt;
-        return (
-          <figure
-            key={i}
-            className="group overflow-hidden rounded-2xl"
-            style={{ border: '1px solid var(--border)', background: 'var(--card)' }}
-          >
-            {src && (
-              <img
-                src={src}
-                alt={caption ?? ''}
-                className="aspect-[4/3] w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                loading="lazy"
-              />
-            )}
-            {caption && (
-              <figcaption className="p-3 text-sm" style={{ color: 'var(--muted)' }}>
-                {caption}
-              </figcaption>
-            )}
-          </figure>
-        );
-      })}
+      {items.map((it, i) => (
+        <PhotoGridItem key={i} it={it} index={i} />
+      ))}
     </div>
   );
 }
+
+// ── Empty-state fallback: 3 CSS chart placeholders ────────────────────────────
+
+function EmptyGalleryFallback({ title }: { title?: string }) {
+  return (
+    <section className="px-6 py-16" style={{ color: 'var(--foreground)' }}>
+      <div className="mx-auto max-w-6xl">
+        <h2 className="text-2xl font-bold sm:text-3xl">{title || 'Gallery'}</h2>
+        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
+          {[0, 1, 2].map((i) => (
+            <figure
+              key={i}
+              className="overflow-hidden rounded-2xl"
+              style={{ border: '1px solid var(--border)' }}
+            >
+              <AbstractBarFallback index={i} />
+            </figure>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ── Alternative display types ─────────────────────────────────────────────────
 
 function IconCards({ items }: { items: BaseItem[] }) {
   return (
@@ -183,7 +249,7 @@ function ScreenshotMockups({ items }: { items: BaseItem[] }) {
   );
 }
 
-// ── Main export ───────────────────────────────────────────────────────────
+// ── Main export ───────────────────────────────────────────────────────────────
 
 export default function Gallery({ title, displayType, items, images }: GalleryProps) {
   const type = displayType ?? 'photos';
@@ -196,7 +262,8 @@ export default function Gallery({ title, displayType, items, images }: GalleryPr
     (type === 'photos' && photoEntries.length > 0) ||
     (type !== 'photos' && altEntries.length > 0);
 
-  if (!hasContent) return null;
+  // Never render an invisible blank section — show CSS bar chart placeholders instead
+  if (!hasContent) return <EmptyGalleryFallback title={title} />;
 
   return (
     <section className="px-6 py-16" style={{ color: 'var(--foreground)' }}>

@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { rateLimit } from '@/lib/ratelimit';
 import { MODEL } from '@/lib/models';
-import { sanitizeSiteImages } from '@/lib/imageKeywords';
+import { sanitizeSiteImages, inferIndustryKeywords, buildProfessionalImageUrls } from '@/lib/imageKeywords';
 import { collectAllOps } from '@/lib/sectionTemplates';
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
@@ -44,7 +44,47 @@ GALLERY — gallery.displayType controls how the gallery section looks. Valid va
 - "screenshot-mockups": browser frame mockups; items[]: [{ title, accentColor, url }]
 
 When user says "replace images with icons/illustrations/no photos/something colorful/stats/numbers" → update gallery.displayType and regenerate items[] accordingly.
+
+IMAGE KEYWORDS — when updating gallery images, always use SPECIFIC, BUSINESS-APPROPRIATE keywords:
+- Finance/investment sites → "financial-district", "boardroom", "trading-floor", "document-signing", "city-skyline"
+- Tech/SaaS → "technology", "computer", "software", "startup-office", "workspace"
+- Healthcare → "medical-office", "clinic", "healthcare", "hospital-lobby"
+- Food/restaurant → "food", "restaurant", "coffee", "cuisine", "kitchen"
+- Fitness → "gym-equipment", "fitness-facility", "athletic-training", "sports-facility"
+NEVER use generic keywords like "business" or "office" alone for finance sites.
 BANNED photo keywords: "fitness", "body", "workout", "gym", "muscle". Use "gym-equipment", "fitness-facility" instead.`;
+
+// ── Professional images fast-path ─────────────────────────────────────────────
+
+const PROFESSIONAL_IMAGES_INTENT =
+  /\b(professional|real|proper|relevant|contextual|high.?quality|stock)\s+(photos?|images?|pictures?)\b|\badd\s+(?:real|proper|professional|contextual|stock|relevant)\s+(?:photos?|images?)\b/i;
+
+function resolveImageRequest(
+  message: string,
+  site: Record<string, any>,
+  brief: string
+): { events: Array<{ name: string; args: Record<string, any> }>; reply: string } | null {
+  if (!PROFESSIONAL_IMAGES_INTENT.test(message)) return null;
+
+  const brand: string = site?.brand?.name ?? '';
+  const keywords = inferIndustryKeywords(brief, brand);
+  const images = buildProfessionalImageUrls(keywords, 6);
+
+  return {
+    events: [
+      {
+        name: 'patchSection',
+        args: {
+          section: 'gallery',
+          patch: { displayType: 'photos', images },
+        },
+      },
+    ],
+    reply: `Added 6 professional ${keywords[0].replace(/-/g, ' ')} images to the gallery.`,
+  };
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function siteEffectivelyChanged(before: Record<string, any>, after: Record<string, any>): boolean {
   const strip = (s: Record<string, any>) => {
@@ -113,6 +153,8 @@ async function callClaude(
   };
 }
 
+// ── Route handler ─────────────────────────────────────────────────────────────
+
 export async function POST(req: NextRequest) {
   const ip = (req.headers.get('x-forwarded-for') || 'anon').split(',')[0];
   const rl = rateLimit(`chat:${ip}`, 30, 60);
@@ -133,7 +175,13 @@ export async function POST(req: NextRequest) {
     const brief = typeof body?.brief === 'string' ? body.brief : '';
     const lastUserMessage = [...messages].reverse().find((m: any) => m?.role === 'user')?.content || '';
 
-    // Collect all template-matched operations (adds/removes) and the leftover for Claude
+    // ── Fast path: professional images (no Claude needed) ──────────────────
+    const imageResult = resolveImageRequest(lastUserMessage, site, brief);
+    if (imageResult) {
+      return Response.json({ ok: true, reply: imageResult.reply, events: imageResult.events });
+    }
+
+    // ── Template detection (add/remove sections) ───────────────────────────
     const ops = collectAllOps(lastUserMessage, site);
 
     const allEvents: Array<{ name: string; args: Record<string, any> }> = [];
@@ -151,7 +199,7 @@ export async function POST(req: NextRequest) {
     allEvents.push(...ops.events);
     allReplies.push(...ops.replies);
 
-    // If nothing happened at all, return Claude's no-op reply (happens when Claude returns reply but no site change)
+    // If nothing happened at all, return Claude's no-op reply
     if (allReplies.length === 0 && allEvents.length === 0) {
       return Response.json({ ok: true, reply: "I didn't find anything to change.", events: [] });
     }

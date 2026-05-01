@@ -14,7 +14,7 @@ type TemplateEntry = {
 
 const TEMPLATES: TemplateEntry[] = [
   {
-    pattern: /\bapp.?store\b|google.?play\b|download.*(app|button)|mobile.?app.*(badge|button|download)/i,
+    pattern: /\bapp.?store\b|google.?play\b|download.*(app|button)|mobile.?app.*(badge|button|download)|app.?download\b|download.?section\b|mobile.?download\b|store.?badge\b/i,
     type: 'app-download',
     label: 'App Download',
     build: (brand) => ({

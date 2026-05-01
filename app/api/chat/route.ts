@@ -42,6 +42,8 @@ When the user says:
 
 IMPORTANT — preserve emotional tone: if the existing site serves a sensitive audience (grief, death, estate planning, serious illness, mental health, crisis, divorce, elder care), maintain that register throughout all edits. Do not introduce aggressive CTAs, exclamation marks, neon colors, or urgency language when editing these sites.
 
+SCREENSHOTS — when screenshots are provided: Screenshot 1 is the page being edited; Screenshot 2 (if present) is the reference page the user wants to match. Use both images to understand the visual differences and apply the correct styles accurately.
+
 GALLERY — gallery.displayType controls how the gallery section looks. Valid values:
 - "photos": photo grid using images[] with Unsplash featured URLs (https://source.unsplash.com/featured/800x600/?keyword1,keyword2)
 - "icon-cards": emoji icons on colored cards; items[]: [{ icon, title, description, color }]
@@ -87,6 +89,43 @@ function resolveImageRequest(
   };
 }
 
+// ── Vision image blocks ───────────────────────────────────────────────────────
+
+function buildImageBlocks(
+  screenshot?: string,
+  referencedScreenshot?: string,
+  referencedPageName?: string
+): Array<Record<string, unknown>> {
+  const blocks: Array<Record<string, unknown>> = [];
+  if (screenshot) {
+    blocks.push(
+      {
+        type: 'image',
+        source: {
+          type: 'base64',
+          media_type: 'image/jpeg',
+          data: screenshot.replace(/^data:image\/jpeg;base64,/, ''),
+        },
+      },
+      { type: 'text', text: 'Screenshot 1: The current page the user is editing.' }
+    );
+  }
+  if (referencedScreenshot && referencedPageName) {
+    blocks.push(
+      {
+        type: 'image',
+        source: {
+          type: 'base64',
+          media_type: 'image/jpeg',
+          data: referencedScreenshot.replace(/^data:image\/jpeg;base64,/, ''),
+        },
+      },
+      { type: 'text', text: `Screenshot 2: The ${referencedPageName} page that the user wants to reference or match.` }
+    );
+  }
+  return blocks;
+}
+
 // ── Page-add detection ────────────────────────────────────────────────────────
 
 const ADD_PAGE_PATTERN =
@@ -112,8 +151,14 @@ async function callClaudeForPageEdit(
   instruction: string,
   pageHtml: string,
   brief: string,
-  pageName: string
+  pageName: string,
+  imageBlocks?: Array<Record<string, unknown>>
 ): Promise<{ reply: string; html?: string }> {
+  const textContent = `Brief: ${brief}\n\nCurrent "${pageName}" page HTML:\n${pageHtml}\n\nChange requested: ${instruction}`;
+  const userContent: any = imageBlocks?.length
+    ? [...imageBlocks, { type: 'text', text: textContent }]
+    : textContent;
+
   const message = await client.messages.create({
     model: MODEL,
     max_tokens: 8192,
@@ -131,11 +176,12 @@ Updated the hero heading to "New Title" and adjusted the card spacing.
 Rules:
 - Make ONLY the requested change. Return the complete HTML with the change applied.
 - NEVER truncate your reply mid-sentence. Finish every sentence completely.
-- If the instruction is clear, execute it without asking for clarification. Explain what you did after.`,
+- If the instruction is clear, execute it without asking for clarification. Explain what you did after.
+- When screenshots are provided, Screenshot 1 is the current page and Screenshot 2 (if present) is the reference page to match.`,
     messages: [
       {
         role: 'user',
-        content: `Brief: ${brief}\n\nCurrent "${pageName}" page HTML:\n${pageHtml}\n\nChange requested: ${instruction}`,
+        content: userContent,
       },
     ],
   });
@@ -164,9 +210,13 @@ async function callClaude(
   client: Anthropic,
   instruction: string,
   site: Record<string, any>,
-  brief: string
+  brief: string,
+  imageBlocks?: Array<Record<string, unknown>>
 ): Promise<{ reply: string; siteEvent?: { name: string; args: Record<string, any> } }> {
-  const userContent = `Brief: ${brief}\n\nCurrent site:\n${JSON.stringify(site, null, 2)}\n\nChange requested: ${instruction}`;
+  const textContent = `Brief: ${brief}\n\nCurrent site:\n${JSON.stringify(site, null, 2)}\n\nChange requested: ${instruction}`;
+  const userContent: any = imageBlocks?.length
+    ? [...imageBlocks, { type: 'text', text: textContent }]
+    : textContent;
 
   const firstMessage = await client.messages.create({
     model: MODEL,
@@ -236,6 +286,10 @@ export async function POST(req: NextRequest) {
     const activePage: string = typeof body?.activePage === 'string' ? body.activePage : 'home';
     const pageHtml: string | undefined = typeof body?.pageHtml === 'string' ? body.pageHtml : undefined;
     const incomingPages: Array<{ id: string; name: string }> = Array.isArray(body?.pages) ? body.pages : [];
+    const screenshot: string | undefined = typeof body?.screenshot === 'string' ? body.screenshot : undefined;
+    const referencedScreenshot: string | undefined = typeof body?.referencedScreenshot === 'string' ? body.referencedScreenshot : undefined;
+    const referencedPageName: string | undefined = typeof body?.referencedPageName === 'string' ? body.referencedPageName : undefined;
+    const imageBlocks = buildImageBlocks(screenshot, referencedScreenshot, referencedPageName);
     const lastUserMessage = [...messages].reverse().find((m: any) => m?.role === 'user')?.content || '';
 
     // ── Fast path 1: add a new page ────────────────────────────────────────
@@ -262,7 +316,7 @@ export async function POST(req: NextRequest) {
     // ── Fast path 2: editing a non-home page ───────────────────────────────
     if (activePage !== 'home' && pageHtml) {
       const pageName = incomingPages.find((p) => p.id === activePage)?.name ?? activePage;
-      const result = await callClaudeForPageEdit(client, lastUserMessage, pageHtml, brief, pageName);
+      const result = await callClaudeForPageEdit(client, lastUserMessage, pageHtml, brief, pageName, imageBlocks.length ? imageBlocks : undefined);
       return Response.json({
         ok: true,
         reply: result.reply || `Updated the ${pageName} page.`,
@@ -283,7 +337,7 @@ export async function POST(req: NextRequest) {
     const allReplies: string[] = [];
 
     if (ops.nonTemplateInstruction) {
-      const claude = await callClaude(client, ops.nonTemplateInstruction, site, brief);
+      const claude = await callClaude(client, ops.nonTemplateInstruction, site, brief, imageBlocks.length ? imageBlocks : undefined);
       allReplies.push(claude.reply);
       if (claude.siteEvent) allEvents.push(claude.siteEvent);
     }

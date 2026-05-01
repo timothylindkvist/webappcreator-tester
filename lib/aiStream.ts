@@ -8,6 +8,9 @@ export type StreamChatCtx = {
   activePage?: string;
   pageHtml?: string;
   pages?: { id: string; name: string }[];
+  screenshot?: string;
+  referencedScreenshot?: string;
+  referencedPageName?: string;
 };
 
 export async function streamChat(messages: ChatMessage[], ctx?: StreamChatCtx) {
@@ -21,6 +24,9 @@ export async function streamChat(messages: ChatMessage[], ctx?: StreamChatCtx) {
       activePage: ctx?.activePage,
       pageHtml: ctx?.pageHtml,
       pages: ctx?.pages,
+      screenshot: ctx?.screenshot,
+      referencedScreenshot: ctx?.referencedScreenshot,
+      referencedPageName: ctx?.referencedPageName,
     }),
   });
   if (!res.ok) {

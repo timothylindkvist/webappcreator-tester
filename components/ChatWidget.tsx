@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useBuilder } from './builder-context';
 import { useEditMode } from './EditModeContext';
 import { streamChat } from '@/lib/aiStream';
+import { useCapture } from './capture-context';
+import { needsScreenshot, detectReferencedPage, captureElement } from '@/lib/screenshot';
 
 type Msg = { role: 'user' | 'assistant'; content: string };
 type CreationStep = 'idle' | 'clarifying' | 'generating-brief' | 'briefing' | 'live';
@@ -241,9 +243,58 @@ function BriefEditor({
   );
 }
 
+async function captureContextScreenshots(
+  message: string,
+  currentPage: string,
+  pages: Array<{ id: string; name: string }>,
+  homeRef: React.RefObject<HTMLDivElement | null>,
+  iframeRef: React.RefObject<HTMLIFrameElement | null>,
+  setActivePage: (id: string) => void,
+  setStatus: (s: string | null) => void
+): Promise<{ current: string | null; referenced: string | null; referencedPageName: string | null }> {
+  setStatus('Analysing current page...');
+  let current: string | null = null;
+  try {
+    if (currentPage === 'home' && homeRef.current) {
+      current = await captureElement(homeRef.current);
+    } else if (iframeRef.current?.contentDocument?.body) {
+      current = await captureElement(iframeRef.current.contentDocument.body);
+    }
+  } catch { /* fail gracefully */ }
+
+  const allPages = [{ id: 'home', name: 'Home' }, ...pages];
+  const referencedPageId = detectReferencedPage(message, allPages);
+  let referenced: string | null = null;
+  let referencedPageName: string | null = null;
+
+  if (referencedPageId && referencedPageId !== currentPage) {
+    referencedPageName = allPages.find((p) => p.id === referencedPageId)?.name ?? null;
+    setStatus(`Navigating to ${referencedPageName} page...`);
+    setActivePage(referencedPageId);
+    await new Promise((r) => setTimeout(r, 800));
+
+    setStatus(`Analysing ${referencedPageName} page...`);
+    try {
+      if (referencedPageId === 'home' && homeRef.current) {
+        referenced = await captureElement(homeRef.current);
+      } else if (iframeRef.current?.contentDocument?.body) {
+        referenced = await captureElement(iframeRef.current.contentDocument.body);
+      }
+    } catch { /* fail gracefully */ }
+
+    setStatus('Switching back...');
+    setActivePage(currentPage);
+    await new Promise((r) => setTimeout(r, 400));
+  }
+
+  setStatus(null);
+  return { current, referenced, referencedPageName };
+}
+
 export default function ChatWidget() {
   const { data, brief, setBrief, rebuild, siteId, setSiteId, applyTheme, pages, activePage, setActivePage } = useBuilder();
   const { isEditMode, toggleEditMode, hasChanges, reapplyOverrides } = useEditMode();
+  const { homeRef, iframeRef } = useCapture();
   const [step, setStep] = useState<CreationStep>('idle');
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState('');
@@ -252,6 +303,7 @@ export default function ChatWidget() {
   const [briefText, setBriefText] = useState('');
   const [answers, setAnswers] = useState<Answers>({});
   const [originalDesc, setOriginalDesc] = useState('');
+  const [screenshotStatus, setScreenshotStatus] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -377,6 +429,30 @@ export default function ChatWidget() {
     setInput('');
     resetTextarea();
     setBusy(true);
+
+    let screenshot: string | undefined;
+    let referencedScreenshot: string | undefined;
+    let referencedPageName: string | undefined;
+
+    if (needsScreenshot(msg)) {
+      setScreenshotStatus('Analysing pages...');
+      try {
+        const result = await captureContextScreenshots(
+          msg,
+          activePage,
+          pages.map((p) => ({ id: p.id, name: p.name })),
+          homeRef,
+          iframeRef,
+          setActivePage,
+          setScreenshotStatus
+        );
+        if (result.current) screenshot = result.current;
+        if (result.referenced) referencedScreenshot = result.referenced;
+        if (result.referencedPageName) referencedPageName = result.referencedPageName;
+      } catch { /* fail gracefully — screenshot is optional */ }
+      setScreenshotStatus(null);
+    }
+
     try {
       const activePageData = activePage !== 'home' ? pages.find((p) => p.id === activePage) : null;
       const res = await streamChat(nextMessages, {
@@ -385,6 +461,9 @@ export default function ChatWidget() {
         activePage,
         pageHtml: activePageData?.html,
         pages: pages.map((p) => ({ id: p.id, name: p.name })),
+        screenshot,
+        referencedScreenshot,
+        referencedPageName,
       });
       setMessages((cur) => [...cur, { role: 'assistant', content: res.reply || 'Done.' }]);
       // Re-apply any inline edits on top of the AI's changes
@@ -394,6 +473,7 @@ export default function ChatWidget() {
       setError(e?.message ?? String(e));
     } finally {
       setBusy(false);
+      setScreenshotStatus(null);
     }
   };
 
@@ -560,7 +640,15 @@ export default function ChatWidget() {
           />
         )}
 
-        {busy && step === 'live' && <TypingIndicator />}
+        {screenshotStatus && (
+          <div className="flex items-start gap-2">
+            <BotIcon />
+            <div className="bg-white border border-zinc-100 shadow-sm rounded-2xl rounded-tl-sm px-4 py-3 text-[13px] text-zinc-400 italic animate-pulse">
+              {screenshotStatus}
+            </div>
+          </div>
+        )}
+        {busy && step === 'live' && !screenshotStatus && <TypingIndicator />}
         <div ref={messagesEndRef} />
       </div>
 

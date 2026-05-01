@@ -7,6 +7,7 @@ import { BuilderProvider, useBuilder } from '../components/builder-context';
 import { EditModeProvider, useEditMode } from '../components/EditModeContext';
 import Builder from '../components/Builder';
 import ChatWidget from '../components/ChatWidget';
+import { CaptureProvider, useCapture } from '../components/capture-context';
 
 function SiteLoader() {
   const { loadSite, setSiteId } = useBuilder();
@@ -569,8 +570,7 @@ function PreviewPane() {
   const urlLabel = activePageData ? `${domain}/${activePageData.id}.html` : domain;
   const siteVars = deriveSiteVars(data.theme.palette);
 
-  const homeContentRef = useRef<HTMLDivElement>(null);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const { homeRef: homeContentRef, iframeRef } = useCapture();
 
   // Auto-add contentEditable to ALL text elements in edit mode (home page)
   useEffect(() => {
@@ -749,6 +749,7 @@ function PreviewPane() {
 
 export default function Page() {
   return (
+    <CaptureProvider>
     <BuilderProvider>
       <EditModeProvider>
         <Suspense>
@@ -765,5 +766,6 @@ export default function Page() {
         </div>
       </EditModeProvider>
     </BuilderProvider>
+    </CaptureProvider>
   );
 }

@@ -40,7 +40,8 @@ export default function NavBar() {
     setMenuOpen(false);
   };
 
-  if (navLinks.length === 0) return null;
+  // Hide only when there is truly nothing to navigate to
+  if (navLinks.length === 0 && pages.length === 0) return null;
 
   return (
     <nav

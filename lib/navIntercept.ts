@@ -1,24 +1,53 @@
-// NAV_INTERCEPT_SCRIPT — injected into every custom-page iframe (and embedded
-// inline in the HTML itself) so in-page nav links send a postMessage to the
-// parent rather than navigating the iframe to a real URL.
+// Full inline script embedded in every custom-page HTML.
+// Handles two jobs in one tag so there is no external file to load and no race:
+//   1. Intercepts every anchor click → postMessage to preview parent (tab-switch)
+//   2. Reads sm-nav-cfg JSON and injects a consistent navbar at top of body
 export const NAV_INTERCEPT_SCRIPT = `(function(){
-if(window.__smNavActive)return;
+// 1. Click intercept — must run immediately, before any clicks
+if(!window.__smNavActive){
 window.__smNavActive=true;
 document.addEventListener('click',function(e){
   var t=e.target;
   while(t&&t.tagName!=='A'){t=t.parentElement;}
   if(!t)return;
-  var href=(t.getAttribute('href')||'').trim();
-  if(!href||href.charAt(0)==='#'||/^(https?:|\/\/|mailto:|tel:)/.test(href))return;
-  e.preventDefault();
-  e.stopPropagation();
-  window.parent.postMessage({type:'sidesmith:navigate',href:href},'*');
+  var h=(t.getAttribute('href')||'').trim();
+  if(!h||h.charAt(0)==='#'||/^(https?:|\/\/|mailto:|tel:)/.test(h))return;
+  e.preventDefault();e.stopPropagation();
+  window.parent.postMessage({type:'sidesmith:navigate',href:h},'*');
 },true);
+}
+// 2. Navbar injection — wait for DOM
+function _smInjectNav(){
+  var cfg=document.getElementById('sm-nav-cfg');
+  if(!cfg)return;
+  var d;try{d=JSON.parse(cfg.textContent);}catch(e){return;}
+  var pages=d.pages||[];var cur=d.current||'';
+  var cs=getComputedStyle(document.documentElement);
+  var brand=cs.getPropertyValue('--brand').trim()||'#7c3aed';
+  var bg=cs.getPropertyValue('--background').trim()||'#fff';
+  var muted=cs.getPropertyValue('--muted').trim()||'#71717a';
+  var border=cs.getPropertyValue('--border').trim()||'#e4e4e7';
+  var old=document.querySelector('nav');
+  if(old&&old.parentNode)old.parentNode.removeChild(old);
+  var nav=document.createElement('nav');
+  nav.id='sm-nav';
+  nav.setAttribute('style','position:sticky;top:0;z-index:999;background:'+bg+';border-bottom:1px solid '+border+';padding:0 1.25rem;display:flex;align-items:center;height:3.5rem;gap:1.5rem;font-family:inherit;');
+  pages.forEach(function(p){
+    var a=document.createElement('a');
+    a.href=p.href;a.textContent=p.name;
+    var active=(p.id===cur);
+    a.setAttribute('style','text-decoration:none;font-size:.875rem;color:'+(active?brand:muted)+';font-weight:'+(active?'600':'400')+';');
+    nav.appendChild(a);
+  });
+  var b=document.body;
+  if(b.firstChild)b.insertBefore(nav,b.firstChild);else b.appendChild(nav);
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',_smInjectNav);
+else _smInjectNav();
 })();`;
 
-// Ensures NAV_INTERCEPT_SCRIPT is embedded in the HTML. Safe to call multiple
-// times — the __smNavActive guard in the script prevents double-registration.
-// Used as a belt-and-suspenders fallback for pages that may not load nav.js.
+// Ensures the nav script is embedded inline in the HTML.
+// Safe to call multiple times — __smNavActive guard prevents double-registration.
 export function ensureNavScript(html: string): string {
   if (html.includes('__smNavActive')) return html;
   const tag = `<script>${NAV_INTERCEPT_SCRIPT}</script>`;
@@ -39,10 +68,10 @@ function toHref(pageId: string): string {
 /**
  * Builds the two tags that go inside <head> of every generated custom page:
  *   <script id="sm-nav-cfg" type="application/json">…config JSON…</script>
- *   <script src="/nav.js"></script>
+ *   <script>…inline nav script (intercept + injection)…</script>
  *
- * allPages must include the home page and all custom pages (including the
- * page being generated). currentPageId is the id of the page being built.
+ * Everything is inline — no external file fetch, no race with srcdoc loading.
+ * allPages must include home and all custom pages. currentPageId = this page.
  */
 export function buildNavEmbed(
   allPages: Array<{ id: string; name: string }>,
@@ -56,7 +85,7 @@ export function buildNavEmbed(
   const cfg: NavConfig = { pages, current: currentPageId };
   return (
     `<script id="sm-nav-cfg" type="application/json">${JSON.stringify(cfg)}</script>\n` +
-    `<script src="/nav.js"></script>`
+    `<script>${NAV_INTERCEPT_SCRIPT}</script>`
   );
 }
 
@@ -87,17 +116,20 @@ export function updateNavConfig(
 }
 
 /**
- * After a Claude edit, restores the sm-nav-cfg tag + nav.js reference if
- * Claude removed them. Uses the original HTML as the source of truth.
+ * After a Claude edit, restores the nav embed if Claude stripped it.
+ * Always rebuilds with the inline script (upgrades old external-ref pages too).
  */
 export function restoreNavEmbed(editedHtml: string, originalHtml: string): string {
   if (editedHtml.includes('sm-nav-cfg')) return editedHtml;
+  // Extract config JSON from original
   const cfgMatch = originalHtml.match(
-    /<script\s+id="sm-nav-cfg"\s+type="application\/json">[\s\S]*?<\/script>/
+    /<script\s+id="sm-nav-cfg"\s+type="application\/json">([\s\S]*?)<\/script>/
   );
   if (!cfgMatch) return editedHtml;
-  const navJsTag = '<script src="/nav.js"></script>';
-  const inject = cfgMatch[0] + '\n' + navJsTag;
+  // Rebuild inline (never restore an old <script src="/nav.js"> reference)
+  const inject =
+    `<script id="sm-nav-cfg" type="application/json">${cfgMatch[1]}</script>\n` +
+    `<script>${NAV_INTERCEPT_SCRIPT}</script>`;
   if (editedHtml.includes('</head>')) {
     return editedHtml.replace('</head>', inject + '\n</head>');
   }

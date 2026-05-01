@@ -42,7 +42,8 @@ export type SiteData = {
   };
   gallery?: {
     title?: string;
-    items?: { title?: string; image?: string }[];
+    displayType?: string;
+    items?: { title?: string; image?: string; icon?: string; description?: string; stat?: string; subtitle?: string; color?: string; gradient?: string; accentColor?: string; url?: string; [key: string]: unknown }[];
     images?: { src: string; caption?: string; alt?: string }[];
   };
   testimonials?: {

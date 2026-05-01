@@ -57,6 +57,12 @@ const BuildSchema = z.object({
     subtitle: z.string().optional(),
     button: z.object({ label: z.string(), href: z.string().optional() }).optional(),
   }).optional(),
+  gallery: z.object({
+    title: z.string().optional(),
+    displayType: z.enum(['photos', 'icon-cards', 'feature-cards', 'color-blocks', 'screenshot-mockups']).optional(),
+    images: z.array(z.object({ src: z.string(), caption: z.string().optional(), alt: z.string().optional() })).optional(),
+    items: z.array(z.record(z.unknown())).optional(),
+  }).optional(),
 }).passthrough();
 
 // Claude sometimes returns flat arrays or flattened theme — normalize before validating.
@@ -128,7 +134,7 @@ Use exactly this structure:
   "hero": { "title": "string", "subtitle": "string", "cta": { "label": "string" }, "pattern": "dark-grid" },
   "about": { "heading": "string", "body": "string", "bullets": ["string"] },
   "features": { "title": "string", "items": [{ "title": "string", "description": "string" }] },
-  "gallery": { "title": "string", "images": [{ "src": "https://loremflickr.com/800/600/keyword1,keyword2?lock=N", "caption": "string", "alt": "string" }] },
+  "gallery": { "title": "string", "displayType": "photos|icon-cards|feature-cards|color-blocks|screenshot-mockups", "images": [{ "src": "https://loremflickr.com/800/600/keyword1?lock=N", "caption": "string", "alt": "string" }], "items": [] },
   "pricing": { "title": "string", "plans": [{ "name": "string", "price": "string", "features": ["string"] }] },
   "faq": { "title": "string", "items": [{ "q": "string", "a": "string" }] },
   "cta": { "title": "string", "subtitle": "string", "button": { "label": "string" } }
@@ -170,21 +176,21 @@ HERO PATTERN — set hero.pattern to one of these four values based on the busin
 - "gradient-mesh": smooth multi-color gradient blobs on dark background (brand + accent colors). Best for: tech/SaaS, startups, creative agencies, design studios, AI products
 - "light-minimal": clean white/off-white with subtle grey grid lines. Best for: law firms, accountants, finance, insurance, medical, healthcare, grief/bereavement, estate planning, any professional or sensitive service
 
-GALLERY IMAGES — always include a gallery section with 3–6 LoremFlickr images:
-Each image src: https://loremflickr.com/800/600/keyword1,keyword2?lock=N where N is a different integer per image.
+GALLERY DISPLAY TYPE — set gallery.displayType based on the business:
+- "photos": default — real businesses where photos of the product/service/place matter most (restaurant, retail, photography, real estate, coffee shop, events). Use images[] with LoremFlickr URLs.
+- "icon-cards": when the product/service is abstract and icons communicate features better (apps, platforms, SaaS features, services list). Use items[]: [{ "icon": "emoji", "title": "string", "description": "string", "color": "#hex" }]
+- "feature-cards": SaaS, data-driven businesses, or when stats/numbers tell the story. Use items[]: [{ "stat": "10x", "title": "Faster workflow", "subtitle": "Compared to manual processes" }]
+- "color-blocks": creative agencies, design studios, art brands, fashion — purely decorative colorful grid. Use items[]: [{ "gradient": "linear-gradient(135deg, #color1, #color2)", "title": "string" }]
+- "screenshot-mockups": software products, apps, SaaS tools where showing the interface matters. Use items[]: [{ "title": "Dashboard view", "accentColor": "#hex", "url": "app.example.com" }]
 
+For "photos" displayType, use images[] with LoremFlickr URLs:
+https://loremflickr.com/800/600/keyword?lock=N (different N per image)
 Keywords MUST match the actual business:
-- pizza restaurant → "pizza?lock=1", "restaurant,interior?lock=2", "pasta,food?lock=3", "italian,cuisine?lock=4"
+- pizza restaurant → "pizza?lock=1", "restaurant?lock=2", "pasta?lock=3", "italian?lock=4"
 - yoga studio → "yoga-class?lock=1", "yoga,mat?lock=2", "meditation?lock=3", "wellness?lock=4"
 - gym/fitness → "gym-equipment?lock=1", "weightlifting?lock=2", "fitness-facility?lock=3", "athletic-training?lock=4"
-- coffee shop → "espresso?lock=1", "latte,coffee?lock=2", "cafe,interior?lock=3", "coffee,beans?lock=4"
-- law firm → "legal,office?lock=1", "lawyer?lock=2", "business,meeting?lock=3", "legal,documents?lock=4"
-- tech startup → "coding,laptop?lock=1", "team,meeting?lock=2", "startup,office?lock=3", "software?lock=4"
-
-BANNED gallery keywords (return inappropriate results): "fitness", "body", "workout", "gym", "muscle", "exercise", "training", "sport"
-Safe alternatives: "gym-equipment", "weight-room", "fitness-facility", "athletic-training"
-
-Gallery captions should describe what the image represents for the business, not generic labels.`,
+- coffee shop → "espresso?lock=1", "latte?lock=2", "cafe,interior?lock=3", "coffee,beans?lock=4"
+BANNED keywords: "fitness", "body", "workout", "gym", "muscle", "exercise" — use safe alternatives above.`,
       messages: [
         { role: 'user', content: brief },
         { role: 'assistant', content: '{' },

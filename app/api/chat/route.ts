@@ -35,9 +35,15 @@ When the user says:
 
 IMPORTANT — preserve emotional tone: if the existing site serves a sensitive audience (grief, death, estate planning, serious illness, mental health, crisis, divorce, elder care), maintain that register throughout all edits. Do not introduce aggressive CTAs, exclamation marks, neon colors, or urgency language when editing these sites.
 
-GALLERY IMAGES — if you update image URLs, use LoremFlickr: https://loremflickr.com/800/600/keyword1,keyword2?lock=N
-Keywords must match the actual business. Use different ?lock=N values per image.
-BANNED keywords: "fitness", "body", "workout", "gym", "muscle", "exercise". Use "gym-equipment", "weight-room", "fitness-facility" instead.`;
+GALLERY — gallery.displayType controls how the gallery section looks. Valid values:
+- "photos": photo grid using images[] with LoremFlickr URLs (https://loremflickr.com/800/600/keyword?lock=N)
+- "icon-cards": emoji icons on colored cards; items[]: [{ icon, title, description, color }]
+- "feature-cards": stat/number cards; items[]: [{ stat, title, subtitle }]
+- "color-blocks": colorful gradient blocks; items[]: [{ gradient, title }]
+- "screenshot-mockups": browser frame mockups; items[]: [{ title, accentColor, url }]
+
+When user says "replace images with icons/illustrations/no photos/something colorful/stats/numbers" → update gallery.displayType and regenerate items[] accordingly.
+BANNED photo keywords: "fitness", "body", "workout", "gym", "muscle". Use "gym-equipment", "fitness-facility" instead.`;
 
 // Compare site objects ignoring the server-inferred `blocks` array.
 function siteEffectivelyChanged(before: Record<string, any>, after: Record<string, any>): boolean {

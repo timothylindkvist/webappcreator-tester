@@ -8,6 +8,7 @@ import { EditModeProvider, useEditMode } from '../components/EditModeContext';
 import Builder from '../components/Builder';
 import ChatWidget from '../components/ChatWidget';
 import { CaptureProvider, useCapture } from '../components/capture-context';
+import { NAV_INTERCEPT_SCRIPT } from '../lib/navIntercept';
 
 function SiteLoader() {
   const { loadSite, setSiteId } = useBuilder();
@@ -138,22 +139,6 @@ function hrefToPageId(href: string, pages: Page[]): string | null {
   return match?.id ?? null;
 }
 
-// Intercepts internal anchor clicks inside an iframe and postMessages them to parent.
-// Injected once per iframe load, regardless of edit mode.
-const NAV_INTERCEPT_SCRIPT = `(function(){
-if(window.__smNavActive)return;
-window.__smNavActive=true;
-document.addEventListener('click',function(e){
-  var t=e.target;
-  while(t&&t.tagName!=='A'){t=t.parentElement;}
-  if(!t)return;
-  var href=(t.getAttribute('href')||'').trim();
-  if(!href||href.charAt(0)==='#'||/^(https?:|\/\/|mailto:|tel:)/.test(href))return;
-  e.preventDefault();
-  e.stopPropagation();
-  window.parent.postMessage({type:'sidesmith:navigate',href:href},'*');
-},true);
-})();`;
 
 // ── Iframe edit-mode injection script ────────────────────────────────────────
 

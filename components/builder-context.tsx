@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useMemo, useState, type Dispatch, type PropsWithChildren, type SetStateAction } from 'react';
+import { ensureNavScript } from '../lib/navIntercept';
 
 export type Theme = {
   vibe?: string;
@@ -406,19 +407,20 @@ export function BuilderProvider({ children }: PropsWithChildren) {
   };
 
   const addPage = (page: Page) => {
+    const safeHtml = ensureNavScript(page.html);
     setPages(cur => {
       if (cur.some(p => p.id === page.id)) {
-        return cur.map(p => p.id === page.id ? page : p);
+        return cur.map(p => p.id === page.id ? { ...page, html: safeHtml } : p);
       }
       // Update all existing pages' navs to include the new page link
       const updated = cur.map(p => ({ ...p, html: injectNavLink(p.html, page) }));
-      return [...updated, page];
+      return [...updated, { ...page, html: safeHtml }];
     });
     setActivePage(page.id);
   };
 
   const updatePage = (id: string, html: string) => {
-    setPages(cur => cur.map(p => p.id === id ? { ...p, html } : p));
+    setPages(cur => cur.map(p => p.id === id ? { ...p, html: ensureNavScript(html) } : p));
   };
 
   const removePage = (id: string) => {

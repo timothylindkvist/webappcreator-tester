@@ -98,6 +98,18 @@ function resolveImageRequest(
 
 // ── Vision image blocks ───────────────────────────────────────────────────────
 
+// Accepts either a raw base64 string (Puppeteer) or a data URL (html2canvas).
+// Derives the media type from the prefix so PNG fallbacks are handled correctly.
+function toImageBlock(raw: string, label: string): [Record<string, unknown>, Record<string, unknown>] {
+  const match = raw.match(/^data:(image\/[^;]+);base64,/);
+  const mediaType = (match?.[1] ?? 'image/jpeg') as string;
+  const data = match ? raw.slice(match[0].length) : raw;
+  return [
+    { type: 'image', source: { type: 'base64', media_type: mediaType, data } },
+    { type: 'text', text: label },
+  ];
+}
+
 function buildImageBlocks(
   screenshot?: string,
   referencedScreenshot?: string,
@@ -105,31 +117,17 @@ function buildImageBlocks(
 ): Array<Record<string, unknown>> {
   const blocks: Array<Record<string, unknown>> = [];
   if (screenshot) {
-    blocks.push(
-      {
-        type: 'image',
-        source: {
-          type: 'base64',
-          media_type: 'image/jpeg',
-          data: screenshot.replace(/^data:image\/jpeg;base64,/, ''),
-        },
-      },
-      { type: 'text', text: 'Screenshot 1: The current page the user is editing.' }
-    );
+    blocks.push(...toImageBlock(screenshot, 'Screenshot 1: The current page the user is editing.'));
   }
   if (referencedScreenshot && referencedPageName) {
-    blocks.push(
-      {
-        type: 'image',
-        source: {
-          type: 'base64',
-          media_type: 'image/jpeg',
-          data: referencedScreenshot.replace(/^data:image\/jpeg;base64,/, ''),
-        },
-      },
-      { type: 'text', text: `Screenshot 2: The ${referencedPageName} page that the user wants to reference or match.` }
-    );
+    blocks.push(...toImageBlock(
+      referencedScreenshot,
+      `Screenshot 2: The ${referencedPageName} page that the user wants to reference or match.`
+    ));
   }
+  console.log(`[imageBlocks] built ${blocks.filter(b => b.type === 'image').length} image block(s)` +
+    (screenshot ? ' [current]' : '') +
+    (referencedScreenshot && referencedPageName ? ` [ref:${referencedPageName}]` : ''));
   return blocks;
 }
 
@@ -175,6 +173,12 @@ async function callClaudeForPageEdit(
   const userContent: any = imageBlocks?.length
     ? [...imageBlocks, { type: 'text', text: textContent }]
     : textContent;
+
+  console.log(`[callClaudeForPageEdit] payload blocks: ${
+    Array.isArray(userContent)
+      ? userContent.map((b: any) => b.type).join(', ')
+      : 'text-only'
+  }`);
 
   const message = await client.messages.create({
     model: MODEL,
@@ -240,6 +244,12 @@ async function callClaude(
   const userContent: any = imageBlocks?.length
     ? [...imageBlocks, { type: 'text', text: textContent }]
     : textContent;
+
+  console.log(`[callClaude] payload blocks: ${
+    Array.isArray(userContent)
+      ? userContent.map((b: any) => b.type).join(', ')
+      : 'text-only'
+  }`);
 
   const firstMessage = await client.messages.create({
     model: MODEL,
@@ -319,8 +329,14 @@ export async function POST(req: NextRequest) {
     // 1280×800 via Puppeteer instead of relying on the client's html2canvas capture.
     let effectiveReferencedScreenshot = referencedScreenshot;
     if (referencedPageHtml && VISUAL_CONSISTENCY_RE.test(lastUserMessage)) {
+      console.log('[chat/route] Visual consistency detected — taking server-side Puppeteer screenshot');
       const serverShot = await screenshotHtmlServer(referencedPageHtml);
-      if (serverShot) effectiveReferencedScreenshot = serverShot;
+      if (serverShot) {
+        console.log(`[chat/route] Puppeteer screenshot OK (${serverShot.length} base64 chars)`);
+        effectiveReferencedScreenshot = serverShot;
+      } else {
+        console.log('[chat/route] Puppeteer screenshot failed — falling back to client screenshot');
+      }
     }
 
     const imageBlocks = buildImageBlocks(screenshot, effectiveReferencedScreenshot, referencedPageName);

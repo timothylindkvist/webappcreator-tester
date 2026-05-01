@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { PATTERN_LIGHT_TEXT, VALID_PATTERNS } from '@/lib/heroPatterns';
 import type { PatternId } from '@/lib/heroPatterns';
+import EditableText from '../EditableText';
 
 interface HeroProps {
   title?: string;
@@ -140,28 +141,30 @@ export default function Hero({ title, subtitle, cta, backgroundImage, pattern, m
 
       <div className={`relative mx-auto max-w-3xl ${lightText ? 'text-white' : 'text-[var(--foreground)]'}`}>
         {title ? (
-          <h1 className="text-4xl font-extrabold leading-tight sm:text-5xl md:text-6xl">{title}</h1>
+          <EditableText
+            path="hero.title"
+            value={title}
+            tag="h1"
+            className="text-4xl font-extrabold leading-tight sm:text-5xl md:text-6xl"
+          />
         ) : null}
         {subtitle ? (
-          <p className={`mx-auto mt-4 max-w-2xl text-base sm:text-lg ${lightText ? 'text-white/80' : 'text-[var(--muted)]'}`}>
-            {subtitle}
-          </p>
+          <EditableText
+            path="hero.subtitle"
+            value={subtitle}
+            tag="p"
+            className={`mx-auto mt-4 max-w-2xl text-base sm:text-lg ${lightText ? 'text-white/80' : 'text-[var(--muted)]'}`}
+          />
         ) : null}
 
         {cta?.label ? (
           <div className="mt-8 flex items-center justify-center gap-3">
-            {cta.href ? (
-              <a
-                href={cta.href}
-                className="rounded-2xl bg-[var(--brand)] px-6 py-3 font-semibold text-white shadow-md transition-all hover:opacity-90"
-              >
-                {cta.label}
-              </a>
-            ) : (
-              <button className="rounded-2xl bg-[var(--brand)] px-6 py-3 font-semibold text-white shadow-md transition-all hover:opacity-90">
-                {cta.label}
-              </button>
-            )}
+            <EditableText
+              path="hero.cta.label"
+              value={cta.label}
+              tag="button"
+              className="rounded-2xl bg-[var(--brand)] px-6 py-3 font-semibold text-white shadow-md transition-all hover:opacity-90"
+            />
           </div>
         ) : null}
 
@@ -176,10 +179,18 @@ export default function Hero({ title, subtitle, cta, backgroundImage, pattern, m
             <div className="grid grid-cols-1 gap-3 text-center sm:grid-cols-3">
               {metrics.map((metric, index) => (
                 <div key={`${metric.label}-${index}`}>
-                  <span className={`text-2xl font-bold ${lightText ? 'text-white' : 'text-[var(--brand)]'}`}>
-                    {metric.value}
-                  </span>
-                  <div className={lightText ? 'text-white/70' : 'text-[var(--muted)]'}>{metric.label}</div>
+                  <EditableText
+                    path={`hero.metrics.${index}.value`}
+                    value={metric.value}
+                    tag="span"
+                    className={`text-2xl font-bold ${lightText ? 'text-white' : 'text-[var(--brand)]'}`}
+                  />
+                  <EditableText
+                    path={`hero.metrics.${index}.label`}
+                    value={metric.label}
+                    tag="div"
+                    className={lightText ? 'text-white/70' : 'text-[var(--muted)]'}
+                  />
                 </div>
               ))}
             </div>

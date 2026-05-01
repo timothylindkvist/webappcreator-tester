@@ -4,6 +4,7 @@ import type { CSSProperties } from 'react';
 import { Suspense, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { BuilderProvider, useBuilder } from '../components/builder-context';
+import { EditModeProvider, useEditMode } from '../components/EditModeContext';
 import Builder from '../components/Builder';
 import ChatWidget from '../components/ChatWidget';
 
@@ -125,6 +126,7 @@ function EmptyPreview() {
 
 function PreviewPane() {
   const { data } = useBuilder();
+  const { isEditMode, hasChanges, saveChanges } = useEditMode();
   const hasContent = !!(data.hero?.title);
   const siteName = hasContent
     ? `${(data.brand?.name || 'yoursite').toLowerCase().replace(/\s+/g, '-')}.com`
@@ -133,7 +135,13 @@ function PreviewPane() {
   const siteVars = deriveSiteVars(data.theme.palette);
 
   return (
-    <div className="flex-1 flex flex-col min-w-0 bg-[#0b0b12]">
+    <div className="flex-1 flex flex-col min-w-0 bg-[#0b0b12] relative">
+      {isEditMode && (
+        <style>{`
+          [data-editable]:hover { box-shadow: 0 0 0 2px rgba(124,58,237,0.35); border-radius: 3px; cursor: text; }
+          [data-editable]:focus { box-shadow: 0 0 0 2px rgba(124,58,237,0.65); border-radius: 3px; outline: none; }
+        `}</style>
+      )}
       <BrowserBar label={siteName} />
       <div
         className="flex-1 overflow-y-auto"
@@ -147,6 +155,17 @@ function PreviewPane() {
           <EmptyPreview />
         )}
       </div>
+      {hasChanges && (
+        <button
+          onClick={saveChanges}
+          className="absolute bottom-5 right-5 flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#7c3aed] text-white text-[13px] font-semibold shadow-xl hover:bg-[#6d28d9] active:scale-95 transition-all z-50"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M17 16v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-2M7 11l5 5m0 0l5-5m-5 5V3" />
+          </svg>
+          Save changes
+        </button>
+      )}
     </div>
   );
 }
@@ -154,18 +173,20 @@ function PreviewPane() {
 export default function Page() {
   return (
     <BuilderProvider>
-      <Suspense>
-        <SiteLoader />
-      </Suspense>
-      <div className="h-screen flex flex-col overflow-hidden bg-[#08080d]">
-        <TopBar />
-        <div className="flex flex-1 overflow-hidden">
-          <aside className="w-[360px] flex-shrink-0 flex flex-col border-r border-zinc-200">
-            <ChatWidget />
-          </aside>
-          <PreviewPane />
+      <EditModeProvider>
+        <Suspense>
+          <SiteLoader />
+        </Suspense>
+        <div className="h-screen flex flex-col overflow-hidden bg-[#08080d]">
+          <TopBar />
+          <div className="flex flex-1 overflow-hidden">
+            <aside className="w-[360px] flex-shrink-0 flex flex-col border-r border-zinc-200">
+              <ChatWidget />
+            </aside>
+            <PreviewPane />
+          </div>
         </div>
-      </div>
+      </EditModeProvider>
     </BuilderProvider>
   );
 }

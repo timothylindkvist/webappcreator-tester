@@ -84,6 +84,7 @@ type CtxShape = {
   addSection: (section: string, payload?: unknown) => void;
   removeSection: (section: string) => void;
   patchSection: (section: string, patch: unknown) => void;
+  applyOverrides: (overrides: Record<string, string>) => void;
   setTypography: (fonts: { body?: string; headings?: string }) => void;
   setDensity: (density: 'compact' | 'cozy' | 'comfortable') => void;
   applyStylePreset: (preset: string) => void;
@@ -239,6 +240,20 @@ function mergeSite(cur: SiteData, incoming: Partial<SiteData>): SiteData {
   return syncRootFromBlocks(out as SiteData);
 }
 
+function setNestedOverride(obj: Record<string, unknown>, parts: string[], value: string): void {
+  let target: any = obj;
+  for (let i = 0; i < parts.length - 1; i++) {
+    const key = isNaN(Number(parts[i])) ? parts[i] : Number(parts[i]);
+    const nextIsIndex = !isNaN(Number(parts[i + 1]));
+    if (target[key] == null || typeof target[key] !== 'object') {
+      target[key] = nextIsIndex ? [] : {};
+    }
+    target = target[key];
+  }
+  const last = parts[parts.length - 1];
+  target[isNaN(Number(last)) ? last : Number(last)] = value;
+}
+
 export function BuilderProvider({ children }: PropsWithChildren) {
   const [brief, setBrief] = useState('');
   const [data, setData] = useState<SiteData>(initialData);
@@ -384,6 +399,22 @@ export function BuilderProvider({ children }: PropsWithChildren) {
     removeSection(id);
   };
 
+  const applyOverrides = (overrides: Record<string, string>) => {
+    if (!overrides || Object.keys(overrides).length === 0) return;
+    setData((cur) => {
+      const next = clone(cur) as Record<string, unknown>;
+      for (const [path, value] of Object.entries(overrides)) {
+        const parts = path.split('.');
+        if (parts.length < 2) continue;
+        const section = parts[0];
+        const sectionData = next[section];
+        if (!sectionData || typeof sectionData !== 'object') continue;
+        setNestedOverride(sectionData as Record<string, unknown>, parts.slice(1), value);
+      }
+      return syncRootFromBlocks(next as SiteData);
+    });
+  };
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
     (window as Window & { __sidesmithTools?: Record<string, unknown> }).__sidesmithTools = {
@@ -433,6 +464,7 @@ export function BuilderProvider({ children }: PropsWithChildren) {
     addSection,
     removeSection,
     patchSection,
+    applyOverrides,
     setTypography,
     setDensity,
     applyStylePreset,

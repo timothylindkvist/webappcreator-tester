@@ -7,7 +7,7 @@ import { streamChat } from '@/lib/aiStream';
 
 type Msg = { role: 'user' | 'assistant'; content: string };
 type CreationStep = 'idle' | 'clarifying' | 'generating-brief' | 'briefing' | 'live';
-type Answers = Partial<Record<'style' | 'audience' | 'goal' | 'theme', string>>;
+type Answers = Partial<Record<'style' | 'audience' | 'goal' | 'theme' | 'gallery', string>>;
 
 const EXAMPLES = [
   'A landing page for an artisan coffee shop in Brooklyn',
@@ -45,6 +45,11 @@ const QUESTIONS: Array<{ key: keyof Answers; label: string; options: string[] }>
     label: 'Colour theme',
     options: ['Light', 'Dark', 'Vibrant & colourful', 'Auto-select'],
   },
+  {
+    key: 'gallery',
+    label: 'Gallery section',
+    options: ['Yes, use real photos', 'No, use icons & patterns', 'No gallery needed'],
+  },
 ];
 
 function autoDetectAnswers(desc: string): Answers {
@@ -72,6 +77,13 @@ function autoDetectAnswers(desc: string): Answers {
   if (/\b(dark|night|black|moody|dramatic)\b/.test(d)) answers.theme = 'Dark';
   else if (/\b(light|white|bright|airy)\b/.test(d)) answers.theme = 'Light';
   else if (/\b(vibrant|colorful|colourful)\b/.test(d)) answers.theme = 'Vibrant & colourful';
+
+  // Gallery
+  if (/\b(restaurant|cafe|coffee|food|photo|photographer|photography|portfolio|real estate|hotel|resort|ski|travel|retail|shop|gallery)\b/.test(d)) {
+    answers.gallery = 'Yes, use real photos';
+  } else if (/\b(saas|software|platform|finance|investment|law|legal|consulting|agency|startup|app|service|b2b)\b/.test(d)) {
+    answers.gallery = 'No, use icons & patterns';
+  }
 
   return answers;
 }
@@ -302,10 +314,19 @@ export default function ChatWidget() {
 
   // Direct generate without brief (fallback)
   const doGenerate = async (briefOverride?: string) => {
-    const nextBrief = briefOverride ?? briefText;
-    setBrief(nextBrief);
+    const baseBrief = briefOverride ?? briefText;
+    setBrief(baseBrief);
+
+    // Append gallery directive so Claude respects the user's photo choice
+    let effectiveBrief = baseBrief;
+    if (answers.gallery === 'No gallery needed') {
+      effectiveBrief += '\n[Do NOT include a gallery section in this site.]';
+    } else if (answers.gallery === 'No, use icons & patterns') {
+      effectiveBrief += '\n[Gallery must use icon-cards, feature-cards, or color-blocks — no photos.]';
+    }
+
     try {
-      await rebuild(nextBrief);
+      await rebuild(effectiveBrief);
       setMessages((cur) => [
         ...cur,
         { role: 'assistant', content: "Your site is ready! Tell me what you'd like to change." },

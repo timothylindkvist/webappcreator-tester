@@ -302,7 +302,8 @@ export function buildProfessionalImageUrls(
   return Array.from({ length: count }, (_, i) => {
     const kw1 = keywords[i % keywords.length];
     const kw2 = keywords[(i + 1) % keywords.length];
-    const src = `https://source.unsplash.com/800x600/?${kw1},${kw2}&sig=${i + 1}`;
+    // Featured endpoint returns editorial-quality images; two-stage fallback in Gallery handles failures
+    const src = `https://source.unsplash.com/featured/800x600/?${kw1},${kw2}`;
     return { src, alt: kw1.replace(/-/g, ' '), caption: '' };
   });
 }

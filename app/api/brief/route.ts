@@ -30,6 +30,9 @@ export async function POST(req: NextRequest) {
       if (answers.audience) parts.push(`Target audience: ${answers.audience}`);
       if (answers.goal) parts.push(`Primary goal: ${answers.goal}`);
       if (answers.theme) parts.push(`Colour theme preference: ${answers.theme}`);
+      if (answers.gallery === 'No gallery needed') parts.push(`Gallery: do not include a gallery section`);
+      else if (answers.gallery === 'No, use icons & patterns') parts.push(`Gallery preference: use icon/pattern-based gallery, not photos`);
+      else if (answers.gallery === 'Yes, use real photos') parts.push(`Gallery preference: include a photo gallery with relevant images`);
       if (parts.length > 0) {
         answersContext = '\n\nClient preferences:\n' + parts.join('\n');
       }

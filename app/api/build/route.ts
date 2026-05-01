@@ -134,7 +134,7 @@ Use exactly this structure:
   "hero": { "title": "string", "subtitle": "string", "cta": { "label": "string" }, "pattern": "dark-grid" },
   "about": { "heading": "string", "body": "string", "bullets": ["string"] },
   "features": { "title": "string", "items": [{ "title": "string", "description": "string" }] },
-  "gallery": { "title": "string", "displayType": "photos|icon-cards|feature-cards|color-blocks|screenshot-mockups", "images": [{ "src": "https://source.unsplash.com/800x600/?keyword1,keyword2&sig=N", "caption": "string", "alt": "string" }], "items": [] },
+  "gallery": { "title": "string", "displayType": "photos|icon-cards|feature-cards|color-blocks|screenshot-mockups", "images": [{ "src": "https://source.unsplash.com/featured/800x600/?keyword1,keyword2", "caption": "string", "alt": "string" }], "items": [] },
   "pricing": { "title": "string", "plans": [{ "name": "string", "price": "string", "features": ["string"] }] },
   "faq": { "title": "string", "items": [{ "q": "string", "a": "string" }] },
   "cta": { "title": "string", "subtitle": "string", "button": { "label": "string" } }
@@ -183,13 +183,13 @@ GALLERY DISPLAY TYPE — set gallery.displayType based on the business:
 - "color-blocks": creative agencies, design studios, art brands, fashion — purely decorative colorful grid. Use items[]: [{ "gradient": "linear-gradient(135deg, #color1, #color2)", "title": "string" }]
 - "screenshot-mockups": software products, apps, SaaS tools where showing the interface matters. Use items[]: [{ "title": "Dashboard view", "accentColor": "#hex", "url": "app.example.com" }]
 
-For "photos" displayType, use images[] with Unsplash Source URLs:
-https://source.unsplash.com/800x600/?keyword1,keyword2&sig=N (different N per image, start at 1)
-Keywords MUST match the actual business:
-- pizza restaurant → "pizza,restaurant&sig=1", "pasta,kitchen&sig=2", "italian,food&sig=3", "cuisine,dining&sig=4"
-- yoga studio → "yoga-class,wellness&sig=1", "meditation,studio&sig=2", "pilates,class&sig=3"
-- gym/fitness → "gym-equipment,weights&sig=1", "fitness-facility,training&sig=2", "athletic-training,sports&sig=3"
-- coffee shop → "espresso,coffee&sig=1", "latte,cafe&sig=2", "coffee,interior&sig=3"
+For "photos" displayType, use images[] with Unsplash featured URLs:
+https://source.unsplash.com/featured/800x600/?keyword1,keyword2
+Use 4-6 images with different keyword pairs. Keywords MUST match the actual business:
+- pizza restaurant → "pizza,restaurant", "pasta,kitchen", "italian,food", "cuisine,dining"
+- yoga studio → "yoga-class,wellness", "meditation,studio", "pilates,class"
+- gym/fitness → "gym-equipment,weights", "fitness-facility,training", "athletic-training,sports"
+- coffee shop → "espresso,coffee", "latte,cafe", "coffee,interior"
 BANNED keywords: "fitness", "body", "workout", "gym", "muscle", "exercise" — use safe alternatives above.`,
       messages: [
         { role: 'user', content: brief },

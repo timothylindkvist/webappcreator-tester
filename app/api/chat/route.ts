@@ -45,7 +45,7 @@ GALLERY — gallery.displayType controls how the gallery section looks. Valid va
 
 When user says "replace images with icons/illustrations/no photos/something colorful/stats/numbers" → update gallery.displayType and regenerate items[] accordingly.
 
-GALLERY IMAGES — always use Unsplash Source URLs: https://source.unsplash.com/800x600/?keyword1,keyword2&sig=N
+GALLERY IMAGES — always use Unsplash featured URLs: https://source.unsplash.com/featured/800x600/?keyword1,keyword2
 Use SPECIFIC, BUSINESS-APPROPRIATE keywords (not generic "business" or "office"):
 - Finance/investment → "financial-district", "boardroom", "trading-floor", "document-signing", "city-skyline"
 - Tech/SaaS → "technology", "computer", "startup-office", "data-center", "workspace"

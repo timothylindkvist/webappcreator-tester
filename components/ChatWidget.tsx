@@ -5,7 +5,7 @@ import { useBuilder } from './builder-context';
 import { useEditMode } from './EditModeContext';
 import { streamChat } from '@/lib/aiStream';
 import { useCapture } from './capture-context';
-import { needsScreenshot, detectReferencedPage, captureElement, capturePageHtml } from '@/lib/screenshot';
+import { needsScreenshot, detectTargetPage, detectReferencedPage, captureElement, capturePageHtml } from '@/lib/screenshot';
 
 type Msg = { role: 'user' | 'assistant'; content: string };
 type CreationStep = 'idle' | 'clarifying' | 'generating-brief' | 'briefing' | 'live';
@@ -265,7 +265,9 @@ async function captureContextScreenshots(
   } catch { /* fail gracefully */ }
 
   const allPages = [{ id: 'home', name: 'Home' }, ...pages];
-  const referencedPageId = detectReferencedPage(message, allPages);
+  // Exclude the page being edited so it isn't also treated as the reference
+  const candidatePages = allPages.filter((p) => p.id !== currentPage);
+  const referencedPageId = detectReferencedPage(message, candidatePages);
   let referenced: string | null = null;
   let referencedPageName: string | null = null;
 
@@ -426,6 +428,14 @@ export default function ChatWidget() {
     resetTextarea();
     setBusy(true);
 
+    // Detect if the user is asking to edit a specific page different from the
+    // currently active tab — e.g. "make the home page look like the team page"
+    // while viewing the team tab.
+    const targetPageId = detectTargetPage(msg, pages.map((p) => ({ id: p.id, name: p.name })));
+    const effectiveActivePage = targetPageId ?? activePage;
+    const effectivePageData =
+      effectiveActivePage !== 'home' ? pages.find((p) => p.id === effectiveActivePage) : null;
+
     let screenshot: string | undefined;
     let referencedScreenshot: string | undefined;
     let referencedPageName: string | undefined;
@@ -435,7 +445,7 @@ export default function ChatWidget() {
       try {
         const result = await captureContextScreenshots(
           msg,
-          activePage,
+          effectiveActivePage,
           pages,
           homeRef,
           setScreenshotStatus
@@ -448,18 +458,19 @@ export default function ChatWidget() {
     }
 
     try {
-      const activePageData = activePage !== 'home' ? pages.find((p) => p.id === activePage) : null;
       const res = await streamChat(nextMessages, {
         site: data,
         brief,
-        activePage,
-        pageHtml: activePageData?.html,
+        activePage: effectiveActivePage,
+        pageHtml: effectivePageData?.html,
         pages: pages.map((p) => ({ id: p.id, name: p.name })),
         screenshot,
         referencedScreenshot,
         referencedPageName,
       });
       setMessages((cur) => [...cur, { role: 'assistant', content: res.reply || 'Done.' }]);
+      // Switch view to the edited page so the user sees the result
+      if (targetPageId && targetPageId !== activePage) setActivePage(targetPageId);
       // Re-apply any inline edits on top of the AI's changes
       if (hasChanges) reapplyOverrides();
       await persistLatestSite(siteId);

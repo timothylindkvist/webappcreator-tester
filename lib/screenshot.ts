@@ -10,6 +10,46 @@ export function needsScreenshot(message: string): boolean {
   return triggers.some((t) => lower.includes(t));
 }
 
+// Detects which page the user intends to EDIT (the target of the change).
+// Used to override activePage routing when the user is on page A but says
+// "make the home page look like the team page" — target is 'home', not 'team'.
+export function detectTargetPage(
+  message: string,
+  pages: Array<{ id: string; name: string }>
+): string | null {
+  const lower = message.toLowerCase();
+  const allPages = [{ id: 'home', name: 'Home' }, ...pages];
+  const actions = [
+    'make', 'update', 'change', 'edit', 'fix', 'adjust',
+    'redesign', 'restyle', 'style', 'align', 'modify', 'format', 'improve',
+  ];
+  for (const page of allPages) {
+    const name = page.name.toLowerCase();
+    const id = page.id.toLowerCase();
+    for (const action of actions) {
+      if (
+        lower.includes(`${action} the ${name} page`) ||
+        lower.includes(`${action} ${name} page`) ||
+        lower.includes(`${action} the ${id} page`) ||
+        lower.includes(`${action} ${id} page`)
+      ) {
+        return page.id;
+      }
+    }
+    if (
+      lower.includes(`the ${name} page should`) ||
+      lower.includes(`the ${name} page needs`) ||
+      lower.includes(`on the ${name} page`) ||
+      lower.includes(`the ${id} page should`) ||
+      lower.includes(`the ${id} page needs`) ||
+      lower.includes(`on the ${id} page`)
+    ) {
+      return page.id;
+    }
+  }
+  return null;
+}
+
 export function detectReferencedPage(
   message: string,
   pages: Array<{ id: string; name: string }>

@@ -338,7 +338,14 @@ export function BuilderProvider({ children }: PropsWithChildren) {
     if (!type) return;
     setData((cur) => {
       const blocks = [...inferBlocks(cur)];
-      const block = makeBlock(type, blockData, id ?? type);
+      const targetId = id ?? type;
+      const existing = blocks.findIndex((b) => b.id === targetId || b.type === type);
+      if (existing !== -1) {
+        // Upsert: update the data of the existing block in place instead of duplicating
+        blocks[existing] = makeBlock(blocks[existing].type, blockData, blocks[existing].id);
+        return mergeSite(cur, { blocks });
+      }
+      const block = makeBlock(type, blockData, targetId);
       const safeIndex = typeof index === 'number' ? Math.max(0, Math.min(index, blocks.length)) : blocks.length;
       blocks.splice(safeIndex, 0, block);
       return mergeSite(cur, { blocks });

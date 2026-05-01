@@ -2,7 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { rateLimit } from '@/lib/ratelimit';
 import { MODEL } from '@/lib/models';
 import { sanitizeSiteImages } from '@/lib/imageKeywords';
-import { detectSectionAdd } from '@/lib/sectionTemplates';
+import { detectSectionAdd, detectSectionRemove } from '@/lib/sectionTemplates';
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 
@@ -77,18 +77,38 @@ export async function POST(req: NextRequest) {
 
     const userContent = `Brief: ${brief}\n\nCurrent site:\n${JSON.stringify(site, null, 2)}\n\nChange requested: ${lastUserMessage}`;
 
-    // Fast path: section-add requests use pre-built templates to avoid JSON truncation
-    const sectionInsert = detectSectionAdd(lastUserMessage, site);
-    if (sectionInsert) {
-      const event = {
-        name: 'insertSection',
-        args: {
-          type: sectionInsert.type,
-          id: sectionInsert.id ?? sectionInsert.type,
-          data: sectionInsert.data,
-        },
-      };
-      return Response.json({ ok: true, reply: sectionInsert.reply, events: [event] });
+    // Fast path: section remove — find by type/id and delete without regenerating full JSON
+    const sectionRemove = detectSectionRemove(lastUserMessage, site);
+    if (sectionRemove) {
+      if (sectionRemove.kind === 'remove') {
+        return Response.json({
+          ok: true,
+          reply: sectionRemove.reply,
+          events: [{ name: 'deleteSection', args: { id: sectionRemove.id } }],
+        });
+      }
+      // kind === 'not-found': section doesn't exist, inform and stop
+      return Response.json({ ok: true, reply: sectionRemove.reply, events: [] });
+    }
+
+    // Fast path: section add — use pre-built template to avoid JSON truncation
+    const sectionAdd = detectSectionAdd(lastUserMessage, site);
+    if (sectionAdd) {
+      if (sectionAdd.kind === 'already-exists') {
+        // Section exists — tell the user rather than letting Claude potentially duplicate it
+        return Response.json({ ok: true, reply: sectionAdd.reply, events: [] });
+      }
+      // kind === 'insert'
+      return Response.json({
+        ok: true,
+        reply: sectionAdd.reply,
+        events: [
+          {
+            name: 'insertSection',
+            args: { type: sectionAdd.type, id: sectionAdd.id ?? sectionAdd.type, data: sectionAdd.data },
+          },
+        ],
+      });
     }
 
     // First attempt

@@ -4,6 +4,7 @@ import { MODEL } from '@/lib/models';
 import { sanitizeSiteImages, extractVisualKeywords, buildProfessionalImageUrls } from '@/lib/imageKeywords';
 import { collectAllOps } from '@/lib/sectionTemplates';
 import { generatePage } from '@/lib/pageGenerator';
+import { restoreNavEmbed } from '@/lib/navIntercept';
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 
@@ -189,7 +190,8 @@ Rules:
 - Make ONLY the requested change. Return the complete HTML with the change applied.
 - NEVER truncate your reply mid-sentence. Finish every sentence completely.
 - If the instruction is clear, execute it without asking for clarification. Explain what you did after.
-- When screenshots are provided, Screenshot 1 is the current page and Screenshot 2 (if present) is the reference page to match.`,
+- When screenshots are provided, Screenshot 1 is the current page and Screenshot 2 (if present) is the reference page to match.
+- PRESERVE the <script id="sm-nav-cfg" type="application/json"> tag and <script src="/nav.js"> tag EXACTLY as-is — do not remove, move, or modify them.`,
     messages: [
       {
         role: 'user',
@@ -335,11 +337,13 @@ export async function POST(req: NextRequest) {
     if (activePage !== 'home' && pageHtml) {
       const pageName = incomingPages.find((p) => p.id === activePage)?.name ?? activePage;
       const result = await callClaudeForPageEdit(client, lastUserMessage, pageHtml, brief, pageName, imageBlocks.length ? imageBlocks : undefined, referencedPageHtml, referencedPageName);
+      // Restore nav embed if Claude accidentally stripped it
+      const safeHtml = result.html ? restoreNavEmbed(result.html, pageHtml) : undefined;
       return Response.json({
         ok: true,
         reply: result.reply || `Updated the ${pageName} page.`,
-        events: result.html
-          ? [{ name: 'updatePage', args: { id: activePage, html: result.html } }]
+        events: safeHtml
+          ? [{ name: 'updatePage', args: { id: activePage, html: safeHtml } }]
           : [],
       });
     }

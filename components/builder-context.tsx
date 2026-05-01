@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useMemo, useState, type Dispatch, type PropsWithChildren, type SetStateAction } from 'react';
-import { ensureNavScript } from '../lib/navIntercept';
+import { ensureNavScript, updateNavConfig } from '../lib/navIntercept';
 
 export type Theme = {
   vibe?: string;
@@ -285,8 +285,13 @@ function setNestedOverride(obj: Record<string, unknown>, parts: string[], value:
   target[isNaN(Number(last)) ? last : Number(last)] = value;
 }
 
-// Inject a nav link into an HTML page's <nav><ul> using the browser DOMParser.
-function injectNavLink(html: string, page: Pick<Page, 'id' | 'name'>): string {
+// Updates the sm-nav-cfg JSON in a page's HTML to add a newly created page.
+// Falls back to the old DOMParser approach for pages generated before nav.js.
+function addPageToNav(html: string, page: Pick<Page, 'id' | 'name'>): string {
+  if (html.includes('sm-nav-cfg')) {
+    return updateNavConfig(html, page);
+  }
+  // Legacy fallback: DOMParser nav-link injection for old-style pages
   if (typeof window === 'undefined') return html;
   try {
     const doc = new DOMParser().parseFromString(html, 'text/html');
@@ -412,8 +417,8 @@ export function BuilderProvider({ children }: PropsWithChildren) {
       if (cur.some(p => p.id === page.id)) {
         return cur.map(p => p.id === page.id ? { ...page, html: safeHtml } : p);
       }
-      // Update all existing pages' navs to include the new page link
-      const updated = cur.map(p => ({ ...p, html: injectNavLink(p.html, page) }));
+      // Update all existing pages' nav configs to include the new page link
+      const updated = cur.map(p => ({ ...p, html: addPageToNav(p.html, page) }));
       return [...updated, { ...page, html: safeHtml }];
     });
     setActivePage(page.id);

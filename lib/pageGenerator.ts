@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { MODEL } from './models';
+import { buildNavEmbed } from './navIntercept';
 
 export type GeneratedPage = { html: string; pageId: string; pageName: string };
 
@@ -53,21 +54,12 @@ export async function generatePage(
   const border = isLight ? '#e4e4e7' : '#27272a';
   const muted = isLight ? '#71717a' : '#a1a1aa';
 
-  // Build nav items: all existing pages + this new page
+  // All pages that will appear in the navbar (existing + this new page)
   const allPages = [...existingPages, { id: pageId, name: pageName }];
-  const navItems = allPages
-    .map((p) => {
-      const href = p.id === 'home' ? '/' : `${p.id}.html`;
-      const active = p.id === pageId;
-      return `<li><a href="${href}" ${active ? 'class="active"' : ''}>${p.name}</a></li>`;
-    })
-    .join('\n        ');
 
   const sectionGuide =
     PAGE_SECTION_GUIDES[pageId] ??
     `Appropriate sections for a "${pageName}" page — use the brief for context${pageDescription ? `: ${pageDescription}` : ''}`;
-
-  const typeGuide = pageId in PAGE_SECTION_GUIDES ? pageId : 'custom';
 
   const message = await client.messages.create({
     model: MODEL,
@@ -87,14 +79,12 @@ DESIGN SYSTEM (use exactly these values):
 
 REQUIREMENTS:
 1. Include a <style> block in <head> that sets these CSS custom properties on :root and uses them throughout
-2. Navigation: <nav> containing <ul> with the exact items below — do not change the structure:
-   ${navItems}
-   Style the nav with the brand color. The .active link should be styled distinctly.
+2. Do NOT generate a <nav> element — navigation is injected automatically by a shared script
 3. Page content sections: ${sectionGuide}
 4. Footer: brand name + tagline + simple copyright line
 5. Fonts: use system-ui or Google Fonts (one import line max) consistent with the brand vibe
 6. Make it look polished and complete — real-sounding content based on the brief, not lorem ipsum for headings
-7. Responsive: mobile-friendly with a hamburger or stacked nav on small screens
+7. Responsive: mobile-friendly layout
 
 Write realistic copy that fits the business. Use the brand color for buttons, headings, and accent elements.`,
     messages: [
@@ -106,12 +96,19 @@ Write realistic copy that fits the business. Use the brand color for buttons, he
   });
 
   const raw = message.content[0].type === 'text' ? message.content[0].text.trim() : '';
-  // Strip accidental markdown fences
   const html = raw.replace(/^```html?\n?/i, '').replace(/\n?```$/i, '').trim();
 
   if (!html.includes('<html') && !html.includes('<!DOCTYPE')) {
     throw new Error('Page generation returned invalid HTML');
   }
 
-  return { html, pageId, pageName };
+  // Inject the shared nav config + nav.js reference into <head>.
+  // nav.js will remove any accidental <nav> Claude added and replace it with
+  // the consistent shared navbar at runtime.
+  const navEmbed = buildNavEmbed(allPages, pageId);
+  const withNav = html.includes('</head>')
+    ? html.replace('</head>', navEmbed + '\n</head>')
+    : html.replace('<body', navEmbed + '\n<body');
+
+  return { html: withNav, pageId, pageName };
 }

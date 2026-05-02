@@ -28,7 +28,7 @@ export default function Features({ title, items = [] }: FeaturesProps) {
       <EditableText path="features.title" value={title || 'Features'} tag="h2" className="text-2xl font-bold" />
       <div className="mt-4 grid gap-4 sm:grid-cols-2 md:grid-cols-3">
         {items.map((f, i) => (
-          <div key={i} className="rounded-2xl p-5" style={card}>
+          <div key={i} className="rounded-2xl p-5" style={card} data-sm-card="true">
             <EditableText
               path={`features.items.${i}.title`}
               value={f.title}

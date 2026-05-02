@@ -176,9 +176,15 @@ HERO PATTERN — set hero.pattern to one of these four values based on the busin
 - "gradient-mesh": smooth multi-color gradient blobs on dark background (brand + accent colors). Best for: tech/SaaS, startups, creative agencies, design studios, AI products
 - "light-minimal": clean white/off-white with subtle grey grid lines. Best for: law firms, accountants, finance, insurance, medical, healthcare, grief/bereavement, estate planning, any professional or sensitive service
 
+LANDING PAGE LAYOUT — follow a card-based layout with visual hierarchy:
+- features: always include 4–6 items, each with a substantive description (2–3 sentences, not just 2–3 words)
+- gallery: always populate with real items[] or images[] — never leave empty; include at least 4 items
+- about: include a concise value proposition with 2–3 bullet points
+- section order: hero → about → features → gallery → pricing (if relevant) → faq (if relevant) → cta
+
 GALLERY DISPLAY TYPE — set gallery.displayType based on the business:
-- "photos": default — real businesses where photos of the product/service/place matter most (restaurant, retail, photography, real estate, coffee shop, events). Use images[] with LoremFlickr URLs.
-- "icon-cards": when the product/service is abstract and icons communicate features better (apps, platforms, SaaS features, services list). Use items[]: [{ "icon": "emoji", "title": "string", "description": "string", "color": "#hex" }]
+- "photos": default — real businesses where photos of the product/service/place matter most (restaurant, retail, photography, real estate, coffee shop, events). Use images[] with Unsplash featured URLs.
+- "icon-cards": when the product/service is abstract and icons communicate features better (apps, platforms, SaaS features, services list). Use items[]: [{ "icon": "emoji", "title": "string", "description": "string", "color": "#hex" }]. NOTE: "color" is used only as a subtle top-border accent on each card, NOT as a full background fill — use brand/accent hues, NOT garish or high-saturation colors.
 - "feature-cards": SaaS, data-driven businesses, or when stats/numbers tell the story. Use items[]: [{ "stat": "10x", "title": "Faster workflow", "subtitle": "Compared to manual processes" }]
 - "color-blocks": creative agencies, design studios, art brands, fashion — purely decorative colorful grid. Use items[]: [{ "gradient": "linear-gradient(135deg, #color1, #color2)", "title": "string" }]
 - "screenshot-mockups": software products, apps, SaaS tools where showing the interface matters. Use items[]: [{ "title": "Dashboard view", "accentColor": "#hex", "url": "app.example.com" }]

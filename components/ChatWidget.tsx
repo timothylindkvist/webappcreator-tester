@@ -488,7 +488,6 @@ export default function ChatWidget() {
         pageHtml: effectivePageData?.html,
         pages: pages.map((p) => ({ id: p.id, name: p.name })),
         screenshot,
-        referencedScreenshot,
         referencedPageName,
         referencedPageHtml,
       });

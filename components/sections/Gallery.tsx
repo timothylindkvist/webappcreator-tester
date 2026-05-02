@@ -274,8 +274,9 @@ function IconCards({ items }: { items: BaseItem[] }) {
       {items.map((it, i) => (
         <div
           key={i}
+          data-sm-card="true"
           className="flex flex-col items-center rounded-2xl p-6 text-center"
-          style={{ background: it.color ?? 'var(--card)', border: '1px solid var(--border)' }}
+          style={{ background: 'var(--card)', border: '1px solid var(--border)', ...(it.color ? { borderTop: `3px solid ${it.color}` } : {}) }}
         >
           <span className="text-4xl mb-3 leading-none" aria-hidden="true">{it.icon ?? '✨'}</span>
           <h3 className="font-semibold text-sm" style={{ color: 'var(--foreground)' }}>{it.title}</h3>
@@ -296,6 +297,7 @@ function FeatureCards({ items }: { items: BaseItem[] }) {
       {items.map((it, i) => (
         <div
           key={i}
+          data-sm-card="true"
           className="rounded-2xl p-6"
           style={{ background: 'var(--card)', border: '1px solid var(--border)' }}
         >

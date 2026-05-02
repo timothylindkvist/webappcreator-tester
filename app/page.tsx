@@ -153,14 +153,19 @@ document.querySelectorAll(SELECTORS).forEach(function(el){
   el.contentEditable='true';
   el.setAttribute('data-editable','true');
 });
+document.querySelectorAll('div,article,li').forEach(function(el){
+  if(!el.children.length)return;
+  var bg=window.getComputedStyle(el).backgroundColor;
+  if(bg&&bg!=='rgba(0, 0, 0, 0)'&&bg!=='transparent')el.setAttribute('data-sm-card','true');
+});
 var st=document.createElement('style');
 st.id='__sm_style';
-st.textContent='[data-editable]:hover{outline:2px solid rgba(124,58,237,.5)!important;outline-offset:1px;cursor:text}[data-editable]:focus{outline:2px solid rgba(124,58,237,.9)!important;outline-offset:1px;outline-style:solid!important}';
+st.textContent='[data-editable]:hover{outline:2px solid rgba(124,58,237,.5)!important;outline-offset:1px;cursor:text}[data-editable]:focus{outline:2px solid rgba(124,58,237,.9)!important;outline-offset:1px;outline-style:solid!important}[data-sm-card]:not([data-editable]):hover{outline:2px dashed rgba(124,58,237,.4)!important;outline-offset:2px;cursor:pointer}';
 document.head.appendChild(st);
 var PAL=['${brand}','${accent}','#ffffff','#111827','#ef4444','#22c55e'];
 var SZ={S:'14px',M:'16px',L:'20px',XL:'28px'};
 var SEP='<span style="display:inline-block;width:1px;height:14px;background:rgba(255,255,255,.12);flex-shrink:0"></span>';
-var html='';
+var html='<span id="__sm_tc" style="display:flex;align-items:center;gap:3px">';
 ['S','M','L','XL'].forEach(function(s){html+='<button data-sz="'+s+'" style="padding:1px 5px;font-size:10px;font-weight:700;color:rgba(255,255,255,.5);background:none;border:none;cursor:pointer;border-radius:4px;line-height:1.7">'+s+'</button>';});
 html+=SEP;
 html+='<button data-bd="1" style="padding:1px 5px;font-size:11px;font-weight:900;color:rgba(255,255,255,.5);background:none;border:none;cursor:pointer;border-radius:4px;line-height:1.7">B</button>';
@@ -169,6 +174,7 @@ PAL.forEach(function(c){html+='<button data-tc="'+c+'" style="width:13px;height:
 html+='<label style="width:14px;height:14px;border:1px solid rgba(255,255,255,.2);border-radius:3px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:8px;color:rgba(255,255,255,.4);flex-shrink:0;position:relative"><span style="pointer-events:none">✏</span><input type="color" data-tc-c="1" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%"></label>';
 html+=SEP;
 ['L','C','R'].forEach(function(a,i){var al=['left','center','right'][i];html+='<button data-al="'+al+'" style="padding:1px 4px;font-size:11px;color:rgba(255,255,255,.5);background:none;border:none;cursor:pointer;border-radius:4px;line-height:1.7">'+a+'</button>';});
+html+='</span>';
 html+='<span id="__sm_bx" style="display:none;align-items:center;gap:3px">'+SEP+'<span style="font-size:9px;color:rgba(255,255,255,.3);padding:0 2px">Box</span>';
 PAL.forEach(function(c){html+='<button data-bc="'+c+'" style="width:13px;height:13px;background:'+c+';border:1px solid rgba(255,255,255,.3);border-radius:3px;cursor:pointer;padding:0;flex-shrink:0"></button>';});
 html+='<label style="width:14px;height:14px;border:1px solid rgba(255,255,255,.2);border-radius:3px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:8px;color:rgba(255,255,255,.4);flex-shrink:0;position:relative"><span style="pointer-events:none">✏</span><input type="color" data-bc-c="1" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%"></label>';
@@ -188,10 +194,24 @@ document.addEventListener('click',function(e){
     if(t.getAttribute&&t.getAttribute('data-editable')){
       ae=t;ce=findCard(ae);
       var bx=document.getElementById('__sm_bx');
+      var tc=document.getElementById('__sm_tc');
       if(bx)bx.style.display=ce?'flex':'none';
+      if(tc)tc.style.display='flex';
       showTb(ae);ae.focus();return;
     }
     t=t.parentElement;
+  }
+  var c2=e.target;
+  while(c2&&c2.tagName!=='BODY'){
+    if(c2.getAttribute&&c2.getAttribute('data-sm-card')){
+      ce=c2;ae=null;
+      var bx2=document.getElementById('__sm_bx');
+      var tc2=document.getElementById('__sm_tc');
+      if(bx2)bx2.style.display='flex';
+      if(tc2)tc2.style.display='none';
+      showTb(c2);return;
+    }
+    c2=c2.parentElement;
   }
   tb.style.display='none';
 });
@@ -215,6 +235,7 @@ function FloatingEditToolbar({
   const activeElRef = useRef<HTMLElement | null>(null);
   const cardElRef = useRef<HTMLElement | null>(null);
   const [hasCard, setHasCard] = useState(false);
+  const [cardClickMode, setCardClickMode] = useState(false);
   const toolbarRef = useRef<HTMLDivElement>(null);
 
   const SIZES: Record<string, string> = { S: '14px', M: '16px', L: '20px', XL: '28px' };
@@ -245,6 +266,7 @@ function FloatingEditToolbar({
       const card = findCard(target);
       cardElRef.current = card;
       setHasCard(!!card);
+      setCardClickMode(false);
       const rect = target.getBoundingClientRect();
       const toolbarH = 42;
       let top = rect.top - toolbarH - 6;
@@ -261,9 +283,36 @@ function FloatingEditToolbar({
   }, [containerRef, findCard]);
 
   useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const onCardClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target?.dataset?.editable) return;
+      const card = target.closest('[data-sm-card]') as HTMLElement | null;
+      if (!card) return;
+      cardElRef.current = card;
+      activeElRef.current = null;
+      setCardClickMode(true);
+      setHasCard(true);
+      const rect = card.getBoundingClientRect();
+      const toolbarH = 42;
+      let top = rect.top - toolbarH - 6;
+      if (top < 4) top = rect.bottom + 6;
+      setPos({
+        top: Math.max(4, top),
+        left: Math.min(window.innerWidth - 360, Math.max(4, rect.left)),
+      });
+      setVisible(true);
+    };
+    container.addEventListener('click', onCardClick);
+    return () => container.removeEventListener('click', onCardClick);
+  }, [containerRef]);
+
+  useEffect(() => {
     const onMousedown = (e: MouseEvent) => {
       if (toolbarRef.current?.contains(e.target as Node)) return;
-      if (!(e.target as HTMLElement)?.dataset?.editable) setVisible(false);
+      const t = e.target as HTMLElement;
+      if (!t?.dataset?.editable && !t?.closest?.('[data-sm-card]')) setVisible(false);
     };
     const onScroll = () => setVisible(false);
     document.addEventListener('mousedown', onMousedown);
@@ -291,74 +340,79 @@ function FloatingEditToolbar({
       style={{ position: 'fixed', top: pos.top, left: pos.left, zIndex: 99999 }}
       className="flex items-center gap-0.5 px-2 py-1.5 rounded-xl bg-[#1e1e30] border border-white/[0.12] shadow-2xl"
     >
-      {/* Font sizes */}
-      {Object.entries(SIZES).map(([label, size]) => (
-        <button
-          key={label}
-          onMouseDown={apply(() => { if (ae) ae.style.fontSize = size; })}
-          className="px-1.5 py-0.5 text-[10px] font-bold text-white/50 hover:text-white hover:bg-white/[0.08] rounded transition-colors"
-        >{label}</button>
-      ))}
-
-      <div className="w-px h-3.5 bg-white/[0.12] mx-0.5 flex-shrink-0" />
-
-      {/* Bold */}
-      <button
-        onMouseDown={apply(() => {
-          if (!ae) return;
-          const fw = parseInt(window.getComputedStyle(ae).fontWeight) || 400;
-          ae.style.fontWeight = fw >= 600 ? 'normal' : 'bold';
-        })}
-        className="px-1.5 py-0.5 text-[12px] font-black text-white/50 hover:text-white hover:bg-white/[0.08] rounded transition-colors"
-      >B</button>
-
-      <div className="w-px h-3.5 bg-white/[0.12] mx-0.5 flex-shrink-0" />
-
-      {/* Text color swatches */}
-      {SWATCHES.map((c) => (
-        <button
-          key={`t-${c}`}
-          onMouseDown={apply(() => { if (ae) ae.style.color = c; })}
-          style={{
-            backgroundColor: c,
-            border: c === '#ffffff' ? '1px solid rgba(200,200,200,0.4)' : '1px solid rgba(0,0,0,0.2)',
-          }}
-          className="w-3.5 h-3.5 rounded-full hover:scale-110 transition-transform flex-shrink-0"
-        />
-      ))}
-      <label
-        className="w-4 h-4 rounded border border-white/[0.2] cursor-pointer flex items-center justify-center hover:bg-white/[0.08] transition-colors flex-shrink-0 relative overflow-hidden"
-        onMouseDown={(e) => e.stopPropagation()}
-        title="Custom text color"
-      >
-        <span className="text-[8px] text-white/40 pointer-events-none">✏</span>
-        <input
-          type="color"
-          className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-          onChange={(e) => { if (ae) ae.style.color = e.target.value; }}
-        />
-      </label>
-
-      <div className="w-px h-3.5 bg-white/[0.12] mx-0.5 flex-shrink-0" />
-
-      {/* Alignment */}
-      {(['left', 'center', 'right'] as const).map((a) => (
-        <button
-          key={a}
-          onMouseDown={apply(() => { if (ae) ae.style.textAlign = a; })}
-          className="w-5 h-5 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/[0.08] rounded transition-colors flex-shrink-0"
-          title={`Align ${a}`}
-        >
-          {a === 'left' && <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round"><line x1="1" y1="3" x2="11" y2="3"/><line x1="1" y1="6" x2="8" y2="6"/><line x1="1" y1="9" x2="10" y2="9"/></svg>}
-          {a === 'center' && <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round"><line x1="1" y1="3" x2="11" y2="3"/><line x1="2.5" y1="6" x2="9.5" y2="6"/><line x1="1.5" y1="9" x2="10.5" y2="9"/></svg>}
-          {a === 'right' && <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round"><line x1="1" y1="3" x2="11" y2="3"/><line x1="4" y1="6" x2="11" y2="6"/><line x1="2" y1="9" x2="11" y2="9"/></svg>}
-        </button>
-      ))}
-
-      {/* Box color — only when a card container is detected */}
-      {hasCard && (
+      {/* Text-specific controls — hidden when card is directly clicked */}
+      {!cardClickMode && (
         <>
+          {/* Font sizes */}
+          {Object.entries(SIZES).map(([label, size]) => (
+            <button
+              key={label}
+              onMouseDown={apply(() => { if (ae) ae.style.fontSize = size; })}
+              className="px-1.5 py-0.5 text-[10px] font-bold text-white/50 hover:text-white hover:bg-white/[0.08] rounded transition-colors"
+            >{label}</button>
+          ))}
+
           <div className="w-px h-3.5 bg-white/[0.12] mx-0.5 flex-shrink-0" />
+
+          {/* Bold */}
+          <button
+            onMouseDown={apply(() => {
+              if (!ae) return;
+              const fw = parseInt(window.getComputedStyle(ae).fontWeight) || 400;
+              ae.style.fontWeight = fw >= 600 ? 'normal' : 'bold';
+            })}
+            className="px-1.5 py-0.5 text-[12px] font-black text-white/50 hover:text-white hover:bg-white/[0.08] rounded transition-colors"
+          >B</button>
+
+          <div className="w-px h-3.5 bg-white/[0.12] mx-0.5 flex-shrink-0" />
+
+          {/* Text color swatches */}
+          {SWATCHES.map((c) => (
+            <button
+              key={`t-${c}`}
+              onMouseDown={apply(() => { if (ae) ae.style.color = c; })}
+              style={{
+                backgroundColor: c,
+                border: c === '#ffffff' ? '1px solid rgba(200,200,200,0.4)' : '1px solid rgba(0,0,0,0.2)',
+              }}
+              className="w-3.5 h-3.5 rounded-full hover:scale-110 transition-transform flex-shrink-0"
+            />
+          ))}
+          <label
+            className="w-4 h-4 rounded border border-white/[0.2] cursor-pointer flex items-center justify-center hover:bg-white/[0.08] transition-colors flex-shrink-0 relative overflow-hidden"
+            onMouseDown={(e) => e.stopPropagation()}
+            title="Custom text color"
+          >
+            <span className="text-[8px] text-white/40 pointer-events-none">✏</span>
+            <input
+              type="color"
+              className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+              onChange={(e) => { if (ae) ae.style.color = e.target.value; }}
+            />
+          </label>
+
+          <div className="w-px h-3.5 bg-white/[0.12] mx-0.5 flex-shrink-0" />
+
+          {/* Alignment */}
+          {(['left', 'center', 'right'] as const).map((a) => (
+            <button
+              key={a}
+              onMouseDown={apply(() => { if (ae) ae.style.textAlign = a; })}
+              className="w-5 h-5 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/[0.08] rounded transition-colors flex-shrink-0"
+              title={`Align ${a}`}
+            >
+              {a === 'left' && <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round"><line x1="1" y1="3" x2="11" y2="3"/><line x1="1" y1="6" x2="8" y2="6"/><line x1="1" y1="9" x2="10" y2="9"/></svg>}
+              {a === 'center' && <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round"><line x1="1" y1="3" x2="11" y2="3"/><line x1="2.5" y1="6" x2="9.5" y2="6"/><line x1="1.5" y1="9" x2="10.5" y2="9"/></svg>}
+              {a === 'right' && <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round"><line x1="1" y1="3" x2="11" y2="3"/><line x1="4" y1="6" x2="11" y2="6"/><line x1="2" y1="9" x2="11" y2="9"/></svg>}
+            </button>
+          ))}
+        </>
+      )}
+
+      {/* Box color — shown when a card is detected via text focus, or directly clicked */}
+      {(hasCard || cardClickMode) && (
+        <>
+          {!cardClickMode && <div className="w-px h-3.5 bg-white/[0.12] mx-0.5 flex-shrink-0" />}
           <span className="text-[9px] text-white/30 font-medium px-0.5 flex-shrink-0">Box</span>
           {SWATCHES.map((c) => (
             <button

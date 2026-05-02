@@ -5,14 +5,10 @@ import { sanitizeSiteImages, extractVisualKeywords, buildProfessionalImageUrls }
 import { collectAllOps } from '@/lib/sectionTemplates';
 import { generatePage } from '@/lib/pageGenerator';
 import { restoreNavEmbed } from '@/lib/navIntercept';
-import { screenshotHtmlServer, detectSectionHint } from '@/lib/server-screenshot';
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 
 export const runtime = 'nodejs';
-
-const VISUAL_CONSISTENCY_RE =
-  /\b(match(es)?|look(s)?\s+like|same\s+(theme|style|design|look|color|colour)|similar\s+to|consistent\s+with|make\s+it\s+like|apply\s+the\s+same)\b/i;
 
 const ChatResponseSchema = z.object({
   reply: z.string(),
@@ -98,37 +94,15 @@ function resolveImageRequest(
 
 // ── Vision image blocks ───────────────────────────────────────────────────────
 
-// Accepts either a raw base64 string (Puppeteer) or a data URL (html2canvas).
-// Derives the media type from the prefix so PNG fallbacks are handled correctly.
-function toImageBlock(raw: string, label: string): [Record<string, unknown>, Record<string, unknown>] {
-  const match = raw.match(/^data:(image\/[^;]+);base64,/);
+function buildImageBlocks(screenshot?: string): Array<Record<string, unknown>> {
+  if (!screenshot) return [];
+  const match = screenshot.match(/^data:(image\/[^;]+);base64,/);
   const mediaType = (match?.[1] ?? 'image/jpeg') as string;
-  const data = match ? raw.slice(match[0].length) : raw;
+  const data = match ? screenshot.slice(match[0].length) : screenshot;
   return [
     { type: 'image', source: { type: 'base64', media_type: mediaType, data } },
-    { type: 'text', text: label },
+    { type: 'text', text: 'Screenshot: The current page the user is editing.' },
   ];
-}
-
-function buildImageBlocks(
-  screenshot?: string,
-  referencedScreenshot?: string,
-  referencedPageName?: string
-): Array<Record<string, unknown>> {
-  const blocks: Array<Record<string, unknown>> = [];
-  if (screenshot) {
-    blocks.push(...toImageBlock(screenshot, 'Screenshot 1: The current page the user is editing.'));
-  }
-  if (referencedScreenshot && referencedPageName) {
-    blocks.push(...toImageBlock(
-      referencedScreenshot,
-      `Screenshot 2: The ${referencedPageName} page that the user wants to reference or match.`
-    ));
-  }
-  console.log(`[imageBlocks] built ${blocks.filter(b => b.type === 'image').length} image block(s)` +
-    (screenshot ? ' [current]' : '') +
-    (referencedScreenshot && referencedPageName ? ` [ref:${referencedPageName}]` : ''));
-  return blocks;
 }
 
 // Removes <script> tags from HTML before sending as reference context.
@@ -336,27 +310,11 @@ export async function POST(req: NextRequest) {
     const pageHtml: string | undefined = typeof body?.pageHtml === 'string' ? body.pageHtml : undefined;
     const incomingPages: Array<{ id: string; name: string }> = Array.isArray(body?.pages) ? body.pages : [];
     const screenshot: string | undefined = typeof body?.screenshot === 'string' ? body.screenshot : undefined;
-    const referencedScreenshot: string | undefined = typeof body?.referencedScreenshot === 'string' ? body.referencedScreenshot : undefined;
     const referencedPageName: string | undefined = typeof body?.referencedPageName === 'string' ? body.referencedPageName : undefined;
     const referencedPageHtml: string | undefined = typeof body?.referencedPageHtml === 'string' ? body.referencedPageHtml : undefined;
     const lastUserMessage = [...messages].reverse().find((m: any) => m?.role === 'user')?.content || '';
 
-    // For visual consistency requests, screenshot the reference page server-side at
-    // 1280×800 via Puppeteer instead of relying on the client's html2canvas capture.
-    let effectiveReferencedScreenshot = referencedScreenshot;
-    if (referencedPageHtml && VISUAL_CONSISTENCY_RE.test(lastUserMessage)) {
-      const sectionHint = detectSectionHint(lastUserMessage);
-      console.log(`[chat/route] Visual consistency detected${sectionHint ? ` — section hint: "${sectionHint}"` : ' — full page'}`);
-      const serverShot = await screenshotHtmlServer(referencedPageHtml, sectionHint);
-      if (serverShot) {
-        effectiveReferencedScreenshot = serverShot;
-        // Step 1+2 already logged inside screenshotHtmlServer
-      } else {
-        console.log('[chat/route] Puppeteer pipeline failed — falling back to client screenshot');
-      }
-    }
-
-    const imageBlocks = buildImageBlocks(screenshot, effectiveReferencedScreenshot, referencedPageName);
+    const imageBlocks = buildImageBlocks(screenshot);
 
     // ── Fast path 1: add a new page ────────────────────────────────────────
     const pageAddName = detectPageAdd(lastUserMessage);

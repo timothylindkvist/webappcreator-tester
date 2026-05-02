@@ -5,7 +5,7 @@ import { sanitizeSiteImages, extractVisualKeywords, buildProfessionalImageUrls }
 import { collectAllOps } from '@/lib/sectionTemplates';
 import { generatePage } from '@/lib/pageGenerator';
 import { restoreNavEmbed } from '@/lib/navIntercept';
-import { screenshotHtmlServer } from '@/lib/server-screenshot';
+import { screenshotHtmlServer, detectSectionHint } from '@/lib/server-screenshot';
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 
@@ -174,11 +174,19 @@ async function callClaudeForPageEdit(
     ? [...imageBlocks, { type: 'text', text: textContent }]
     : textContent;
 
-  console.log(`[callClaudeForPageEdit] payload blocks: ${
-    Array.isArray(userContent)
-      ? userContent.map((b: any) => b.type).join(', ')
-      : 'text-only'
-  }`);
+  // Step 3: log content array structure before sending to Claude
+  if (Array.isArray(userContent)) {
+    console.log('[callClaudeForPageEdit] Step 3 ✓  content blocks:');
+    userContent.forEach((b: any, i: number) => {
+      if (b.type === 'image') {
+        console.log(`  [${i}] { "type": "image", "source": { "type": "${b.source?.type}", "media_type": "${b.source?.media_type}", "data": "${String(b.source?.data ?? '').slice(0, 40)}..." } }`);
+      } else {
+        console.log(`  [${i}] { "type": "text", "text": "${String(b.text ?? '').slice(0, 60)}..." }`);
+      }
+    });
+  } else {
+    console.log('[callClaudeForPageEdit] Step 3 — text-only (no image blocks)');
+  }
 
   const message = await client.messages.create({
     model: MODEL,
@@ -245,11 +253,19 @@ async function callClaude(
     ? [...imageBlocks, { type: 'text', text: textContent }]
     : textContent;
 
-  console.log(`[callClaude] payload blocks: ${
-    Array.isArray(userContent)
-      ? userContent.map((b: any) => b.type).join(', ')
-      : 'text-only'
-  }`);
+  // Step 3: log content array structure before sending to Claude
+  if (Array.isArray(userContent)) {
+    console.log('[callClaude] Step 3 ✓  content blocks:');
+    userContent.forEach((b: any, i: number) => {
+      if (b.type === 'image') {
+        console.log(`  [${i}] { "type": "image", "source": { "type": "${b.source?.type}", "media_type": "${b.source?.media_type}", "data": "${String(b.source?.data ?? '').slice(0, 40)}..." } }`);
+      } else {
+        console.log(`  [${i}] { "type": "text", "text": "${String(b.text ?? '').slice(0, 60)}..." }`);
+      }
+    });
+  } else {
+    console.log('[callClaude] Step 3 — text-only (no image blocks)');
+  }
 
   const firstMessage = await client.messages.create({
     model: MODEL,
@@ -329,13 +345,14 @@ export async function POST(req: NextRequest) {
     // 1280×800 via Puppeteer instead of relying on the client's html2canvas capture.
     let effectiveReferencedScreenshot = referencedScreenshot;
     if (referencedPageHtml && VISUAL_CONSISTENCY_RE.test(lastUserMessage)) {
-      console.log('[chat/route] Visual consistency detected — taking server-side Puppeteer screenshot');
-      const serverShot = await screenshotHtmlServer(referencedPageHtml);
+      const sectionHint = detectSectionHint(lastUserMessage);
+      console.log(`[chat/route] Visual consistency detected${sectionHint ? ` — section hint: "${sectionHint}"` : ' — full page'}`);
+      const serverShot = await screenshotHtmlServer(referencedPageHtml, sectionHint);
       if (serverShot) {
-        console.log(`[chat/route] Puppeteer screenshot OK (${serverShot.length} base64 chars)`);
         effectiveReferencedScreenshot = serverShot;
+        // Step 1+2 already logged inside screenshotHtmlServer
       } else {
-        console.log('[chat/route] Puppeteer screenshot failed — falling back to client screenshot');
+        console.log('[chat/route] Puppeteer pipeline failed — falling back to client screenshot');
       }
     }
 

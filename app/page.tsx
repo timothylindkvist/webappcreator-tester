@@ -629,6 +629,64 @@ function PageTabBar() {
   );
 }
 
+// ── Home page nav (mirrors _smInjectNav on custom pages) ─────────────────────
+
+function HomePageNav({
+  pages,
+  activePage,
+  setActivePage,
+  palette,
+}: {
+  pages: Page[];
+  activePage: string;
+  setActivePage: (id: string) => void;
+  palette: { brand: string; accent: string; background: string; foreground: string };
+}) {
+  if (pages.length === 0) return null;
+  const light = isLightBackground(palette.background);
+  const border = light ? '#e4e4e7' : '#27272a';
+  const muted = light ? '#71717a' : '#a1a1aa';
+  const allPages = [{ id: 'home', name: 'Home' }, ...pages];
+  return (
+    <nav
+      style={{
+        position: 'sticky',
+        top: 0,
+        zIndex: 999,
+        background: palette.background,
+        borderBottom: `1px solid ${border}`,
+        padding: '0 1.25rem',
+        display: 'flex',
+        alignItems: 'center',
+        height: '3.5rem',
+        gap: '1.5rem',
+        fontFamily: 'inherit',
+        flexShrink: 0,
+      }}
+    >
+      {allPages.map((p) => {
+        const active = p.id === activePage;
+        return (
+          <a
+            key={p.id}
+            href="#"
+            onClick={(e) => { e.preventDefault(); setActivePage(p.id); }}
+            style={{
+              textDecoration: 'none',
+              fontSize: '.875rem',
+              color: active ? palette.brand : muted,
+              fontWeight: active ? 600 : 400,
+              cursor: 'pointer',
+            }}
+          >
+            {p.name}
+          </a>
+        );
+      })}
+    </nav>
+  );
+}
+
 // ── Preview pane ──────────────────────────────────────────────────────────────
 
 function PreviewPane() {
@@ -808,17 +866,25 @@ function PreviewPane() {
             }}
           />
         ) : hasContent ? (
-          <div
-            ref={homeContentRef}
-            style={{
-              background: data.theme.palette.background,
-              color: data.theme.palette.foreground,
-              minHeight: '100%',
-            }}
-            className="p-3"
-          >
-            <Builder />
-          </div>
+          <>
+            <HomePageNav
+              pages={pages}
+              activePage={activePage}
+              setActivePage={setActivePage}
+              palette={data.theme.palette}
+            />
+            <div
+              ref={homeContentRef}
+              style={{
+                background: data.theme.palette.background,
+                color: data.theme.palette.foreground,
+                minHeight: '100%',
+              }}
+              className="p-3"
+            >
+              <Builder />
+            </div>
+          </>
         ) : (
           <EmptyPreview />
         )}

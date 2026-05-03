@@ -5,7 +5,7 @@ import { useBuilder } from './builder-context';
 import { useEditMode } from './EditModeContext';
 import { streamChat } from '@/lib/aiStream';
 import { useCapture } from './capture-context';
-import { needsScreenshot, detectTargetPage, detectReferencedPage, captureElement, capturePageHtml } from '@/lib/screenshot';
+import { needsScreenshot, detectTargetPage, detectReferencedPage, detectSiteWideChange, captureElement, capturePageHtml } from '@/lib/screenshot';
 
 type TextMsg = { role: 'user' | 'assistant'; content: string };
 type ContextMsg = { role: 'context'; screenshots: Array<{ label: string; src: string }> };
@@ -480,6 +480,12 @@ export default function ChatWidget() {
     // Context messages are display-only — exclude from API payload
     const apiMessages = nextMessages.filter((m): m is TextMsg => m.role !== 'context');
 
+    // For site-wide changes, pass every page's HTML so the server can update all of them
+    const siteWide = detectSiteWideChange(msg);
+    const allPagesHtml = siteWide && pages.length > 0
+      ? pages.map((p) => ({ id: p.id, name: p.name, html: p.html }))
+      : undefined;
+
     try {
       const res = await streamChat(apiMessages, {
         site: data,
@@ -487,6 +493,7 @@ export default function ChatWidget() {
         activePage: effectiveActivePage,
         pageHtml: effectivePageData?.html,
         pages: pages.map((p) => ({ id: p.id, name: p.name })),
+        allPagesHtml,
         screenshot,
         referencedPageName,
         referencedPageHtml,

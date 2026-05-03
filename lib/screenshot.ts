@@ -22,6 +22,7 @@ export function detectTargetPage(
   const actions = [
     'make', 'update', 'change', 'edit', 'fix', 'adjust',
     'redesign', 'restyle', 'style', 'align', 'modify', 'format', 'improve',
+    'add', 'insert', 'put', 'place', 'include', 'append', 'remove', 'delete',
   ];
   for (const page of allPages) {
     if (!page.id || !page.name) continue;
@@ -41,14 +42,27 @@ export function detectTargetPage(
       lower.includes(`the ${name} page should`) ||
       lower.includes(`the ${name} page needs`) ||
       lower.includes(`on the ${name} page`) ||
+      lower.includes(`to the ${name} page`) ||
+      lower.includes(`for the ${name} page`) ||
+      lower.includes(`in the ${name} page`) ||
+      lower.includes(`into the ${name} page`) ||
       lower.includes(`the ${id} page should`) ||
       lower.includes(`the ${id} page needs`) ||
-      lower.includes(`on the ${id} page`)
+      lower.includes(`on the ${id} page`) ||
+      lower.includes(`to the ${id} page`) ||
+      lower.includes(`for the ${id} page`) ||
+      lower.includes(`in the ${id} page`) ||
+      lower.includes(`into the ${id} page`)
     ) {
       return page.id;
     }
   }
   return null;
+}
+
+// Detects when the user wants a change applied to every page on the site.
+export function detectSiteWideChange(message: string): boolean {
+  return /\bacross\s+(?:the\s+)?(?:whole\s+)?(?:website|site|all\s+pages?)\b|\ball\s+pages?\b|\bevery\s+page\b|\bthroughout\s+(?:the\s+)?(?:site|website)\b|\bsite[\s-]?wide\b|\bon\s+all\s+pages?\b/i.test(message);
 }
 
 export function detectReferencedPage(

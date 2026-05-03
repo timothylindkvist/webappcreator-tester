@@ -182,6 +182,14 @@ Rules:
 - If the instruction is clear, execute it without asking for clarification. Explain what you did after.
 - When screenshots are provided, Screenshot 1 is the current page and Screenshot 2 (if present) is the reference page to match.
 - PRESERVE the <script id="sm-nav-cfg" type="application/json"> tag and inline nav script EXACTLY as-is — do not remove, move, or modify them.
+- The HTML provided IS the ${pageName} page. Edit this exact document; do not substitute or regenerate it from scratch based on assumptions.
+
+ADDITIVE CHANGES — when the instruction is to add, insert, include, append, or put something new:
+- The existing HTML is SACRED. Every element, attribute, text node, and style already present must appear unchanged in your output.
+- Locate the single best insertion point and place the new element there. Touch NOTHING else.
+- Do not simplify, rewrite, restructure, or remove any existing section as a side-effect.
+- If in doubt about where to insert, add at the end of <body> before </body>.
+- Verify before returning: every visible heading, paragraph, and section from the original is still present.
 
 INTERACTIVE CONTENT EXPANSION — non-negotiable rules:
 When the user asks for "read more", "view details", "learn more", "see full info", "expand", "modal", "drawer", or any variation meaning "show more content about an element", you MUST:
@@ -219,9 +227,9 @@ When the user asks for "read more", "view details", "learn more", "see full info
   const text = message.content[0].type === 'text' ? message.content[0].text.trim() : '';
   const docStart = text.search(/<!DOCTYPE|<html/i);
 
-  if (docStart > 0) {
+  if (docStart >= 0) {
     return {
-      reply: text.slice(0, docStart).trim(),
+      reply: docStart > 0 ? text.slice(0, docStart).trim() : `Updated the ${pageName} page.`,
       html: text.slice(docStart).trim(),
     };
   }
@@ -340,7 +348,40 @@ export async function POST(req: NextRequest) {
     const referencedPageHtml: string | undefined = typeof body?.referencedPageHtml === 'string' ? body.referencedPageHtml : undefined;
     const lastUserMessage = [...messages].reverse().find((m: any) => m?.role === 'user')?.content || '';
 
+    const allPagesHtml: Array<{ id: string; name: string; html: string }> | undefined =
+      Array.isArray(body?.allPagesHtml) ? body.allPagesHtml : undefined;
+
     const imageBlocks = buildImageBlocks(screenshot);
+
+    // ── Fast path 0: site-wide change (all pages) ──────────────────────────
+    if (allPagesHtml && allPagesHtml.length > 0) {
+      const [homeResult, ...pageResults] = await Promise.all([
+        callClaude(client, lastUserMessage, site, brief, imageBlocks.length ? imageBlocks : undefined),
+        ...allPagesHtml.map((p) =>
+          callClaudeForPageEdit(client, lastUserMessage, p.html, brief, p.name)
+            .then((r) => ({ ...r, id: p.id, originalHtml: p.html, name: p.name }))
+        ),
+      ]);
+
+      const events: Array<{ name: string; args: Record<string, any> }> = [];
+      if (homeResult.siteEvent) events.push(homeResult.siteEvent);
+      for (const pr of pageResults) {
+        if (pr.html) {
+          const safeHtml = restoreNavEmbed(pr.html, pr.originalHtml);
+          events.push({ name: 'updatePage', args: { id: pr.id, html: safeHtml } });
+        }
+      }
+
+      const updatedPageNames = [
+        ...(homeResult.siteEvent ? ['Home'] : []),
+        ...pageResults.filter((r) => r.html).map((r) => r.name),
+      ];
+      const listStr = updatedPageNames.length > 0
+        ? `Updated: ${updatedPageNames.join(', ')}.`
+        : "Applied the change across all pages.";
+
+      return Response.json({ ok: true, reply: listStr, events });
+    }
 
     // ── Fast path 1: add a new page ────────────────────────────────────────
     const pageAddName = detectPageAdd(lastUserMessage);

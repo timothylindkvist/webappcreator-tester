@@ -12,8 +12,12 @@ export function buildEditorScript(palette: { brand: string; accent: string }): s
   const accent = (palette.accent || '#06b6d4').replace(/['"\\]/g, '');
   return `(function(){
 var WIN=window,DOC=WIN.document;
-// Hard singleton — if already initialised in this window, bail out.
-// Call teardownEditorScript() first when a fresh init is required.
+// Remove any stale edit-mode DOM baked into the HTML snapshot from a previous
+// session. Must run BEFORE the singleton guard so that a page reloaded from a
+// dirty srcDoc snapshot doesn't end up with two toolbar elements.
+var _et=DOC.getElementById('__sm_tb');if(_et)_et.remove();
+var _es=DOC.getElementById('__sm_style');if(_es)_es.remove();
+// Hard singleton — if listeners are already registered in this window, stop.
 if(WIN.__smEditorActive)return;
 WIN.__smEditorActive=true;
 // ROOT scopes editable elements. Set WIN.__smRoot before injecting for home page.
@@ -124,7 +128,17 @@ WIN.__smTbBlur=function(e){
   if(!e.target.getAttribute||!e.target.getAttribute('data-editable'))return;
   if(!isInRoot(e.target))return;
   if(WIN===WIN.parent)return;
-  try{WIN.parent.postMessage({type:'sidesmith:page-update',html:'<!DOCTYPE html>'+DOC.documentElement.outerHTML},'*');}catch(x){}
+  try{
+    // Clone the document and strip all edit-mode artifacts before snapshotting,
+    // so the stored HTML is always clean and won't bake in toolbar divs or styles.
+    var cl=DOC.documentElement.cloneNode(true);
+    var _ctb=cl.querySelector('#__sm_tb');if(_ctb)_ctb.remove();
+    var _cst=cl.querySelector('#__sm_style');if(_cst)_cst.remove();
+    cl.querySelectorAll('script').forEach(function(s){if((s.textContent||'').indexOf('__smEditorActive')!==-1)s.remove();});
+    cl.querySelectorAll('[data-editable]').forEach(function(el){el.removeAttribute('contenteditable');el.removeAttribute('data-editable');});
+    cl.querySelectorAll('[data-sm-card]').forEach(function(el){el.removeAttribute('data-sm-card');});
+    WIN.parent.postMessage({type:'sidesmith:page-update',html:'<!DOCTYPE html>'+cl.outerHTML},'*');
+  }catch(x){}
 };
 DOC.addEventListener('blur',WIN.__smTbBlur,true);
 })();`;

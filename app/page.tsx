@@ -149,6 +149,7 @@ function generateEditScript(palette: { brand: string; accent: string }): string 
   return `(function(){
 // Remove stale listeners from any prior injection — this is what prevents
 // multiple simultaneous toolbars when the script runs more than once.
+if(window.__smTbFocus){document.removeEventListener('focusin',window.__smTbFocus);window.__smTbFocus=null;}
 if(window.__smTbClick){document.removeEventListener('click',window.__smTbClick,true);window.__smTbClick=null;}
 if(window.__smTbMd){document.removeEventListener('mousedown',window.__smTbMd,true);window.__smTbMd=null;}
 if(window.__smTbBlur){document.removeEventListener('blur',window.__smTbBlur,true);window.__smTbBlur=null;}
@@ -205,7 +206,7 @@ function showTb(el){
   tb.style.left=Math.max(4,Math.min(window.innerWidth-360,r.left))+'px';
   tb.style.display='flex';
 }
-// Close toolbar on mousedown outside any editable/card/toolbar element
+// Close toolbar on mousedown outside toolbar (editable/card handled below)
 window.__smTbMd=function(e){
   if(tb.contains(e.target))return;
   var t=e.target;
@@ -216,24 +217,29 @@ window.__smTbMd=function(e){
   closeTb();
 };
 document.addEventListener('mousedown',window.__smTbMd,true);
+// Show toolbar via focusin — fires when contentEditable receives focus regardless of
+// whether click events were stopped by the nav intercept or any other handler.
+// This mirrors how the home page editor works (focusin on the container).
+window.__smTbFocus=function(e){
+  var t=e.target;
+  if(!t||!t.getAttribute||!t.getAttribute('data-editable'))return;
+  if(tb.contains(t))return;
+  ae=t;ce=findCard(ae);
+  var bx=document.getElementById('__sm_bx');
+  var tc=document.getElementById('__sm_tc');
+  if(bx)bx.style.display=ce?'flex':'none';
+  if(tc)tc.style.display='flex';
+  showTb(ae);
+};
+document.addEventListener('focusin',window.__smTbFocus);
+// Show toolbar on click for card-only selections (cards don't receive focus via focusin)
 window.__smTbClick=function(e){
   if(tb.contains(e.target))return;
-  // Check for editable element
   var t=e.target;
   while(t&&t.tagName!=='BODY'){
-    if(t.getAttribute&&t.getAttribute('data-editable')){
-      ae=t;ce=findCard(ae);
-      var bx=document.getElementById('__sm_bx');
-      var tc=document.getElementById('__sm_tc');
-      if(bx)bx.style.display=ce?'flex':'none';
-      if(tc)tc.style.display='flex';
-      showTb(ae);
-      ae.focus();
-      return;
-    }
+    if(t.getAttribute&&t.getAttribute('data-editable'))return;
     t=t.parentElement;
   }
-  // Check for card
   var c2=e.target;
   while(c2&&c2.tagName!=='BODY'){
     if(c2.getAttribute&&c2.getAttribute('data-sm-card')){
@@ -788,6 +794,7 @@ function PreviewPane() {
         });
         doc.getElementById('__sm_style')?.remove();
         doc.getElementById('__sm_tb')?.remove();
+        if (iwin.__smTbFocus) { doc.removeEventListener('focusin', iwin.__smTbFocus); iwin.__smTbFocus = null; }
         if (iwin.__smTbClick) { doc.removeEventListener('click', iwin.__smTbClick, true); iwin.__smTbClick = null; }
         if (iwin.__smTbMd) { doc.removeEventListener('mousedown', iwin.__smTbMd, true); iwin.__smTbMd = null; }
         if (iwin.__smTbBlur) { doc.removeEventListener('blur', iwin.__smTbBlur, true); iwin.__smTbBlur = null; }

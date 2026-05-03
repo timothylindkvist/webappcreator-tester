@@ -149,7 +149,7 @@ function generateEditScript(palette: { brand: string; accent: string }): string 
   return `(function(){
 // Remove stale listeners from any prior injection — this is what prevents
 // multiple simultaneous toolbars when the script runs more than once.
-if(window.__smTbClick){document.removeEventListener('click',window.__smTbClick);window.__smTbClick=null;}
+if(window.__smTbClick){document.removeEventListener('click',window.__smTbClick,true);window.__smTbClick=null;}
 if(window.__smTbMd){document.removeEventListener('mousedown',window.__smTbMd,true);window.__smTbMd=null;}
 if(window.__smTbBlur){document.removeEventListener('blur',window.__smTbBlur,true);window.__smTbBlur=null;}
 var _et=document.getElementById('__sm_tb');if(_et)_et.remove();
@@ -249,7 +249,7 @@ window.__smTbClick=function(e){
   }
   closeTb();
 };
-document.addEventListener('click',window.__smTbClick);
+document.addEventListener('click',window.__smTbClick,true);
 tb.addEventListener('mousedown',function(e){e.preventDefault();var t=e.target;while(t&&t!==tb){if(t.dataset){if(t.dataset.smClose){closeTb();return;}if(t.dataset.sz&&ae&&SZ[t.dataset.sz])ae.style.fontSize=SZ[t.dataset.sz];if(t.dataset.bd&&ae){var fw=parseInt(window.getComputedStyle(ae).fontWeight)||400;ae.style.fontWeight=fw>=600?'normal':'bold';}if(t.dataset.tc&&ae)ae.style.color=t.dataset.tc;if(t.dataset.bc&&ce)ce.style.background=t.dataset.bc;if(t.dataset.al&&ae)ae.style.textAlign=t.dataset.al;}t=t.parentElement;}if(ae)ae.focus();});
 tb.addEventListener('change',function(e){var t=e.target;if(!t||!t.dataset)return;if(t.dataset.tcC&&ae)ae.style.color=t.value;if(t.dataset.bcC&&ce)ce.style.background=t.value;});
 window.__smTbBlur=function(e){if(!e.target.getAttribute||!e.target.getAttribute('data-editable'))return;try{window.parent.postMessage({type:'sidesmith:page-update',html:'<!DOCTYPE html>'+document.documentElement.outerHTML},'*');}catch(x){}};
@@ -788,7 +788,7 @@ function PreviewPane() {
         });
         doc.getElementById('__sm_style')?.remove();
         doc.getElementById('__sm_tb')?.remove();
-        if (iwin.__smTbClick) { doc.removeEventListener('click', iwin.__smTbClick); iwin.__smTbClick = null; }
+        if (iwin.__smTbClick) { doc.removeEventListener('click', iwin.__smTbClick, true); iwin.__smTbClick = null; }
         if (iwin.__smTbMd) { doc.removeEventListener('mousedown', iwin.__smTbMd, true); iwin.__smTbMd = null; }
         if (iwin.__smTbBlur) { doc.removeEventListener('blur', iwin.__smTbBlur, true); iwin.__smTbBlur = null; }
         iwin.__smEditActive = false;

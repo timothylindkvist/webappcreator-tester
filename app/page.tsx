@@ -696,6 +696,42 @@ function HomePageNav({
   );
 }
 
+// ── Iframe nav builder (shared by onLoad and the pages-change useEffect) ─────
+
+function injectIframeNav(
+  doc: Document,
+  pages: Page[],
+  activePage: string,
+  palette: { brand: string; accent: string; background: string; foreground: string },
+  setActivePage: (id: string) => void
+) {
+  doc.getElementById('sm-nav')?.remove();
+  const light = isLightBackground(palette.background);
+  const bg = palette.background;
+  const brand = palette.brand;
+  const muted = light ? '#71717a' : '#a1a1aa';
+  const border = light ? '#e4e4e7' : '#27272a';
+  const nav = doc.createElement('nav');
+  nav.id = 'sm-nav';
+  nav.setAttribute('style', `position:sticky;top:0;z-index:999;background:${bg};border-bottom:1px solid ${border};padding:0 1.25rem;display:flex;align-items:center;height:3.5rem;gap:1.5rem;font-family:inherit;`);
+  [{ id: 'home', name: 'Home' }, ...pages].forEach((p) => {
+    const a = doc.createElement('a');
+    a.href = '#';
+    a.textContent = p.name;
+    const isActive = p.id === activePage;
+    a.setAttribute('style', `text-decoration:none;font-size:.875rem;color:${isActive ? brand : muted};font-weight:${isActive ? '600' : '400'};cursor:pointer;`);
+    a.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setActivePage(p.id);
+    });
+    nav.appendChild(a);
+  });
+  const body = doc.body;
+  if (body.firstChild) body.insertBefore(nav, body.firstChild);
+  else body.appendChild(nav);
+}
+
 // ── Preview pane ──────────────────────────────────────────────────────────────
 
 function PreviewPane() {
@@ -758,62 +794,19 @@ function PreviewPane() {
     }
   }, [isEditMode, activePageData?.id, data.theme.palette]);
 
-  // Inject click-intercept script and rebuild the nav bar on every page load
-  // and whenever the pages list changes (new page added). The nav is built
-  // from live React state so it always reflects the current page list.
+  // Re-inject nav when pages/activePage change while the iframe is already loaded
+  // (handles "new page added without reloading the iframe" case).
+  // Initial injection on page load is handled by the onLoad callback below.
   useEffect(() => {
     if (!activePageData) return;
     const iframe = iframeRef.current;
-    if (!iframe) return;
-
-    const injectNav = () => {
-      try {
-        const iwin = iframe.contentWindow as any;
-        const doc = iframe.contentDocument;
-        if (!doc?.body) return;
-        // Inject click-intercept script only once per document
-        if (!iwin.__smNavActive) {
-          iwin.__smNavActive = true;
-          const script = doc.createElement('script');
-          script.textContent = NAV_INTERCEPT_SCRIPT;
-          doc.body.appendChild(script);
-        }
-        // Always rebuild the nav from current React state
-        doc.getElementById('sm-nav')?.remove();
-        const light = isLightBackground(data.theme.palette.background);
-        const bg = data.theme.palette.background;
-        const brand = data.theme.palette.brand;
-        const muted = light ? '#71717a' : '#a1a1aa';
-        const border = light ? '#e4e4e7' : '#27272a';
-        const nav = doc.createElement('nav');
-        nav.id = 'sm-nav';
-        nav.setAttribute('style', `position:sticky;top:0;z-index:999;background:${bg};border-bottom:1px solid ${border};padding:0 1.25rem;display:flex;align-items:center;height:3.5rem;gap:1.5rem;font-family:inherit;`);
-        [{ id: 'home', name: 'Home' }, ...pages].forEach((p) => {
-          const a = doc.createElement('a');
-          a.href = '#';
-          a.textContent = p.name;
-          const isActive = p.id === activePage;
-          a.setAttribute('style', `text-decoration:none;font-size:.875rem;color:${isActive ? brand : muted};font-weight:${isActive ? '600' : '400'};cursor:pointer;`);
-          a.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setActivePage(p.id);
-          });
-          nav.appendChild(a);
-        });
-        const body = doc.body;
-        if (body.firstChild) body.insertBefore(nav, body.firstChild);
-        else body.appendChild(nav);
-      } catch { /* sandboxed */ }
-    };
-
-    if (iframe.contentDocument?.readyState === 'complete') {
-      injectNav();
-    } else {
-      iframe.addEventListener('load', injectNav, { once: true });
-      return () => iframe.removeEventListener('load', injectNav);
-    }
-  }, [activePageData?.html, pages, activePage, data.theme.palette, setActivePage]);
+    if (!iframe || iframe.contentDocument?.readyState !== 'complete') return;
+    const doc = iframe.contentDocument;
+    if (!doc?.body) return;
+    try {
+      injectIframeNav(doc, pages, activePage, data.theme.palette, setActivePage);
+    } catch { /* sandboxed */ }
+  }, [pages, activePage, activePageData?.id, data.theme.palette, setActivePage]);
 
   // Handle postMessages from iframes (page updates + navigation)
   useEffect(() => {
@@ -902,6 +895,9 @@ function PreviewPane() {
                   editScript.textContent = generateEditScript(data.theme.palette);
                   doc.body.appendChild(editScript);
                 }
+                // Inject nav from live React state — captures current pages/activePage
+                // from this render's closure, so it's always up to date.
+                injectIframeNav(doc, pages, activePage, data.theme.palette, setActivePage);
               } catch { /* sandboxed */ }
             }}
           />

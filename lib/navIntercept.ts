@@ -11,6 +11,8 @@ document.addEventListener('click',function(e){
   while(t&&t.tagName!=='A'){t=t.parentElement;}
   if(!t)return;
   var h=(t.getAttribute('href')||'').trim();
+  // Strip leading ./ or / for relative paths
+  h=h.replace(/^\\.\\//,'').replace(/^\\/(?!\\/)/,'');
   if(!h||h.charAt(0)==='#'||/^(https?:|\/\/|mailto:|tel:)/.test(h))return;
   e.preventDefault();e.stopPropagation();
   window.parent.postMessage({type:'sidesmith:navigate',href:h},'*');
@@ -27,8 +29,20 @@ function _smInjectNav(){
   var bg=cs.getPropertyValue('--background').trim()||'#fff';
   var muted=cs.getPropertyValue('--muted').trim()||'#71717a';
   var border=cs.getPropertyValue('--border').trim()||'#e4e4e7';
-  var old=document.querySelector('nav');
-  if(old&&old.parentNode)old.parentNode.removeChild(old);
+  // Remove ALL existing nav elements before injecting ours
+  var oldNavs=document.querySelectorAll('nav');
+  for(var ni=oldNavs.length-1;ni>=0;ni--){var on=oldNavs[ni];if(on.parentNode)on.parentNode.removeChild(on);}
+  // Remove "Navigation will be injected here" placeholder elements
+  var allEls=document.querySelectorAll('*');
+  for(var ei=0;ei<allEls.length;ei++){
+    var el=allEls[ei];
+    if(!el.children||!el.children.length){
+      var txt=(el.textContent||'').toLowerCase().trim();
+      if(txt.indexOf('navigation will be injected')===0||txt==='navigation placeholder'||txt==='[navigation]'){
+        if(el.parentNode)el.parentNode.removeChild(el);
+      }
+    }
+  }
   var nav=document.createElement('nav');
   nav.id='sm-nav';
   nav.setAttribute('style','position:sticky;top:0;z-index:999;background:'+bg+';border-bottom:1px solid '+border+';padding:0 1.25rem;display:flex;align-items:center;height:3.5rem;gap:1.5rem;font-family:inherit;');
@@ -36,7 +50,7 @@ function _smInjectNav(){
     var a=document.createElement('a');
     a.href=p.href;a.textContent=p.name;
     var active=(p.id===cur);
-    a.setAttribute('style','text-decoration:none;font-size:.875rem;color:'+(active?brand:muted)+';font-weight:'+(active?'600':'400')+';');
+    a.setAttribute('style','text-decoration:none;font-size:.875rem;color:'+(active?brand:muted)+';font-weight:'+(active?'600':'400')+';cursor:pointer;');
     nav.appendChild(a);
   });
   var b=document.body;

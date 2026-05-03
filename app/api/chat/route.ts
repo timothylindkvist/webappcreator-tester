@@ -181,7 +181,33 @@ Rules:
 - NEVER truncate your reply mid-sentence. Finish every sentence completely.
 - If the instruction is clear, execute it without asking for clarification. Explain what you did after.
 - When screenshots are provided, Screenshot 1 is the current page and Screenshot 2 (if present) is the reference page to match.
-- PRESERVE the <script id="sm-nav-cfg" type="application/json"> tag and <script src="/nav.js"> tag EXACTLY as-is — do not remove, move, or modify them.`,
+- PRESERVE the <script id="sm-nav-cfg" type="application/json"> tag and inline nav script EXACTLY as-is — do not remove, move, or modify them.
+
+INTERACTIVE CONTENT EXPANSION — non-negotiable rules:
+When the user asks for "read more", "view details", "learn more", "see full info", "expand", "modal", "drawer", or any variation meaning "show more content about an element", you MUST:
+1. Implement the COMPLETE interaction end-to-end — not just add a button. Every trigger element (button, link, card) must have a real working click event listener attached (use DOMContentLoaded or inline onclick).
+2. Create the TARGET content — the modal overlay, expanded section, or drawer — with REAL content from the page (not placeholder text). Fill it with the actual details of the item being expanded.
+3. Implement both OPEN and CLOSE: clicking the trigger opens it; clicking a close button, pressing Escape, or clicking the overlay backdrop closes it.
+4. Use a fixed-position overlay modal pattern for substantial content. Example pattern:
+   <div id="modal-X" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;align-items:center;justify-content:center">
+     <div style="background:#fff;border-radius:12px;padding:2rem;max-width:560px;width:90%;max-height:80vh;overflow-y:auto;position:relative">
+       <button onclick="document.getElementById('modal-X').style.display='none'" style="position:absolute;top:1rem;right:1rem;...">×</button>
+       <!-- real content here -->
+     </div>
+   </div>
+   <script>
+   document.addEventListener('DOMContentLoaded',function(){
+     document.querySelectorAll('[data-open-modal="X"]').forEach(function(btn){
+       btn.addEventListener('click',function(){
+         document.getElementById('modal-X').style.display='flex';
+       });
+     });
+     document.querySelectorAll('.sm-modal-backdrop').forEach(function(el){
+       el.addEventListener('click',function(e){if(e.target===this)this.style.display='none';});
+     });
+   });
+   </script>
+5. NEVER mark a feature complete by adding a button that does nothing or links to "#". If a button click does nothing, you have not finished the task.`,
     messages: [
       {
         role: 'user',

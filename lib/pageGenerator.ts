@@ -79,7 +79,7 @@ DESIGN SYSTEM (use exactly these values):
 
 REQUIREMENTS:
 1. Include a <style> block in <head> that sets these CSS custom properties on :root and uses them throughout
-2. Do NOT generate a <nav> element — navigation is injected automatically by a shared script
+2. Do NOT generate a <nav> element or any navigation placeholder text — navigation is injected automatically at runtime. Do NOT write anything like "Navigation will be injected here", "[navigation]", or any comment/div referencing nav injection.
 3. Page content sections: ${sectionGuide}
 4. Footer: brand name + tagline + simple copyright line
 5. Fonts: use system-ui or Google Fonts (one import line max) consistent with the brand vibe
@@ -102,13 +102,19 @@ Write realistic copy that fits the business. Use the brand color for buttons, he
     throw new Error('Page generation returned invalid HTML');
   }
 
+  // Strip any nav-placeholder elements/comments Claude generated despite instructions
+  const cleanedHtml = html
+    .replace(/<[^>]+>[^<]*navigation\s+will\s+be\s+injected[^<]*<\/[^>]+>/gi, '')
+    .replace(/<!--[^>]*navigation[^>]*will[^>]*be[^>]*injected[^>]*-->/gi, '')
+    .replace(/<[^>]+>\s*\[navigation\]\s*<\/[^>]+>/gi, '');
+
   // Inject the shared nav config + nav.js reference into <head>.
   // nav.js will remove any accidental <nav> Claude added and replace it with
   // the consistent shared navbar at runtime.
   const navEmbed = buildNavEmbed(allPages, pageId);
-  const withNav = html.includes('</head>')
-    ? html.replace('</head>', navEmbed + '\n</head>')
-    : html.replace('<body', navEmbed + '\n<body');
+  const withNav = cleanedHtml.includes('</head>')
+    ? cleanedHtml.replace('</head>', navEmbed + '\n</head>')
+    : cleanedHtml.replace('<body', navEmbed + '\n<body');
 
   return { html: withNav, pageId, pageName };
 }

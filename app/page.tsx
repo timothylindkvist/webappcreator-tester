@@ -131,8 +131,9 @@ function EmptyPreview() {
 type Page = import('../components/builder-context').Page;
 
 function hrefToPageId(href: string, pages: Page[]): string | null {
-  const clean = href.split('?')[0].split('#')[0].toLowerCase().trim();
-  if (clean === '' || clean === '/' || clean === 'index.html') return 'home';
+  // Strip leading ./ or / before comparing
+  const clean = href.replace(/^\.?\/+/, '').split('?')[0].split('#')[0].toLowerCase().trim();
+  if (clean === '' || clean === 'index.html') return 'home';
   const base = clean.replace(/\.html$/, '');
   if (base === 'home') return 'home';
   const match = pages.find((p) => p.id.toLowerCase() === base || p.name.toLowerCase() === base);
@@ -148,13 +149,15 @@ function generateEditScript(palette: { brand: string; accent: string }): string 
   return `(function(){
 if(window.__smEditActive)return;
 window.__smEditActive=true;
-var SELECTORS='h1,h2,h3,h4,h5,h6,p,span,li,button,a,td,th,label';
+// Skip editable on nav elements — nav handles its own click intercept
+var SELECTORS='h1,h2,h3,h4,h5,h6,p,span,li,button,td,th,label';
 document.querySelectorAll(SELECTORS).forEach(function(el){
+  if(el.closest('nav'))return;
   el.contentEditable='true';
   el.setAttribute('data-editable','true');
 });
-document.querySelectorAll('div,article,li').forEach(function(el){
-  if(!el.children.length)return;
+document.querySelectorAll('div,article').forEach(function(el){
+  if(!el.children.length||el.closest('nav'))return;
   var bg=window.getComputedStyle(el).backgroundColor;
   if(bg&&bg!=='rgba(0, 0, 0, 0)'&&bg!=='transparent')el.setAttribute('data-sm-card','true');
 });
@@ -181,14 +184,33 @@ html+='<label style="width:14px;height:14px;border:1px solid rgba(255,255,255,.2
 html+='</span>';
 var tb=document.createElement('div');
 tb.id='__sm_tb';
-Object.assign(tb.style,{position:'fixed',top:'8px',left:'8px',display:'none',alignItems:'center',gap:'3px',padding:'5px 8px',background:'#1e1e30',border:'1px solid rgba(255,255,255,.12)',borderRadius:'10px',boxShadow:'0 8px 32px rgba(0,0,0,.5)',zIndex:'99999',fontFamily:'system-ui,sans-serif'});
+Object.assign(tb.style,{position:'fixed',top:'-200px',left:'8px',display:'none',alignItems:'center',gap:'3px',padding:'5px 8px',background:'#1e1e30',border:'1px solid rgba(255,255,255,.12)',borderRadius:'10px',boxShadow:'0 8px 32px rgba(0,0,0,.5)',zIndex:'99999',fontFamily:'system-ui,sans-serif'});
 tb.innerHTML=html;
 document.body.appendChild(tb);
 var ae=null,ce=null;
 function findCard(el){var p=el.parentElement;while(p&&p.tagName!=='BODY'){var bg=window.getComputedStyle(p).backgroundColor;if(bg&&bg!=='rgba(0, 0, 0, 0)'&&bg!=='transparent'){var t=p.tagName;if(t!=='SECTION'&&t!=='MAIN'&&t!=='BODY'&&t!=='HTML'&&t!=='HEADER'&&t!=='FOOTER'&&t!=='NAV')return p;}p=p.parentElement;}return null;}
-function showTb(el){var r=el.getBoundingClientRect(),h=46,t=r.top-h-6;if(t<4)t=r.bottom+6;tb.style.top=Math.max(4,t)+'px';tb.style.left=Math.max(4,Math.min(window.innerWidth-360,r.left))+'px';tb.style.display='flex';}
+function closeTb(){tb.style.display='none';ae=null;ce=null;}
+function showTb(el){
+  tb.style.display='none'; // close first, then reposition
+  var r=el.getBoundingClientRect(),h=46,t=r.top-h-6;
+  if(t<4)t=r.bottom+6;
+  tb.style.top=Math.max(4,t)+'px';
+  tb.style.left=Math.max(4,Math.min(window.innerWidth-360,r.left))+'px';
+  tb.style.display='flex';
+}
+// Close toolbar on mousedown outside any editable/card/toolbar element
+document.addEventListener('mousedown',function(e){
+  if(tb.contains(e.target))return;
+  var t=e.target;
+  while(t&&t.tagName!=='BODY'){
+    if((t.getAttribute&&t.getAttribute('data-editable'))||(t.getAttribute&&t.getAttribute('data-sm-card')))return;
+    t=t.parentElement;
+  }
+  closeTb();
+},true);
 document.addEventListener('click',function(e){
   if(tb.contains(e.target))return;
+  // Check for editable element
   var t=e.target;
   while(t&&t.tagName!=='BODY'){
     if(t.getAttribute&&t.getAttribute('data-editable')){
@@ -197,10 +219,13 @@ document.addEventListener('click',function(e){
       var tc=document.getElementById('__sm_tc');
       if(bx)bx.style.display=ce?'flex':'none';
       if(tc)tc.style.display='flex';
-      showTb(ae);ae.focus();return;
+      showTb(ae);
+      ae.focus();
+      return;
     }
     t=t.parentElement;
   }
+  // Check for card
   var c2=e.target;
   while(c2&&c2.tagName!=='BODY'){
     if(c2.getAttribute&&c2.getAttribute('data-sm-card')){
@@ -209,11 +234,12 @@ document.addEventListener('click',function(e){
       var tc2=document.getElementById('__sm_tc');
       if(bx2)bx2.style.display='flex';
       if(tc2)tc2.style.display='none';
-      showTb(c2);return;
+      showTb(c2);
+      return;
     }
     c2=c2.parentElement;
   }
-  tb.style.display='none';
+  closeTb();
 });
 tb.addEventListener('mousedown',function(e){e.preventDefault();var t=e.target;while(t&&t!==tb){if(t.dataset){if(t.dataset.sz&&ae&&SZ[t.dataset.sz])ae.style.fontSize=SZ[t.dataset.sz];if(t.dataset.bd&&ae){var fw=parseInt(window.getComputedStyle(ae).fontWeight)||400;ae.style.fontWeight=fw>=600?'normal':'bold';}if(t.dataset.tc&&ae)ae.style.color=t.dataset.tc;if(t.dataset.bc&&ce)ce.style.background=t.dataset.bc;if(t.dataset.al&&ae)ae.style.textAlign=t.dataset.al;}t=t.parentElement;}if(ae)ae.focus();});
 tb.addEventListener('change',function(e){var t=e.target;if(!t||!t.dataset)return;if(t.dataset.tcC&&ae)ae.style.color=t.value;if(t.dataset.bcC&&ce)ce.style.background=t.value;});
@@ -262,6 +288,8 @@ function FloatingEditToolbar({
     const onFocusin = (e: FocusEvent) => {
       const target = e.target as HTMLElement;
       if (!target?.dataset?.editable) return;
+      // Close any existing toolbar first, then reopen for the new element
+      setVisible(false);
       activeElRef.current = target;
       const card = findCard(target);
       cardElRef.current = card;
@@ -290,6 +318,8 @@ function FloatingEditToolbar({
       if (target?.dataset?.editable) return;
       const card = target.closest('[data-sm-card]') as HTMLElement | null;
       if (!card) return;
+      // Close any existing toolbar first, then reopen for the card
+      setVisible(false);
       cardElRef.current = card;
       activeElRef.current = null;
       setCardClickMode(true);

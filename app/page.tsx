@@ -149,6 +149,9 @@ function generateEditScript(palette: { brand: string; accent: string }): string 
   return `(function(){
 if(window.__smEditActive)return;
 window.__smEditActive=true;
+// Remove stale toolbar/style from any previous injection on this document
+var _et=document.getElementById('__sm_tb');if(_et)_et.remove();
+var _es=document.getElementById('__sm_style');if(_es)_es.remove();
 // Skip editable on nav elements — nav handles its own click intercept
 var SELECTORS='h1,h2,h3,h4,h5,h6,p,span,li,button,td,th,label';
 document.querySelectorAll(SELECTORS).forEach(function(el){
@@ -793,9 +796,14 @@ function PreviewPane() {
                 iwin.__smNavActive = true;
                 const doc = iframe.contentDocument;
                 if (!doc?.body) return;
-                const script = doc.createElement('script');
-                script.textContent = NAV_INTERCEPT_SCRIPT;
-                doc.body.appendChild(script);
+                const navScript = doc.createElement('script');
+                navScript.textContent = NAV_INTERCEPT_SCRIPT;
+                doc.body.appendChild(navScript);
+                if (isEditMode && !iwin.__smEditActive) {
+                  const editScript = doc.createElement('script');
+                  editScript.textContent = generateEditScript(data.theme.palette);
+                  doc.body.appendChild(editScript);
+                }
               } catch { /* sandboxed */ }
             }}
           />

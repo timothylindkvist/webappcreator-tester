@@ -237,6 +237,55 @@ When the user asks for "read more", "view details", "learn more", "see full info
   return { reply: text };
 }
 
+// ── Additive (fragment-only) page editing ────────────────────────────────────
+
+const ADDITIVE_PATTERN = /\b(add|insert|include|append|put|place)\b/i;
+
+async function callClaudeForPageFragment(
+  client: Anthropic,
+  instruction: string,
+  pageHtml: string,
+  brief: string,
+  pageName: string
+): Promise<{ reply: string; fragment?: string }> {
+  const message = await client.messages.create({
+    model: MODEL,
+    max_tokens: 4096,
+    system: `You are adding a new element to the "${pageName}" page of a website.
+
+Line 1: one sentence confirming what you added (plain text only, no markdown).
+Lines 2+: ONLY the new HTML element(s) to insert — raw HTML, no code fences, no full page, no existing content.
+
+Rules:
+- Do NOT reproduce the existing page. Output only the new fragment.
+- The fragment will be automatically injected before </body>.
+- Match the visual style of the existing page (colours, fonts, card design, spacing).
+- Use inline style attributes or a self-contained <style> block — no external stylesheet references.`,
+    messages: [
+      {
+        role: 'user',
+        content: `Brief: ${brief}\n\nExisting "${pageName}" page HTML (read for style context — do NOT reproduce):\n${pageHtml}\n\nAdd the following: ${instruction}`,
+      },
+    ],
+  });
+
+  const text = message.content[0].type === 'text' ? message.content[0].text.trim() : '';
+  const fragStart = text.search(/<[a-zA-Z]/);
+  if (fragStart >= 0) {
+    return {
+      reply: fragStart > 0 ? text.slice(0, fragStart).trim() : `Added to the ${pageName} page.`,
+      fragment: text.slice(fragStart).trim(),
+    };
+  }
+  return { reply: text };
+}
+
+function injectFragment(html: string, fragment: string): string {
+  return html.includes('</body>')
+    ? html.replace(/<\/body>/i, `${fragment}\n</body>`)
+    : html + '\n' + fragment;
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function siteEffectivelyChanged(before: Record<string, any>, after: Record<string, any>): boolean {
@@ -355,18 +404,26 @@ export async function POST(req: NextRequest) {
 
     // ── Fast path 0: site-wide change (all pages) ──────────────────────────
     if (allPagesHtml && allPagesHtml.length > 0) {
+      const isAdditiveSiteWide = ADDITIVE_PATTERN.test(lastUserMessage);
+
       const [homeResult, ...pageResults] = await Promise.all([
         callClaude(client, lastUserMessage, site, brief, imageBlocks.length ? imageBlocks : undefined),
         ...allPagesHtml.map((p) =>
-          callClaudeForPageEdit(client, lastUserMessage, p.html, brief, p.name)
-            .then((r) => ({ ...r, id: p.id, originalHtml: p.html, name: p.name }))
+          isAdditiveSiteWide
+            ? callClaudeForPageFragment(client, lastUserMessage, p.html, brief, p.name)
+                .then((r) => ({ ...r, id: p.id, originalHtml: p.html, name: p.name, isFragment: true as const }))
+            : callClaudeForPageEdit(client, lastUserMessage, p.html, brief, p.name)
+                .then((r) => ({ ...r, id: p.id, originalHtml: p.html, name: p.name, isFragment: false as const }))
         ),
       ]);
 
       const events: Array<{ name: string; args: Record<string, any> }> = [];
       if (homeResult.siteEvent) events.push(homeResult.siteEvent);
       for (const pr of pageResults) {
-        if (pr.html) {
+        if (pr.isFragment && pr.fragment) {
+          const newHtml = restoreNavEmbed(injectFragment(pr.originalHtml, pr.fragment), pr.originalHtml);
+          events.push({ name: 'updatePage', args: { id: pr.id, html: newHtml } });
+        } else if (!pr.isFragment && pr.html) {
           const safeHtml = restoreNavEmbed(pr.html, pr.originalHtml);
           events.push({ name: 'updatePage', args: { id: pr.id, html: safeHtml } });
         }
@@ -374,7 +431,7 @@ export async function POST(req: NextRequest) {
 
       const updatedPageNames = [
         ...(homeResult.siteEvent ? ['Home'] : []),
-        ...pageResults.filter((r) => r.html).map((r) => r.name),
+        ...pageResults.filter((r) => r.isFragment ? r.fragment : r.html).map((r) => r.name),
       ];
       const listStr = updatedPageNames.length > 0
         ? `Updated: ${updatedPageNames.join(', ')}.`
@@ -407,8 +464,21 @@ export async function POST(req: NextRequest) {
     // ── Fast path 2: editing a non-home page ───────────────────────────────
     if (activePage !== 'home' && pageHtml) {
       const pageName = incomingPages.find((p) => p.id === activePage)?.name ?? activePage;
+
+      if (ADDITIVE_PATTERN.test(lastUserMessage)) {
+        const fragResult = await callClaudeForPageFragment(client, lastUserMessage, pageHtml, brief, pageName);
+        if (fragResult.fragment) {
+          const newHtml = restoreNavEmbed(injectFragment(pageHtml, fragResult.fragment), pageHtml);
+          return Response.json({
+            ok: true,
+            reply: fragResult.reply || `Added to the ${pageName} page.`,
+            events: [{ name: 'updatePage', args: { id: activePage, html: newHtml } }],
+          });
+        }
+        // Fragment extraction failed — fall through to full edit
+      }
+
       const result = await callClaudeForPageEdit(client, lastUserMessage, pageHtml, brief, pageName, imageBlocks.length ? imageBlocks : undefined, referencedPageHtml, referencedPageName);
-      // Restore nav embed if Claude accidentally stripped it
       const safeHtml = result.html ? restoreNavEmbed(result.html, pageHtml) : undefined;
       return Response.json({
         ok: true,

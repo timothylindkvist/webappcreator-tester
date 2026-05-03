@@ -13,7 +13,8 @@ document.addEventListener('click',function(e){
   var h=(t.getAttribute('href')||'').trim();
   // Strip leading ./ or / for relative paths
   h=h.replace(/^\\.\\//,'').replace(/^\\/(?!\\/)/,'');
-  if(!h||h.charAt(0)==='#'||/^(https?:|\/\/|mailto:|tel:)/.test(h))return;
+  if(h.charAt(0)==='#'||/^(https?:|\/\/|mailto:|tel:)/.test(h))return;
+  if(!h)h='index.html';
   e.preventDefault();e.stopPropagation();
   window.parent.postMessage({type:'sidesmith:navigate',href:h},'*');
 },true);

@@ -147,11 +147,14 @@ function generateEditScript(palette: { brand: string; accent: string }): string 
   const brand = (palette.brand || '#7c3aed').replace(/['"\\]/g, '');
   const accent = (palette.accent || '#06b6d4').replace(/['"\\]/g, '');
   return `(function(){
-if(window.__smEditActive)return;
-window.__smEditActive=true;
-// Remove stale toolbar/style from any previous injection on this document
+// Remove stale listeners from any prior injection — this is what prevents
+// multiple simultaneous toolbars when the script runs more than once.
+if(window.__smTbClick){document.removeEventListener('click',window.__smTbClick);window.__smTbClick=null;}
+if(window.__smTbMd){document.removeEventListener('mousedown',window.__smTbMd,true);window.__smTbMd=null;}
+if(window.__smTbBlur){document.removeEventListener('blur',window.__smTbBlur,true);window.__smTbBlur=null;}
 var _et=document.getElementById('__sm_tb');if(_et)_et.remove();
 var _es=document.getElementById('__sm_style');if(_es)_es.remove();
+window.__smEditActive=true;
 // Skip editable on nav elements — nav handles its own click intercept
 var SELECTORS='h1,h2,h3,h4,h5,h6,p,span,li,button,td,th,label';
 document.querySelectorAll(SELECTORS).forEach(function(el){
@@ -203,7 +206,7 @@ function showTb(el){
   tb.style.display='flex';
 }
 // Close toolbar on mousedown outside any editable/card/toolbar element
-document.addEventListener('mousedown',function(e){
+window.__smTbMd=function(e){
   if(tb.contains(e.target))return;
   var t=e.target;
   while(t&&t.tagName!=='BODY'){
@@ -211,8 +214,9 @@ document.addEventListener('mousedown',function(e){
     t=t.parentElement;
   }
   closeTb();
-},true);
-document.addEventListener('click',function(e){
+};
+document.addEventListener('mousedown',window.__smTbMd,true);
+window.__smTbClick=function(e){
   if(tb.contains(e.target))return;
   // Check for editable element
   var t=e.target;
@@ -244,10 +248,12 @@ document.addEventListener('click',function(e){
     c2=c2.parentElement;
   }
   closeTb();
-});
+};
+document.addEventListener('click',window.__smTbClick);
 tb.addEventListener('mousedown',function(e){e.preventDefault();var t=e.target;while(t&&t!==tb){if(t.dataset){if(t.dataset.smClose){closeTb();return;}if(t.dataset.sz&&ae&&SZ[t.dataset.sz])ae.style.fontSize=SZ[t.dataset.sz];if(t.dataset.bd&&ae){var fw=parseInt(window.getComputedStyle(ae).fontWeight)||400;ae.style.fontWeight=fw>=600?'normal':'bold';}if(t.dataset.tc&&ae)ae.style.color=t.dataset.tc;if(t.dataset.bc&&ce)ce.style.background=t.dataset.bc;if(t.dataset.al&&ae)ae.style.textAlign=t.dataset.al;}t=t.parentElement;}if(ae)ae.focus();});
 tb.addEventListener('change',function(e){var t=e.target;if(!t||!t.dataset)return;if(t.dataset.tcC&&ae)ae.style.color=t.value;if(t.dataset.bcC&&ce)ce.style.background=t.value;});
-document.addEventListener('blur',function(e){if(!e.target.getAttribute||!e.target.getAttribute('data-editable'))return;try{window.parent.postMessage({type:'sidesmith:page-update',html:'<!DOCTYPE html>'+document.documentElement.outerHTML},'*');}catch(x){}},true);
+window.__smTbBlur=function(e){if(!e.target.getAttribute||!e.target.getAttribute('data-editable'))return;try{window.parent.postMessage({type:'sidesmith:page-update',html:'<!DOCTYPE html>'+document.documentElement.outerHTML},'*');}catch(x){}};
+document.addEventListener('blur',window.__smTbBlur,true);
 })();`;
 }
 
@@ -782,6 +788,9 @@ function PreviewPane() {
         });
         doc.getElementById('__sm_style')?.remove();
         doc.getElementById('__sm_tb')?.remove();
+        if (iwin.__smTbClick) { doc.removeEventListener('click', iwin.__smTbClick); iwin.__smTbClick = null; }
+        if (iwin.__smTbMd) { doc.removeEventListener('mousedown', iwin.__smTbMd, true); iwin.__smTbMd = null; }
+        if (iwin.__smTbBlur) { doc.removeEventListener('blur', iwin.__smTbBlur, true); iwin.__smTbBlur = null; }
         iwin.__smEditActive = false;
       }
     };

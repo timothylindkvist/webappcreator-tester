@@ -206,20 +206,23 @@ function showTb(el){
   tb.style.left=Math.max(4,Math.min(window.innerWidth-360,r.left))+'px';
   tb.style.display='flex';
 }
-// Close toolbar on mousedown outside toolbar (editable/card handled below)
+// Mousedown capture: consume the event for editable/card elements so the page's own
+// onclick/onmousedown handlers never fire in edit mode. stopPropagation (not
+// preventDefault) lets the browser still transfer focus, which triggers focusin below.
 window.__smTbMd=function(e){
   if(tb.contains(e.target))return;
   var t=e.target;
   while(t&&t.tagName!=='BODY'){
-    if((t.getAttribute&&t.getAttribute('data-editable'))||(t.getAttribute&&t.getAttribute('data-sm-card')))return;
+    if(t.getAttribute&&t.getAttribute('data-editable')){e.stopPropagation();return;}
+    if(t.getAttribute&&t.getAttribute('data-sm-card')){e.stopPropagation();return;}
     t=t.parentElement;
   }
   closeTb();
 };
 document.addEventListener('mousedown',window.__smTbMd,true);
-// Show toolbar via focusin — fires when contentEditable receives focus regardless of
-// whether click events were stopped by the nav intercept or any other handler.
-// This mirrors how the home page editor works (focusin on the container).
+// Show toolbar via focusin — fires when contentEditable receives focus (triggered by
+// browser default on mousedown). Independent of click propagation, so nav intercept
+// and page scripts cannot suppress it.
 window.__smTbFocus=function(e){
   var t=e.target;
   if(!t||!t.getAttribute||!t.getAttribute('data-editable'))return;
@@ -232,17 +235,23 @@ window.__smTbFocus=function(e){
   showTb(ae);
 };
 document.addEventListener('focusin',window.__smTbFocus);
-// Show toolbar on click for card-only selections (cards don't receive focus via focusin)
+// Click capture: consume ALL clicks on editable/card elements so page handlers
+// (accordion toggles, modal openers, tab switchers, etc.) never fire in edit mode.
+// Also handles card-only toolbar (cards don't receive focus, so focusin won't catch them).
 window.__smTbClick=function(e){
   if(tb.contains(e.target))return;
   var t=e.target;
   while(t&&t.tagName!=='BODY'){
-    if(t.getAttribute&&t.getAttribute('data-editable'))return;
+    if(t.getAttribute&&t.getAttribute('data-editable')){
+      e.preventDefault();e.stopPropagation();
+      return;
+    }
     t=t.parentElement;
   }
   var c2=e.target;
   while(c2&&c2.tagName!=='BODY'){
     if(c2.getAttribute&&c2.getAttribute('data-sm-card')){
+      e.preventDefault();e.stopPropagation();
       ce=c2;ae=null;
       var bx2=document.getElementById('__sm_bx');
       var tc2=document.getElementById('__sm_tc');

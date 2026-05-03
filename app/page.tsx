@@ -185,6 +185,7 @@ html+='<span id="__sm_bx" style="display:none;align-items:center;gap:3px">'+SEP+
 PAL.forEach(function(c){html+='<button data-bc="'+c+'" style="width:13px;height:13px;background:'+c+';border:1px solid rgba(255,255,255,.3);border-radius:3px;cursor:pointer;padding:0;flex-shrink:0"></button>';});
 html+='<label style="width:14px;height:14px;border:1px solid rgba(255,255,255,.2);border-radius:3px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:8px;color:rgba(255,255,255,.4);flex-shrink:0;position:relative"><span style="pointer-events:none">✏</span><input type="color" data-bc-c="1" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%"></label>';
 html+='</span>';
+html+=SEP+'<button data-sm-close="1" style="background:none;border:none;color:rgba(255,255,255,.35);cursor:pointer;font-size:15px;padding:1px 5px;line-height:1;flex-shrink:0;border-radius:4px" title="Close">−</button>';
 var tb=document.createElement('div');
 tb.id='__sm_tb';
 Object.assign(tb.style,{position:'fixed',top:'-200px',left:'8px',display:'none',alignItems:'center',gap:'3px',padding:'5px 8px',background:'#1e1e30',border:'1px solid rgba(255,255,255,.12)',borderRadius:'10px',boxShadow:'0 8px 32px rgba(0,0,0,.5)',zIndex:'99999',fontFamily:'system-ui,sans-serif'});
@@ -244,7 +245,7 @@ document.addEventListener('click',function(e){
   }
   closeTb();
 });
-tb.addEventListener('mousedown',function(e){e.preventDefault();var t=e.target;while(t&&t!==tb){if(t.dataset){if(t.dataset.sz&&ae&&SZ[t.dataset.sz])ae.style.fontSize=SZ[t.dataset.sz];if(t.dataset.bd&&ae){var fw=parseInt(window.getComputedStyle(ae).fontWeight)||400;ae.style.fontWeight=fw>=600?'normal':'bold';}if(t.dataset.tc&&ae)ae.style.color=t.dataset.tc;if(t.dataset.bc&&ce)ce.style.background=t.dataset.bc;if(t.dataset.al&&ae)ae.style.textAlign=t.dataset.al;}t=t.parentElement;}if(ae)ae.focus();});
+tb.addEventListener('mousedown',function(e){e.preventDefault();var t=e.target;while(t&&t!==tb){if(t.dataset){if(t.dataset.smClose){closeTb();return;}if(t.dataset.sz&&ae&&SZ[t.dataset.sz])ae.style.fontSize=SZ[t.dataset.sz];if(t.dataset.bd&&ae){var fw=parseInt(window.getComputedStyle(ae).fontWeight)||400;ae.style.fontWeight=fw>=600?'normal':'bold';}if(t.dataset.tc&&ae)ae.style.color=t.dataset.tc;if(t.dataset.bc&&ce)ce.style.background=t.dataset.bc;if(t.dataset.al&&ae)ae.style.textAlign=t.dataset.al;}t=t.parentElement;}if(ae)ae.focus();});
 tb.addEventListener('change',function(e){var t=e.target;if(!t||!t.dataset)return;if(t.dataset.tcC&&ae)ae.style.color=t.value;if(t.dataset.bcC&&ce)ce.style.background=t.value;});
 document.addEventListener('blur',function(e){if(!e.target.getAttribute||!e.target.getAttribute('data-editable'))return;try{window.parent.postMessage({type:'sidesmith:page-update',html:'<!DOCTYPE html>'+document.documentElement.outerHTML},'*');}catch(x){}},true);
 })();`;
@@ -472,6 +473,14 @@ function FloatingEditToolbar({
           </label>
         </>
       )}
+
+      {/* Close button */}
+      <div className="w-px h-3.5 bg-white/[0.12] mx-0.5 flex-shrink-0" />
+      <button
+        onMouseDown={(e) => { e.preventDefault(); setVisible(false); }}
+        className="px-1.5 py-0.5 text-[13px] text-white/30 hover:text-white/60 hover:bg-white/[0.08] rounded transition-colors flex-shrink-0"
+        title="Close toolbar"
+      >−</button>
     </div>
   );
 }
@@ -749,8 +758,9 @@ function PreviewPane() {
     }
   }, [isEditMode, activePageData?.id, data.theme.palette]);
 
-  // Always inject nav-intercept script into iframes. Re-runs whenever the page
-  // HTML changes (after edits) so the script survives srcDoc reloads.
+  // Inject click-intercept script and rebuild the nav bar on every page load
+  // and whenever the pages list changes (new page added). The nav is built
+  // from live React state so it always reflects the current page list.
   useEffect(() => {
     if (!activePageData) return;
     const iframe = iframeRef.current;
@@ -760,12 +770,41 @@ function PreviewPane() {
       try {
         const iwin = iframe.contentWindow as any;
         const doc = iframe.contentDocument;
-        if (!doc || iwin?.__smNavActive) return;
-        iwin.__smNavActive = true;
-        const script = doc.createElement('script');
-        script.textContent = NAV_INTERCEPT_SCRIPT;
-        doc.body.appendChild(script);
-      } catch { /* sandboxing */ }
+        if (!doc?.body) return;
+        // Inject click-intercept script only once per document
+        if (!iwin.__smNavActive) {
+          iwin.__smNavActive = true;
+          const script = doc.createElement('script');
+          script.textContent = NAV_INTERCEPT_SCRIPT;
+          doc.body.appendChild(script);
+        }
+        // Always rebuild the nav from current React state
+        doc.getElementById('sm-nav')?.remove();
+        const light = isLightBackground(data.theme.palette.background);
+        const bg = data.theme.palette.background;
+        const brand = data.theme.palette.brand;
+        const muted = light ? '#71717a' : '#a1a1aa';
+        const border = light ? '#e4e4e7' : '#27272a';
+        const nav = doc.createElement('nav');
+        nav.id = 'sm-nav';
+        nav.setAttribute('style', `position:sticky;top:0;z-index:999;background:${bg};border-bottom:1px solid ${border};padding:0 1.25rem;display:flex;align-items:center;height:3.5rem;gap:1.5rem;font-family:inherit;`);
+        [{ id: 'home', name: 'Home' }, ...pages].forEach((p) => {
+          const a = doc.createElement('a');
+          a.href = '#';
+          a.textContent = p.name;
+          const isActive = p.id === activePage;
+          a.setAttribute('style', `text-decoration:none;font-size:.875rem;color:${isActive ? brand : muted};font-weight:${isActive ? '600' : '400'};cursor:pointer;`);
+          a.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setActivePage(p.id);
+          });
+          nav.appendChild(a);
+        });
+        const body = doc.body;
+        if (body.firstChild) body.insertBefore(nav, body.firstChild);
+        else body.appendChild(nav);
+      } catch { /* sandboxed */ }
     };
 
     if (iframe.contentDocument?.readyState === 'complete') {
@@ -774,7 +813,7 @@ function PreviewPane() {
       iframe.addEventListener('load', injectNav, { once: true });
       return () => iframe.removeEventListener('load', injectNav);
     }
-  }, [activePageData?.html]);
+  }, [activePageData?.html, pages, activePage, data.theme.palette, setActivePage]);
 
   // Handle postMessages from iframes (page updates + navigation)
   useEffect(() => {
@@ -850,13 +889,14 @@ function PreviewPane() {
               if (!iframe) return;
               try {
                 const iwin = iframe.contentWindow as any;
-                if (!iwin || iwin.__smNavActive) return;
-                iwin.__smNavActive = true;
                 const doc = iframe.contentDocument;
                 if (!doc?.body) return;
-                const navScript = doc.createElement('script');
-                navScript.textContent = NAV_INTERCEPT_SCRIPT;
-                doc.body.appendChild(navScript);
+                if (!iwin.__smNavActive) {
+                  iwin.__smNavActive = true;
+                  const navScript = doc.createElement('script');
+                  navScript.textContent = NAV_INTERCEPT_SCRIPT;
+                  doc.body.appendChild(navScript);
+                }
                 if (isEditMode && !iwin.__smEditActive) {
                   const editScript = doc.createElement('script');
                   editScript.textContent = generateEditScript(data.theme.palette);

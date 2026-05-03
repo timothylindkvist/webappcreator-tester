@@ -20,6 +20,7 @@ Return ONLY valid JSON — no markdown, no code fences, no explanation.
 Shape: {"reply":"1-2 sentences confirming what you changed","site":{...the complete updated site JSON...}}
 
 Modify only what the user asked for. Keep everything else identical.
+Words like "real", "better", "proper", "fix", or "improve" in reference to a specific element only apply to that element — never an invitation to redesign other sections or remove content the user has already built.
 
 RESPONSE RULES — non-negotiable:
 1. NEVER truncate your reply mid-sentence. Always finish every sentence you start. If you cannot complete a thought, leave it out entirely.
@@ -184,6 +185,21 @@ Rules:
 - PRESERVE the <script id="sm-nav-cfg" type="application/json"> tag and inline nav script EXACTLY as-is — do not remove, move, or modify them.
 - The HTML provided IS the ${pageName} page. Edit this exact document; do not substitute or regenerate it from scratch based on assumptions.
 
+SURGICAL EDITS — non-negotiable:
+- Words like "real", "better", "proper", "fix", or "improve" in reference to a specific element ONLY apply to that element. They are NEVER permission to redesign, restructure, or remove anything else on the page.
+- Before writing your output, identify the single element(s) the user named. Change only those. Every other section, heading, paragraph, image, card, button, and script must appear in the output unchanged.
+- If the instruction is "fix the download buttons" → touch only the download button elements. If it is "make the icons real" → swap only the icon elements. Nothing else moves.
+- Before returning the HTML, verify: every visible section, heading, paragraph, and interactive element from the original is still present. If anything is missing that the user did not explicitly ask to remove, you have made an error — add it back.
+
+BRAND ASSETS — when the user asks for "real", "official", or "proper" icons, logos, or badges for any known platform or brand:
+Always use the actual official brand asset — never a hand-drawn substitute, generic icon, emoji, or thematically-related placeholder.
+Official sources:
+- Apple App Store badge: <a href="#"><img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="Download on the App Store" style="height:40px"></a>
+- Google Play badge: <a href="#"><img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" alt="Get it on Google Play" style="height:60px"></a>
+- Any other platform icon (Spotify, LinkedIn, Instagram, X/Twitter, Facebook, YouTube, TikTok, GitHub, Discord, Slack, WhatsApp, etc.): use Simple Icons CDN → <img src="https://cdn.simpleicons.org/{slug}" width="28" height="28" alt="{name}"> where {slug} is the official Simple Icons slug (all lowercase, no spaces: spotify, linkedin, instagram, x, facebook, youtube, tiktok, github, discord, slack, whatsapp, snapchat, pinterest, appstore, googleplay).
+- Apply the platform's official brand color to the icon using a CSS color filter, or wrap it in a container styled with that color.
+Only replace the specific icon/badge elements that were mentioned. Leave all surrounding content untouched.
+
 ADDITIVE CHANGES — when the instruction is to add, insert, include, append, or put something new:
 - The existing HTML is SACRED. Every element, attribute, text node, and style already present must appear unchanged in your output.
 - Locate the single best insertion point and place the new element there. Touch NOTHING else.
@@ -260,7 +276,14 @@ Rules:
 - Do NOT reproduce the existing page. Output only the new fragment.
 - The fragment will be automatically injected before </body>.
 - Match the visual style of the existing page (colours, fonts, card design, spacing).
-- Use inline style attributes or a self-contained <style> block — no external stylesheet references.`,
+- Use inline style attributes or a self-contained <style> block — no external stylesheet references.
+- Words like "real", "proper", or "official" for a specific element mean use the actual brand asset for that element only — never restructure anything else.
+
+BRAND ASSETS — when adding icons, logos, or badges for any known platform:
+Always use the actual official brand asset:
+- Apple App Store badge: <a href="#"><img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="Download on the App Store" style="height:40px"></a>
+- Google Play badge: <a href="#"><img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" alt="Get it on Google Play" style="height:60px"></a>
+- Any other platform icon (Spotify, LinkedIn, Instagram, X/Twitter, Facebook, YouTube, TikTok, GitHub, Discord, etc.): <img src="https://cdn.simpleicons.org/{slug}" width="28" height="28" alt="{name}"> where {slug} is the lowercase Simple Icons slug.`,
     messages: [
       {
         role: 'user',
